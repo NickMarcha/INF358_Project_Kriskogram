@@ -1,5 +1,7 @@
 
-#  Exploring dynamic interactive Kriskograms for snapshot-based network data
+# Kriskogram - Dynamic Interactive Network Visualization
+
+> Exploring dynamic interactive Kriskograms for snapshot-based network data
 
 ## Background
 Kriskograms are aimed at an expert audience to look out for specific patterns in geospatial data. As far as I can tell, there as not been an extension* on their abstraction since they published in 2013. Their original abstraction was in black & white, and only looked at static migration data. There is opportunity here to try color, animation, or create some basic toolset, maybe an extension to d3js, to create kriskograms regardless of data. This seems very doable with d3 primitives. I could use the original Kriskogram papers data (us-census) to compare the original and extended versions.
@@ -234,3 +236,48 @@ createKriskogram({
   },
 });
 ```
+
+## 🚀 Deployment
+
+This project is configured for automatic deployment to GitHub Pages.
+
+### Quick Start
+1. **Clone and install**:
+   ```bash
+   git clone <your-repo-url>
+   cd Kriskogram
+   npm install
+   ```
+
+2. **Run locally**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Deploy to GitHub Pages**:
+   - Push to `main` branch for automatic deployment
+   - Or run `npm run deploy` for manual deployment
+
+### Live Demo
+- **Simple Demo**: `/kriskogram-simple` - Basic 4-node network
+- **Full Demo**: `/kriskogram` - Complete GEXF data with temporal animation
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+
+## 🛠️ Development
+
+### Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run deploy` - Deploy to GitHub Pages
+- `npm run lint` - Run linting
+- `npm run format` - Format code
+
+### Tech Stack
+- **React 19** - UI framework
+- **D3.js** - Data visualization
+- **TanStack Router** - Routing
+- **Tailwind CSS** - Styling
+- **TypeScript** - Type safety
+- **Vite** - Build tool

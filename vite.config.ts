@@ -17,4 +17,10 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  // GitHub Pages configuration
+  base: process.env.NODE_ENV === 'production' ? '/Kriskogram/' : '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+  },
 })
