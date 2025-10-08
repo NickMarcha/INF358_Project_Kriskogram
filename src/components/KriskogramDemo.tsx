@@ -173,12 +173,21 @@ export function KriskogramDemo({ gexfUrl }: KriskogramDemoProps) {
                   },
                   edgeWidth: (e) => Math.sqrt(e.value) / 10,
                   edgeColor: (e, isAbove) => {
-                    const colors = {
-                      economic: isAbove ? '#1f77b4' : '#d62728',
-                      career: isAbove ? '#2ca02c' : '#ff7f0e',
-                      lifestyle: isAbove ? '#9467bd' : '#8c564b',
-                    };
-                    return colors[e.migration_type as keyof typeof colors] || (isAbove ? '#1f77b4' : '#d62728');
+                    // Find min and max weights for color scaling
+                    const weights = currentSnapshot.edges.map((edge: any) => edge.value);
+                    const minWeight = Math.min(...weights);
+                    const maxWeight = Math.max(...weights);
+                    
+                    // Normalize weight to 0-1 range
+                    const normalized = (e.value - minWeight) / (maxWeight - minWeight);
+                    
+                    // Use single hue (light blue) with varying lightness
+                    // Low weight = lighter, high weight = darker
+                    const hue = 200; // Light blue
+                    const saturation = 70; // Constant saturation
+                    const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
+                    
+                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
                   },
                 }}
               />
