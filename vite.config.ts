@@ -17,8 +17,8 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
-  // GitHub Pages configuration
-  base: process.env.NODE_ENV === 'production' ? '/Kriskogram/' : '/',
+  // GitHub Pages configuration - must match repository name
+  base: process.env.NODE_ENV === 'production' ? '/INF358_Project_Kriskogram/' : '/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

@@ -15,15 +15,18 @@ The project is configured for automatic deployment using GitHub Actions. Every p
    git push origin main
    ```
 
-2. **Enable GitHub Pages**
-   - Go to your repository on GitHub
-   - Navigate to **Settings** → **Pages**
-   - Under **Source**, select **GitHub Actions**
-   - The workflow will automatically deploy on the next push
+2. **Enable GitHub Pages** (REQUIRED - One-time setup)
+   - Go to your repository on GitHub: `https://github.com/NickMarcha/INF358_Project_Kriskogram`
+   - Navigate to **Settings** → **Pages** (in the left sidebar)
+   - Under **Build and deployment**:
+     - **Source**: Select "Deploy from a branch"
+     - **Branch**: Select `gh-pages` and `/ (root)`
+     - Click **Save**
+   - GitHub will start deploying (takes 1-2 minutes)
 
 3. **Access your site**
-   - Your site will be available at: `https://[your-username].github.io/Kriskogram/`
-   - Replace `[your-username]` with your actual GitHub username
+   - Your site will be available at: `https://nickmarcha.github.io/INF358_Project_Kriskogram/`
+   - Wait 1-2 minutes after enabling Pages for the first time
 
 ## 🔧 Manual Deployment
 
@@ -62,7 +65,7 @@ The deployment setup includes:
 ### Base Path Configuration
 The Vite config automatically sets the correct base path:
 - **Development**: `/` (localhost)
-- **Production**: `/Kriskogram/` (GitHub Pages)
+- **Production**: `/INF358_Project_Kriskogram/` (GitHub Pages)
 
 ### Build Output
 - **Directory**: `dist/`
