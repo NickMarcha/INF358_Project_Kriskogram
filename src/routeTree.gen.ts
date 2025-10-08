@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StateMigrationRouteImport } from './routes/state-migration'
 import { Route as KriskogramSimpleRouteImport } from './routes/kriskogram-simple'
 import { Route as KriskogramRouteImport } from './routes/kriskogram'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DemoTableRouteImport } from './routes/demo.table'
 
+const StateMigrationRoute = StateMigrationRouteImport.update({
+  id: '/state-migration',
+  path: '/state-migration',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KriskogramSimpleRoute = KriskogramSimpleRouteImport.update({
   id: '/kriskogram-simple',
   path: '/kriskogram-simple',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
+  '/state-migration': typeof StateMigrationRoute
   '/demo/table': typeof DemoTableRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
+  '/state-migration': typeof StateMigrationRoute
   '/demo/table': typeof DemoTableRoute
 }
 export interface FileRoutesById {
@@ -52,25 +60,50 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
+  '/state-migration': typeof StateMigrationRoute
   '/demo/table': typeof DemoTableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kriskogram' | '/kriskogram-simple' | '/demo/table'
+  fullPaths:
+    | '/'
+    | '/kriskogram'
+    | '/kriskogram-simple'
+    | '/state-migration'
+    | '/demo/table'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kriskogram' | '/kriskogram-simple' | '/demo/table'
-  id: '__root__' | '/' | '/kriskogram' | '/kriskogram-simple' | '/demo/table'
+  to:
+    | '/'
+    | '/kriskogram'
+    | '/kriskogram-simple'
+    | '/state-migration'
+    | '/demo/table'
+  id:
+    | '__root__'
+    | '/'
+    | '/kriskogram'
+    | '/kriskogram-simple'
+    | '/state-migration'
+    | '/demo/table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   KriskogramRoute: typeof KriskogramRoute
   KriskogramSimpleRoute: typeof KriskogramSimpleRoute
+  StateMigrationRoute: typeof StateMigrationRoute
   DemoTableRoute: typeof DemoTableRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/state-migration': {
+      id: '/state-migration'
+      path: '/state-migration'
+      fullPath: '/state-migration'
+      preLoaderRoute: typeof StateMigrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kriskogram-simple': {
       id: '/kriskogram-simple'
       path: '/kriskogram-simple'
@@ -106,6 +139,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   KriskogramRoute: KriskogramRoute,
   KriskogramSimpleRoute: KriskogramSimpleRoute,
+  StateMigrationRoute: StateMigrationRoute,
   DemoTableRoute: DemoTableRoute,
 }
 export const routeTree = rootRouteImport

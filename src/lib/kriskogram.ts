@@ -193,6 +193,11 @@ export function createKriskogram(config: KriskogramConfig) {
     });
 
   // ---- Nodes ----
+  // 🎨 LABEL POSITIONING GUIDE:
+  // To adjust label position, look for "attr("y", r + 6)" in the code below
+  // - INCREASE the number (e.g., r + 10) to move labels DOWN/FURTHER from nodes
+  // - DECREASE the number (e.g., r + 2) to move labels UP/CLOSER to nodes
+  // - Current setting: r + 6 (balanced position)
   const nodeGroup = svg.append("g").attr("class", "nodes");
 
   nodeGroup
@@ -245,12 +250,18 @@ export function createKriskogram(config: KriskogramConfig) {
           .attr("stroke-width", 2);
       }
 
+      // Label positioning: adjust the "y" value to move labels up/down
+      // Current: r + 6 (closer to nodes)
+      // Increase value to move DOWN, decrease to move UP
+      // Example: r + 10 = further down, r + 2 = very close to node
       g.append("text")
-        .attr("y", r + 14)
-        .attr("text-anchor", "middle")
+        .attr("y", r + 10)  // <- ADJUST THIS VALUE to fine-tune vertical position
+        .attr("x", r + 5)  // <- ADJUST THIS VALUE to fine-tune vertical position
+        .attr("text-anchor", "start")
         .attr("font-size", "11px")
         .attr("font-weight", "500")
         .attr("fill", "#333")
+        .attr("transform", `rotate(45)`)
         .text(getNodeLabel(d));
     });
 
@@ -295,12 +306,14 @@ export function createKriskogram(config: KriskogramConfig) {
         .attr("stroke", "#fff")
         .attr("stroke-width", 2);
       
+      // Label positioning for dynamically added nodes (same as above)
       nodeEnter.append("text")
-        .attr("y", 14)
-        .attr("text-anchor", "middle")
+        .attr("y", 11)  // <- ADJUST THIS VALUE to match above (approximately r + 6, where r ~= 5)
+        .attr("text-anchor", "start")
         .attr("font-size", "11px")
         .attr("font-weight", "500")
         .attr("fill", "#333")
+        .attr("transform", `rotate(-45)`)
         .text(getNodeLabel);
       
       // Update existing nodes

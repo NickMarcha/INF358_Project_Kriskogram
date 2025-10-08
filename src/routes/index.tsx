@@ -50,6 +50,20 @@ function App() {
                 View Full Demo
               </Link>
             </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">State-to-State Migration (2021)</h2>
+              <p className="text-gray-600 mb-4">
+                Real U.S. Census Bureau data showing migration flows between all 50 states. 
+                Explore over 2,500 migration patterns with interactive filtering and visual analysis.
+              </p>
+              <Link
+                to="/state-migration"
+                className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                View State Migration Data
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-8">
