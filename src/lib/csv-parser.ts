@@ -81,6 +81,23 @@ export const REGION_COLORS: Record<string, string> = {
   'West': '#10b981',      // Green
 };
 
+// Division colors (more granular than regions)
+export const DIVISION_COLORS: Record<string, string> = {
+  // Northeast
+  'New England': '#60a5fa',      // Light Blue
+  'Mid-Atlantic': '#3b82f6',     // Blue
+  // Midwest
+  'East North Central': '#fbbf24', // Light Amber
+  'West North Central': '#f59e0b', // Amber
+  // South
+  'South Atlantic': '#f87171',   // Light Red
+  'East South Central': '#ef4444', // Red
+  'West South Central': '#dc2626', // Dark Red
+  // West
+  'Mountain': '#34d399',         // Light Green
+  'Pacific': '#10b981',          // Green
+};
+
 export interface MigrationEdge {
   source: string;
   target: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { parseStateMigrationCSV, loadCSVFromUrl, REGION_COLORS } from '../lib/csv-parser';
+import { parseStateMigrationCSV, loadCSVFromUrl, REGION_COLORS, DIVISION_COLORS } from '../lib/csv-parser';
 import type { MigrationData } from '../lib/csv-parser';
 import Kriskogram from './Kriskogram';
 import type { KriskogramRef } from './Kriskogram';
@@ -8,7 +8,8 @@ interface StateMigrationDemoProps {
   csvUrl?: string;
 }
 
-type ColorMode = 'grayscale' | 'region';
+type ColorMode = 'grayscale' | 'region' | 'division';
+type OrderMode = 'alphabetical' | 'region' | 'division';
 
 // Helper functions for color conversion
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -53,6 +54,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
   const [maxThreshold, setMaxThreshold] = useState(200000); // Maximum migration value to display
   const [maxEdges, setMaxEdges] = useState(200); // Maximum number of edges to display
   const [colorMode, setColorMode] = useState<ColorMode>('grayscale'); // Color mode for arcs
+  const [orderMode, setOrderMode] = useState<OrderMode>('alphabetical'); // Node ordering mode
   const kriskogramRef = useRef<KriskogramRef>(null);
 
   useEffect(() => {
@@ -212,7 +214,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
           {/* Color Mode Selector */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Arc Color Mode</label>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -222,7 +224,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                   onChange={(e) => setColorMode(e.target.value as ColorMode)}
                   className="w-4 h-4"
                 />
-                <span>Grayscale (weight-based luminosity)</span>
+                <span>Grayscale</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -233,7 +235,58 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                   onChange={(e) => setColorMode(e.target.value as ColorMode)}
                   className="w-4 h-4"
                 />
-                <span>Region-based (same region colored)</span>
+                <span>Region (4 regions)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="colorMode"
+                  value="division"
+                  checked={colorMode === 'division'}
+                  onChange={(e) => setColorMode(e.target.value as ColorMode)}
+                  className="w-4 h-4"
+                />
+                <span>Division (9 divisions)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Node Ordering Mode Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Node Ordering (Horizontal Axis)</label>
+            <div className="flex gap-4 flex-wrap">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orderMode"
+                  value="alphabetical"
+                  checked={orderMode === 'alphabetical'}
+                  onChange={(e) => setOrderMode(e.target.value as OrderMode)}
+                  className="w-4 h-4"
+                />
+                <span>Alphabetical</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orderMode"
+                  value="region"
+                  checked={orderMode === 'region'}
+                  onChange={(e) => setOrderMode(e.target.value as OrderMode)}
+                  className="w-4 h-4"
+                />
+                <span>By Region</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="orderMode"
+                  value="division"
+                  checked={orderMode === 'division'}
+                  onChange={(e) => setOrderMode(e.target.value as OrderMode)}
+                  className="w-4 h-4"
+                />
+                <span>By Division</span>
               </label>
             </div>
           </div>
@@ -321,7 +374,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
           {filteredNodes.length > 0 && filteredEdges.length > 0 ? (
             <div>
               <Kriskogram
-                key={`kriskogram-${colorMode}`}
+                key={`kriskogram-${colorMode}-${orderMode}`}
                 ref={kriskogramRef}
                 nodes={filteredNodes}
                 edges={filteredEdges}
@@ -329,7 +382,19 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                 height={700}
                 margin={{ top: 80, right: 40, bottom: 120, left: 40 }}
                 accessors={{
-                  nodeOrder: (d) => d.label,
+                  nodeOrder: (d) => {
+                    // Order nodes based on selected mode
+                    if (orderMode === 'region') {
+                      // Primary: region, Secondary: label
+                      return `${d.region || 'ZZZ'}_${d.label || d.id}`;
+                    } else if (orderMode === 'division') {
+                      // Primary: division, Secondary: label
+                      return `${d.division || 'ZZZ'}_${d.label || d.id}`;
+                    } else {
+                      // Alphabetical by label
+                      return d.label || d.id;
+                    }
+                  },
                   nodeColor: () => '#2563eb',
                   nodeRadius: () => 5,
                   edgeWidth: (e) => {
@@ -340,14 +405,26 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                     return minWidth + (normalized * (maxWidth - minWidth));
                   },
                   edgeColor: (e) => {
-                    // Calculate luminosity based on migration volume
+                    // Calculate luminosity based on migration volume using DISCRETE steps
                     const normalized = e.value / maxMigration;
-                    const lightness = 85 - (normalized * 60); // Range: 85% (light) to 25% (dark)
+                    
+                    // Define discrete luminosity levels to match legend
+                    const lightnessLevels = colorMode === 'division' 
+                      ? [85, 55, 25]  // 3 steps for division mode
+                      : [85, 70, 55, 40, 25]; // 5 steps for grayscale/region mode
+                    
+                    // Bin the normalized value into discrete steps
+                    const stepSize = 1 / lightnessLevels.length;
+                    const stepIndex = Math.min(
+                      Math.floor(normalized / stepSize),
+                      lightnessLevels.length - 1
+                    );
+                    const lightness = lightnessLevels[stepIndex];
                     
                     if (colorMode === 'grayscale') {
-                      // Grayscale mode - all arcs in grayscale with weight-based luminosity
+                      // Grayscale mode - all arcs in grayscale with discrete luminosity steps
                       return `hsl(0, 0%, ${lightness}%)`;
-                    } else {
+                    } else if (colorMode === 'region') {
                       // Region-based coloring
                       const sourceNode = data?.nodes.find(n => n.id === e.source);
                       const targetNode = data?.nodes.find(n => n.id === e.target);
@@ -358,7 +435,6 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                         const baseColor = REGION_COLORS[sourceNode.region];
                         
                         // Convert hex to HSL for lightness adjustment
-                        // This is a simplified approach - extract RGB from hex
                         const rgb = hexToRgb(baseColor);
                         if (rgb) {
                           const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
@@ -367,6 +443,27 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                         return baseColor;
                       } else {
                         // Different regions - grayscale
+                        return `hsl(0, 0%, ${lightness}%)`;
+                      }
+                    } else {
+                      // Division-based coloring
+                      const sourceNode = data?.nodes.find(n => n.id === e.source);
+                      const targetNode = data?.nodes.find(n => n.id === e.target);
+                      
+                      // Check if both nodes are in the same division
+                      if (sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division) {
+                        // Same division - use division color with weight-based luminosity
+                        const baseColor = DIVISION_COLORS[sourceNode.division];
+                        
+                        // Convert hex to HSL for lightness adjustment
+                        const rgb = hexToRgb(baseColor);
+                        if (rgb) {
+                          const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+                          return `hsl(${hsl.h}, ${hsl.s}%, ${lightness}%)`;
+                        }
+                        return baseColor;
+                      } else {
+                        // Different divisions - grayscale
                         return `hsl(0, 0%, ${lightness}%)`;
                       }
                     }
@@ -379,39 +476,181 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
                 <h4 className="text-sm font-semibold mb-2">Legend</h4>
                 {colorMode === 'grayscale' ? (
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        <div className="w-6 h-1 bg-gray-200"></div>
-                        <div className="w-6 h-1 bg-gray-400"></div>
-                        <div className="w-6 h-1 bg-gray-600"></div>
-                        <div className="w-6 h-1 bg-gray-800"></div>
-                      </div>
-                      <span>Grayscale with weight-based luminosity (lighter = lower volume, darker = higher volume)</span>
+                    <div className="text-gray-700 font-semibold mb-2">
+                      All Flows (grayscale with weight-based luminosity):
                     </div>
-                    <div className="text-gray-600">
-                      Edge darkness = migration volume | Edge width = log-scaled volume
+                    <div className="flex flex-col gap-1">
+                      {(() => {
+                        const minVal = Math.min(...filteredEdges.map(e => e.value));
+                        const maxVal = Math.max(...filteredEdges.map(e => e.value));
+                        const range = maxVal - minVal;
+                        const lightnessLevels = [85, 70, 55, 40, 25];
+                        
+                        return lightnessLevels.map((lightness, idx) => {
+                          const step = range / lightnessLevels.length;
+                          const rangeMin = Math.round(minVal + (idx * step));
+                          const rangeMax = Math.round(minVal + ((idx + 1) * step));
+                          
+                          return (
+                            <div key={idx} className="flex items-center gap-2">
+                              <div 
+                                className="w-16 h-3 border border-gray-300" 
+                                style={{ backgroundColor: `hsl(0, 0%, ${lightness}%)` }}
+                              ></div>
+                              <span className="text-[10px] text-gray-600">
+                                {rangeMin.toLocaleString()} - {rangeMax.toLocaleString()} people
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                    <div className="text-gray-600 mt-2">
+                      Edge width = log-scaled volume
+                    </div>
+                  </div>
+                ) : colorMode === 'region' ? (
+                  <div className="space-y-3 text-xs">
+                    <div className="text-gray-700 font-semibold">
+                      Same-Region Flows (colored by region):
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {Object.entries(REGION_COLORS).map(([region, color]) => {
+                        const rgb = hexToRgb(color);
+                        const hsl = rgb ? rgbToHsl(rgb.r, rgb.g, rgb.b) : null;
+                        const minVal = Math.min(...filteredEdges.map(e => e.value));
+                        const maxVal = Math.max(...filteredEdges.map(e => e.value));
+                        const range = maxVal - minVal;
+                        const lightnessLevels = [85, 70, 55, 40, 25];
+                        
+                        return (
+                          <div key={region} className="space-y-1">
+                            <div className="font-medium">{region}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex flex-col gap-0.5">
+                                {hsl && lightnessLevels.map((lightness, idx) => {
+                                  // Calculate the value range for this lightness level
+                                  const step = range / lightnessLevels.length;
+                                  const rangeMin = Math.round(minVal + (idx * step));
+                                  const rangeMax = Math.round(minVal + ((idx + 1) * step));
+                                  
+                                  return (
+                                    <div key={idx} className="flex items-center gap-1">
+                                      <div 
+                                        className="w-12 h-2" 
+                                        style={{ backgroundColor: `hsl(${hsl.h}, ${hsl.s}%, ${lightness}%)` }}
+                                      ></div>
+                                      <span className="text-[9px] text-gray-600 whitespace-nowrap">
+                                        {rangeMin.toLocaleString()}-{rangeMax.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-2 border-t border-gray-300">
+                      <div className="text-gray-700 font-semibold mb-1">Cross-Region Flows (grayscale):</div>
+                      <div className="flex flex-col gap-1">
+                        {(() => {
+                          const minVal = Math.min(...filteredEdges.map(e => e.value));
+                          const maxVal = Math.max(...filteredEdges.map(e => e.value));
+                          const range = maxVal - minVal;
+                          const lightnessLevels = [85, 55, 25];
+                          
+                          return lightnessLevels.map((lightness, idx) => {
+                            const step = range / lightnessLevels.length;
+                            const rangeMin = Math.round(minVal + (idx * step));
+                            const rangeMax = Math.round(minVal + ((idx + 1) * step));
+                            
+                            return (
+                              <div key={idx} className="flex items-center gap-2">
+                                <div 
+                                  className="w-12 h-2 border border-gray-300" 
+                                  style={{ backgroundColor: `hsl(0, 0%, ${lightness}%)` }}
+                                ></div>
+                                <span className="text-[9px] text-gray-600 whitespace-nowrap">
+                                  {rangeMin.toLocaleString()}-{rangeMax.toLocaleString()}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 text-xs">
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(REGION_COLORS).map(([region, color]) => (
-                        <div key={region} className="flex items-center gap-2">
-                          <div className="w-8 h-1" style={{ backgroundColor: color }}></div>
-                          <span>{region} (same-region flows)</span>
-                        </div>
-                      ))}
+                  <div className="space-y-3 text-xs">
+                    <div className="text-gray-700 font-semibold">
+                      Same-Division Flows (colored by division):
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-0.5">
-                        <div className="w-6 h-1 bg-gray-200"></div>
-                        <div className="w-6 h-1 bg-gray-400"></div>
-                        <div className="w-6 h-1 bg-gray-600"></div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {Object.entries(DIVISION_COLORS).map(([division, color]) => {
+                        const rgb = hexToRgb(color);
+                        const hsl = rgb ? rgbToHsl(rgb.r, rgb.g, rgb.b) : null;
+                        const minVal = Math.min(...filteredEdges.map(e => e.value));
+                        const maxVal = Math.max(...filteredEdges.map(e => e.value));
+                        const range = maxVal - minVal;
+                        const lightnessLevels = [85, 55, 25];
+                        
+                        return (
+                          <div key={division} className="space-y-1">
+                            <div className="font-medium text-[10px]">{division}</div>
+                            <div className="flex flex-col gap-0.5">
+                              {hsl && lightnessLevels.map((lightness, idx) => {
+                                // Calculate the value range for this lightness level (3 steps)
+                                const step = range / lightnessLevels.length;
+                                const rangeMin = Math.round(minVal + (idx * step));
+                                const rangeMax = Math.round(minVal + ((idx + 1) * step));
+                                
+                                return (
+                                  <div key={idx} className="flex items-center gap-1">
+                                    <div 
+                                      className="w-6 h-2" 
+                                      style={{ backgroundColor: `hsl(${hsl.h}, ${hsl.s}%, ${lightness}%)` }}
+                                    ></div>
+                                    <span className="text-[8px] text-gray-600 whitespace-nowrap">
+                                      {rangeMin > 999 ? `${Math.round(rangeMin/1000)}k` : rangeMin}-{rangeMax > 999 ? `${Math.round(rangeMax/1000)}k` : rangeMax}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-2 border-t border-gray-300">
+                      <div className="text-gray-700 font-semibold mb-1">Cross-Division Flows (grayscale):</div>
+                      <div className="flex flex-col gap-1">
+                        {(() => {
+                          const minVal = Math.min(...filteredEdges.map(e => e.value));
+                          const maxVal = Math.max(...filteredEdges.map(e => e.value));
+                          const range = maxVal - minVal;
+                          const lightnessLevels = [85, 55, 25];
+                          
+                          return lightnessLevels.map((lightness, idx) => {
+                            const step = range / lightnessLevels.length;
+                            const rangeMin = Math.round(minVal + (idx * step));
+                            const rangeMax = Math.round(minVal + ((idx + 1) * step));
+                            
+                            return (
+                              <div key={idx} className="flex items-center gap-2">
+                                <div 
+                                  className="w-12 h-2 border border-gray-300" 
+                                  style={{ backgroundColor: `hsl(0, 0%, ${lightness}%)` }}
+                                ></div>
+                                <span className="text-[9px] text-gray-600 whitespace-nowrap">
+                                  {rangeMin > 999 ? `${Math.round(rangeMin/1000)}k` : rangeMin}-{rangeMax > 999 ? `${Math.round(rangeMax/1000)}k` : rangeMax}
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                      <span>Grayscale (cross-region flows)</span>
-                    </div>
-                    <div className="text-gray-600">
-                      Arc lightness = migration volume (lighter = lower, darker = higher) | Width = log-scaled volume
                     </div>
                   </div>
                 )}
@@ -428,12 +667,18 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
         <div className="mt-6 p-4 bg-blue-50 rounded">
           <h3 className="font-semibold text-blue-900 mb-2">About This Visualization</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Each state is represented as a node along the baseline (sorted alphabetically)</li>
+            <li>• Each state is represented as a node along the baseline</li>
             <li>• Arcs represent migration flows between states in 2021</li>
             <li>• Arc thickness indicates migration volume (log-scaled for visibility)</li>
             <li>• Arc luminosity (darkness) shows migration volume - darker arcs = higher migration</li>
-            <li>• <strong>Grayscale mode:</strong> All arcs in grayscale with weight-based luminosity</li>
-            <li>• <strong>Region mode:</strong> Same-region migrations are colored by region (Northeast=Blue, Midwest=Amber, South=Red, West=Green), cross-region flows remain grayscale</li>
+            <li><strong>Color Modes:</strong></li>
+            <li className="ml-4">◦ <strong>Grayscale:</strong> All arcs in grayscale with weight-based luminosity</li>
+            <li className="ml-4">◦ <strong>Region:</strong> Same-region migrations colored by 4 U.S. regions (Northeast=Blue, Midwest=Amber, South=Red, West=Green)</li>
+            <li className="ml-4">◦ <strong>Division:</strong> Same-division migrations colored by 9 U.S. Census divisions for finer granularity</li>
+            <li><strong>Node Ordering:</strong></li>
+            <li className="ml-4">◦ <strong>Alphabetical:</strong> States sorted A-Z</li>
+            <li className="ml-4">◦ <strong>By Region:</strong> States grouped by region (Northeast, Midwest, South, West)</li>
+            <li className="ml-4">◦ <strong>By Division:</strong> States grouped by census division (New England, Mid-Atlantic, etc.)</li>
             <li>• Use the min/max threshold sliders to focus on a specific range of migration volumes</li>
             <li>• Adjust max edges to limit visual complexity</li>
           </ul>

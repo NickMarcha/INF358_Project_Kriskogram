@@ -154,29 +154,47 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("opacity", 0.85)
     .style("cursor", "pointer")
     .on("mouseover", function(_event, d) {
-      // Highlight edge on hover
+      const currentStroke = d3.select(this).attr("stroke");
+      
+      // Highlight edge on hover with black outline
       d3.select(this)
         .attr("opacity", 1)
-        .attr("stroke-width", getEdgeWidth(d) * 1.5);
+        .attr("stroke-width", getEdgeWidth(d) * 1.5)
+        .style("filter", "drop-shadow(0 0 2px black)")
+        .attr("data-original-stroke", currentStroke); // Store original color
+      
+      // Find source and target nodes for region/division info
+      const sourceNode = sortedNodes.find(n => n.id === d.source);
+      const targetNode = sortedNodes.find(n => n.id === d.target);
+      
+      // Check if same region/division
+      const sameRegion = sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region;
+      const sameDivision = sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division;
       
       // Show tooltip
       const tooltip = d3.select("body")
         .append("div")
         .attr("class", "kriskogram-tooltip")
         .style("position", "absolute")
-        .style("background", "rgba(0, 0, 0, 0.8)")
+        .style("background", "rgba(0, 0, 0, 0.9)")
         .style("color", "white")
-        .style("padding", "8px")
-        .style("border-radius", "4px")
+        .style("padding", "10px")
+        .style("border-radius", "6px")
         .style("font-size", "12px")
         .style("pointer-events", "none")
-        .style("z-index", "1000");
+        .style("z-index", "1000")
+        .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
       
       tooltip.html(`
-        <strong>${d.source} → ${d.target}</strong><br/>
-        Value: ${d.value.toLocaleString()}<br/>
-        ${d.migration_type ? `Type: ${d.migration_type}<br/>` : ''}
-        ${d.distance_km ? `Distance: ${d.distance_km.toFixed(0)} km` : ''}
+        <strong>${sourceNode?.label || d.source} → ${targetNode?.label || d.target}</strong><br/>
+        <strong>Migrants:</strong> ${d.value.toLocaleString()} people<br/>
+        ${d.moe ? `<strong>MOE:</strong> ±${d.moe.toLocaleString()}<br/>` : ''}
+        ${sourceNode?.region ? `<strong>From Region:</strong> ${sourceNode.region}<br/>` : ''}
+        ${targetNode?.region ? `<strong>To Region:</strong> ${targetNode.region}<br/>` : ''}
+        ${sourceNode?.division ? `<strong>From Division:</strong> ${sourceNode.division}<br/>` : ''}
+        ${targetNode?.division ? `<strong>To Division:</strong> ${targetNode.division}<br/>` : ''}
+        <strong>Same Region:</strong> ${sameRegion ? '✓ Yes' : '✗ No'}<br/>
+        <strong>Same Division:</strong> ${sameDivision ? '✓ Yes' : '✗ No'}
       `);
     })
     .on("mousemove", function(event) {
@@ -187,17 +205,19 @@ export function createKriskogram(config: KriskogramConfig) {
     .on("mouseout", function() {
       d3.select(this)
         .attr("opacity", 0.85)
-        .attr("stroke-width", (d: any) => getEdgeWidth(d));
+        .attr("stroke-width", (d: any) => getEdgeWidth(d))
+        .style("filter", null);
       
       d3.select(".kriskogram-tooltip").remove();
     });
 
   // ---- Nodes ----
   // 🎨 LABEL POSITIONING GUIDE:
-  // To adjust label position, look for "attr("y", r + 6)" in the code below
-  // - INCREASE the number (e.g., r + 10) to move labels DOWN/FURTHER from nodes
-  // - DECREASE the number (e.g., r + 2) to move labels UP/CLOSER to nodes
-  // - Current setting: r + 6 (balanced position)
+  // Labels are rotated 45° upward-right for better readability
+  // To adjust label position, look for ".attr("y", r + 10)" and ".attr("x", r + 5)"
+  // - y value: INCREASE to move DOWN, DECREASE to move UP
+  // - x value: INCREASE to move RIGHT, DECREASE to move LEFT
+  // - Current: y = r + 10, x = r + 5 (balanced position)
   const nodeGroup = svg.append("g").attr("class", "nodes");
 
   nodeGroup
@@ -250,13 +270,14 @@ export function createKriskogram(config: KriskogramConfig) {
           .attr("stroke-width", 2);
       }
 
-      // Label positioning: adjust the "y" value to move labels up/down
-      // Current: r + 6 (closer to nodes)
-      // Increase value to move DOWN, decrease to move UP
-      // Example: r + 10 = further down, r + 2 = very close to node
+      // Label positioning: adjust these values to fine-tune label placement
+      // y: vertical offset - INCREASE to move DOWN, DECREASE to move UP
+      // x: horizontal offset - INCREASE to move RIGHT, DECREASE to move LEFT
+      // Current: y = r + 10, x = r + 5 (balanced position for 45° rotation)
+      // rotate(45): labels slant upward-right for better readability
       g.append("text")
-        .attr("y", r + 10)  // <- ADJUST THIS VALUE to fine-tune vertical position
-        .attr("x", r + 5)  // <- ADJUST THIS VALUE to fine-tune vertical position
+        .attr("y", r + 10)  // <- ADJUST for vertical position (current: r + 10)
+        .attr("x", r + 5)   // <- ADJUST for horizontal position (current: r + 5)
         .attr("text-anchor", "start")
         .attr("font-size", "11px")
         .attr("font-weight", "500")
@@ -308,12 +329,13 @@ export function createKriskogram(config: KriskogramConfig) {
       
       // Label positioning for dynamically added nodes (same as above)
       nodeEnter.append("text")
-        .attr("y", 11)  // <- ADJUST THIS VALUE to match above (approximately r + 6, where r ~= 5)
+        .attr("y", 15)  // <- ADJUST THIS VALUE to match above (approximately r + 10, where r ~= 5)
+        .attr("x", 10)  // <- ADJUST THIS VALUE for horizontal offset
         .attr("text-anchor", "start")
         .attr("font-size", "11px")
         .attr("font-weight", "500")
         .attr("fill", "#333")
-        .attr("transform", `rotate(-45)`)
+        .attr("transform", `rotate(45)`)
         .text(getNodeLabel);
       
       // Update existing nodes
@@ -340,7 +362,65 @@ export function createKriskogram(config: KriskogramConfig) {
         .append("path")
         .attr("class", "arc")
         .attr("fill", "none")
-        .attr("opacity", 0);
+        .attr("opacity", 0)
+        .style("cursor", "pointer")
+        .on("mouseover", function(_event, d) {
+          const currentStroke = d3.select(this).attr("stroke");
+          
+          // Highlight edge on hover with black outline
+          d3.select(this)
+            .attr("opacity", 1)
+            .attr("stroke-width", getEdgeWidth(d) * 1.5)
+            .style("filter", "drop-shadow(0 0 2px black)")
+            .attr("data-original-stroke", currentStroke);
+          
+          // Find source and target nodes
+          const sourceNode = newSortedNodes.find(n => n.id === d.source);
+          const targetNode = newSortedNodes.find(n => n.id === d.target);
+          
+          // Check if same region/division
+          const sameRegion = sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region;
+          const sameDivision = sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division;
+          
+          // Show tooltip
+          const tooltip = d3.select("body")
+            .append("div")
+            .attr("class", "kriskogram-tooltip")
+            .style("position", "absolute")
+            .style("background", "rgba(0, 0, 0, 0.9)")
+            .style("color", "white")
+            .style("padding", "10px")
+            .style("border-radius", "6px")
+            .style("font-size", "12px")
+            .style("pointer-events", "none")
+            .style("z-index", "1000")
+            .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
+          
+          tooltip.html(`
+            <strong>${sourceNode?.label || d.source} → ${targetNode?.label || d.target}</strong><br/>
+            <strong>Migrants:</strong> ${d.value.toLocaleString()} people<br/>
+            ${d.moe ? `<strong>MOE:</strong> ±${d.moe.toLocaleString()}<br/>` : ''}
+            ${sourceNode?.region ? `<strong>From Region:</strong> ${sourceNode.region}<br/>` : ''}
+            ${targetNode?.region ? `<strong>To Region:</strong> ${targetNode.region}<br/>` : ''}
+            ${sourceNode?.division ? `<strong>From Division:</strong> ${sourceNode.division}<br/>` : ''}
+            ${targetNode?.division ? `<strong>To Division:</strong> ${targetNode.division}<br/>` : ''}
+            <strong>Same Region:</strong> ${sameRegion ? '✓ Yes' : '✗ No'}<br/>
+            <strong>Same Division:</strong> ${sameDivision ? '✓ Yes' : '✗ No'}
+          `);
+        })
+        .on("mousemove", function(event) {
+          d3.select(".kriskogram-tooltip")
+            .style("left", (event.pageX + 10) + "px")
+            .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", function() {
+          d3.select(this)
+            .attr("opacity", 0.85)
+            .attr("stroke-width", (d: any) => getEdgeWidth(d))
+            .style("filter", null);
+          
+          d3.select(".kriskogram-tooltip").remove();
+        });
       
       const edgeMerge = edgeEnter.merge(edgeUpdate as any);
       
