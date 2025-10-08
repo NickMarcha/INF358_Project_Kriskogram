@@ -39,6 +39,7 @@ export interface KriskogramConfig {
   width?: number;
   height?: number;
   margin?: { top: number; right: number; bottom: number; left: number };
+  arcOpacity?: number; // Arc transparency (0-1), defaults to 0.85
   container?: string; // CSS selector, defaults to "body"
 }
 
@@ -52,6 +53,7 @@ export function createKriskogram(config: KriskogramConfig) {
     width = 800,
     height = 400,
     margin = { top: 40, right: 40, bottom: 40, left: 40 },
+    arcOpacity = 0.85,
     container = "body",
   } = config;
 
@@ -151,7 +153,7 @@ export function createKriskogram(config: KriskogramConfig) {
       return getEdgeColor(d, isAbove);
     })
     .attr("stroke-width", (d) => getEdgeWidth(d))
-    .attr("opacity", 0.85)
+    .attr("opacity", arcOpacity)
     .style("cursor", "pointer")
     .on("mouseover", function(_event, d) {
       const currentStroke = d3.select(this).attr("stroke");
@@ -204,7 +206,7 @@ export function createKriskogram(config: KriskogramConfig) {
     })
     .on("mouseout", function() {
       d3.select(this)
-        .attr("opacity", 0.85)
+        .attr("opacity", arcOpacity)
         .attr("stroke-width", (d: any) => getEdgeWidth(d))
         .style("filter", null);
       
@@ -415,7 +417,7 @@ export function createKriskogram(config: KriskogramConfig) {
         })
         .on("mouseout", function() {
           d3.select(this)
-            .attr("opacity", 0.85)
+            .attr("opacity", arcOpacity)
             .attr("stroke-width", (d: any) => getEdgeWidth(d))
             .style("filter", null);
           
@@ -439,7 +441,7 @@ export function createKriskogram(config: KriskogramConfig) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("opacity", 0.85);
+        .attr("opacity", arcOpacity);
     }
   };
 }

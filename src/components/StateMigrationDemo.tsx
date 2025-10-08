@@ -55,6 +55,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
   const [maxEdges, setMaxEdges] = useState(200); // Maximum number of edges to display
   const [colorMode, setColorMode] = useState<ColorMode>('grayscale'); // Color mode for arcs
   const [orderMode, setOrderMode] = useState<OrderMode>('alphabetical'); // Node ordering mode
+  const [arcOpacity, setArcOpacity] = useState(0.6); // Arc transparency (0 = fully transparent, 1 = fully opaque)
   const kriskogramRef = useRef<KriskogramRef>(null);
 
   useEffect(() => {
@@ -367,6 +368,28 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
               </div>
             </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Arc Opacity: {Math.round(arcOpacity * 100)}%
+            </label>
+            <div className="relative pt-1">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={arcOpacity}
+                onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span className="font-semibold">0% (Transparent)</span>
+                <span>50%</span>
+                <span className="font-semibold">100% (Opaque)</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Kriskogram Visualization */}
@@ -374,13 +397,14 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
           {filteredNodes.length > 0 && filteredEdges.length > 0 ? (
             <div>
               <Kriskogram
-                key={`kriskogram-${colorMode}-${orderMode}`}
+                key={`kriskogram-${colorMode}-${orderMode}-${arcOpacity}`}
                 ref={kriskogramRef}
                 nodes={filteredNodes}
                 edges={filteredEdges}
                 width={1200}
                 height={700}
                 margin={{ top: 80, right: 40, bottom: 120, left: 40 }}
+                arcOpacity={arcOpacity}
                 accessors={{
                   nodeOrder: (d) => {
                     // Order nodes based on selected mode
@@ -681,6 +705,7 @@ export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migratio
             <li className="ml-4">◦ <strong>By Division:</strong> States grouped by census division (New England, Mid-Atlantic, etc.)</li>
             <li>• Use the min/max threshold sliders to focus on a specific range of migration volumes</li>
             <li>• Adjust max edges to limit visual complexity</li>
+            <li>• <strong>Arc Opacity slider:</strong> Control transparency to see overlapping migration patterns (lower = more transparent)</li>
           </ul>
         </div>
 
