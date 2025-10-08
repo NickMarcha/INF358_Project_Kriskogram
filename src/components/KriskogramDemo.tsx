@@ -172,7 +172,7 @@ export function KriskogramDemo({ gexfUrl }: KriskogramDemoProps) {
                     return 6;
                   },
                   edgeWidth: (e) => Math.sqrt(e.value) / 10,
-                  edgeColor: (e, isAbove) => {
+                  edgeColor: (e, _isAbove) => {
                     // Find min and max weights for color scaling
                     const weights = currentSnapshot.edges.map((edge: any) => edge.value);
                     const minWeight = Math.min(...weights);
