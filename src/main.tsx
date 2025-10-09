@@ -8,9 +8,24 @@ import { routeTree } from './routeTree.gen'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
-// Create a new router instance
+// Handle 404 redirect from GitHub Pages
+(function() {
+  const redirect = sessionStorage.redirect;
+  delete sessionStorage.redirect;
+  if (redirect && redirect !== location.href) {
+    // Extract the path after the base URL
+    const baseUrl = location.origin + import.meta.env.BASE_URL;
+    if (redirect.startsWith(baseUrl)) {
+      const path = redirect.substring(baseUrl.length - 1); // Keep leading slash
+      history.replaceState(null, '', import.meta.env.BASE_URL.replace(/\/$/, '') + path);
+    }
+  }
+})();
+
+// Create a new router instance with basepath for GitHub Pages
 const router = createRouter({
   routeTree,
+  basepath: import.meta.env.BASE_URL.replace(/\/$/, ''), // Remove trailing slash from BASE_URL
   context: {},
   defaultPreload: 'intent',
   scrollRestoration: true,

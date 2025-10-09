@@ -46,7 +46,9 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   return { h: h * 360, s: s * 100, l: l * 100 };
 }
 
-export function StateMigrationDemo({ csvUrl = '/src/data/State_to_State_Migrations_Table_2021.csv' }: StateMigrationDemoProps) {
+export function StateMigrationDemo({ 
+  csvUrl = `${import.meta.env.BASE_URL}data/State_to_State_Migrations_Table_2021.csv` 
+}: StateMigrationDemoProps) {
   const [data, setData] = useState<MigrationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

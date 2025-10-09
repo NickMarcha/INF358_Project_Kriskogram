@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting...</title>
+  <script>
+    // Redirect any 404 to the index page, preserving the path
+    // The router (configured with basepath) will handle the actual routing
+    sessionStorage.redirect = location.href;
+    location.replace(location.origin + '/INF358_Project_Kriskogram/');
+  </script>
+</head>
+<body>
+  <p>Redirecting...</p>
+</body>
+</html>
+
