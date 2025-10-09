@@ -126,7 +126,7 @@ To use a custom domain:
 After deployment, you can check:
 - **GitHub Actions**: Repository → Actions tab
 - **Pages Settings**: Repository → Settings → Pages
-- **Live Site**: `https://[username].github.io/Kriskogram/`
+- **Live Site**: `https://nickmarcha.github.io/INF358_Project_Kriskogram/`
 
 ## 🎯 Next Steps
 
