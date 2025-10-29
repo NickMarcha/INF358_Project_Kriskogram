@@ -57,8 +57,9 @@ export function createKriskogram(config: KriskogramConfig) {
     container = "body",
   } = config;
 
-  // Clear existing content
+  // Clear existing content and remove any orphaned tooltips
   d3.select(container).selectAll("*").remove();
+  d3.selectAll(".kriskogram-tooltip").remove();
 
   // ---- Accessors with defaults ----
   const getNodeLabel = accessors.nodeLabel ?? ((d: Node) => d.label ?? d.id);
@@ -173,6 +174,9 @@ export function createKriskogram(config: KriskogramConfig) {
       const sameRegion = sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region;
       const sameDivision = sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division;
       
+      // Remove any existing tooltips first
+      d3.selectAll(".kriskogram-tooltip").remove();
+      
       // Show tooltip
       const tooltip = d3.select("body")
         .append("div")
@@ -200,9 +204,13 @@ export function createKriskogram(config: KriskogramConfig) {
       `);
     })
     .on("mousemove", function(event) {
-      d3.select(".kriskogram-tooltip")
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 10) + "px");
+      // Select the first tooltip (should only be one) and update position
+      const tooltip = d3.select(".kriskogram-tooltip")
+      if (!tooltip.empty()) {
+        tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 10) + "px")
+      }
     })
     .on("mouseout", function() {
       d3.select(this)
@@ -210,7 +218,8 @@ export function createKriskogram(config: KriskogramConfig) {
         .attr("stroke-width", (d: any) => getEdgeWidth(d))
         .style("filter", null);
       
-      d3.select(".kriskogram-tooltip").remove();
+      // Remove all tooltips
+      d3.selectAll(".kriskogram-tooltip").remove();
     });
 
   // ---- Nodes ----
@@ -301,6 +310,9 @@ export function createKriskogram(config: KriskogramConfig) {
   return {
     svg,
     updateData: (newNodes: Node[], newEdges: Edge[]) => {
+      // Remove any existing tooltips before updating
+      d3.selectAll(".kriskogram-tooltip").remove();
+      
       // Update function for animation
       const newSortedNodes = [...newNodes].sort((a, b) =>
         d3.ascending(getNodeOrder(a), getNodeOrder(b))
@@ -384,6 +396,9 @@ export function createKriskogram(config: KriskogramConfig) {
           const sameRegion = sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region;
           const sameDivision = sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division;
           
+          // Remove any existing tooltips first
+          d3.selectAll(".kriskogram-tooltip").remove();
+          
           // Show tooltip
           const tooltip = d3.select("body")
             .append("div")
@@ -411,9 +426,13 @@ export function createKriskogram(config: KriskogramConfig) {
           `);
         })
         .on("mousemove", function(event) {
-          d3.select(".kriskogram-tooltip")
-            .style("left", (event.pageX + 10) + "px")
-            .style("top", (event.pageY - 10) + "px");
+          // Select the first tooltip (should only be one) and update position
+          const tooltip = d3.select(".kriskogram-tooltip")
+          if (!tooltip.empty()) {
+            tooltip
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 10) + "px")
+          }
         })
         .on("mouseout", function() {
           d3.select(this)
@@ -421,7 +440,8 @@ export function createKriskogram(config: KriskogramConfig) {
             .attr("stroke-width", (d: any) => getEdgeWidth(d))
             .style("filter", null);
           
-          d3.select(".kriskogram-tooltip").remove();
+          // Remove all tooltips
+          d3.selectAll(".kriskogram-tooltip").remove();
         });
       
       const edgeMerge = edgeEnter.merge(edgeUpdate as any);

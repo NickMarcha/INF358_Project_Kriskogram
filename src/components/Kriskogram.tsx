@@ -58,6 +58,10 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
 
       // Cleanup function
       return () => {
+        // Remove any tooltips when component unmounts
+        if (typeof document !== 'undefined') {
+          document.querySelectorAll(".kriskogram-tooltip").forEach(el => el.remove());
+        }
         if (containerRef.current) {
           containerRef.current.innerHTML = '';
         }

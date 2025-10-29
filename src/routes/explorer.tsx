@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute, useNavigate, useSearch, stripSearchParams } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useSearch, stripSearchParams, useLocation } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import Kriskogram from '../components/Kriskogram'
@@ -9,8 +9,8 @@ import TableView from '../components/views/TableView'
 import SankeyView from '../components/views/SankeyView'
 import ChordView from '../components/views/ChordView'
 import { ErrorBoundary } from '../components/ErrorBoundary'
-import Sidebar from '../components/Sidebar'
 import SettingsPanel from '../components/SettingsPanel'
+import { useSidebar } from '../contexts/SidebarContext'
 import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { parseTwoFileCSV } from '../lib/csv-two-file-parser'
@@ -129,6 +129,8 @@ export const Route = createFileRoute('/explorer')({
 function ExplorerPage() {
   const search = useSearch({ from: '/explorer', strict: false })
   const navigate = useNavigate()
+  const location = useLocation()
+  const { leftSidebarCollapsed, leftSidebarWidth, setSidebarContent } = useSidebar()
   
   // Initialize state from search params (Zod ensures we have proper types and defaults)
   const [selectedId, setSelectedId] = useState<string | undefined>(search.dataset)
@@ -144,10 +146,38 @@ function ExplorerPage() {
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const krRef = useRef<KriskogramRef>(null)
   
-  // Sidebar state
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
+  // Sidebar state for right panel
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(384)
   const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1200, height: typeof window !== 'undefined' ? window.innerHeight : 800 })
+
+  // Set sidebar content for explorer page (dataset panel)
+  useEffect(() => {
+    setSidebarContent(
+      <ErrorBoundary
+        fallback={
+          <div className="p-4">
+            <h2 className="text-lg font-bold text-red-800 mb-2">Dataset Sidebar Error</h2>
+            <p className="text-sm text-red-700">The dataset sidebar encountered an error.</p>
+          </div>
+        }
+      >
+        <DatasetSidebar 
+          selectedId={selectedId} 
+          onSelect={(id) => {
+            setSelectedId(id)
+            updateSearchParams({ dataset: id })
+          }}
+          onRefresh={() => setRefreshKey(prev => prev + 1)}
+        />
+      </ErrorBoundary>
+    )
+    
+    return () => {
+      setSidebarContent(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, refreshKey])
 
   // Update window size on resize
   useEffect(() => {
@@ -160,7 +190,7 @@ function ExplorerPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   
-  // Update window size when sidebars toggle
+  // Update window size when sidebars toggle or resize
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Small delay to let layout adjust
@@ -168,7 +198,7 @@ function ExplorerPage() {
         setWindowSize({ width: window.innerWidth, height: window.innerHeight })
       }, 100)
     }
-  }, [leftSidebarCollapsed, rightSidebarCollapsed])
+  }, [leftSidebarCollapsed, rightSidebarCollapsed, leftSidebarWidth, rightSidebarWidth])
   
   // Kriskogram visualization controls (only used when viewType === 'kriskogram')
   const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
@@ -411,31 +441,7 @@ function ExplorerPage() {
         </div>
       }
     >
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Left Sidebar */}
-        <Sidebar
-          isCollapsed={leftSidebarCollapsed}
-          onToggle={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
-        >
-          <ErrorBoundary
-            fallback={
-              <div className="p-4">
-                <h2 className="text-lg font-bold text-red-800 mb-2">Dataset Sidebar Error</h2>
-                <p className="text-sm text-red-700">The dataset sidebar encountered an error.</p>
-              </div>
-            }
-          >
-            <DatasetSidebar 
-              selectedId={selectedId} 
-              onSelect={(id) => {
-                setSelectedId(id)
-                updateSearchParams({ dataset: id })
-              }}
-              onRefresh={() => setRefreshKey(prev => prev + 1)}
-            />
-          </ErrorBoundary>
-        </Sidebar>
-
+      <div className="flex flex-1">
         {/* Center Content - Visualization */}
         <main className="flex-1 flex flex-col overflow-hidden">
           {loading && <div className="p-4 bg-yellow-50 text-yellow-800">Loading…</div>}
@@ -458,7 +464,7 @@ function ExplorerPage() {
                             ref={krRef}
                             nodes={filteredData.nodes}
                             edges={filteredData.edges}
-                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
                             height={Math.max(600, windowSize.height - 80)}
                             margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
                             arcOpacity={arcOpacity}
@@ -634,7 +640,7 @@ function ExplorerPage() {
                           <SankeyView 
                             nodes={filteredData.nodes} 
                             edges={filteredData.edges} 
-                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
                             height={Math.max(600, windowSize.height - 80)}
                           />
                         </ErrorBoundary>
@@ -651,7 +657,7 @@ function ExplorerPage() {
                           <ChordView 
                             nodes={filteredData.nodes} 
                             edges={filteredData.edges} 
-                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
                             height={Math.max(600, windowSize.height - 80)}
                           />
                         </ErrorBoundary>
@@ -680,6 +686,7 @@ function ExplorerPage() {
             <SettingsPanel
               isCollapsed={rightSidebarCollapsed}
               onToggle={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+              onResize={setRightSidebarWidth}
               title="Visualization Settings"
             >
               <div className="space-y-4">

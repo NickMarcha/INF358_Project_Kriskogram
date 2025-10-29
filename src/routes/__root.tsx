@@ -1,6 +1,8 @@
 import { Outlet, createRootRoute, redirect } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanstackDevtools } from '@tanstack/react-devtools'
+import { SidebarProvider, useSidebar } from '../contexts/SidebarContext'
+import Sidebar from '../components/Sidebar'
 
 export const Route = createRootRoute({
   notFoundComponent: () => {
@@ -9,9 +11,36 @@ export const Route = createRootRoute({
       to: '/',
     })
   },
-  component: () => (
-    <>
-      <Outlet />
+  component: RootComponent,
+})
+
+function RootComponent() {
+  return (
+    <SidebarProvider>
+      <RootLayout />
+    </SidebarProvider>
+  )
+}
+
+function RootLayout() {
+  const { leftSidebarCollapsed, setLeftSidebarCollapsed, leftSidebarWidth, setLeftSidebarWidth, sidebarContent } = useSidebar()
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Site-wide Left Sidebar */}
+      <Sidebar
+        isCollapsed={leftSidebarCollapsed}
+        onToggle={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+        onResize={setLeftSidebarWidth}
+      >
+        {sidebarContent}
+      </Sidebar>
+
+      {/* Main Content Area */}
+      <div className="flex-1">
+        <Outlet />
+      </div>
+
       <TanstackDevtools
         config={{
           position: 'bottom-left',
@@ -23,6 +52,6 @@ export const Route = createRootRoute({
           },
         ]}
       />
-    </>
-  ),
-})
+    </div>
+  )
+}
