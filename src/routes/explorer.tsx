@@ -9,6 +9,8 @@ import TableView from '../components/views/TableView'
 import SankeyView from '../components/views/SankeyView'
 import ChordView from '../components/views/ChordView'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import Sidebar from '../components/Sidebar'
+import SettingsPanel from '../components/SettingsPanel'
 import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { parseTwoFileCSV } from '../lib/csv-two-file-parser'
@@ -141,6 +143,32 @@ function ExplorerPage() {
   const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null | undefined>(search.edgeType)
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const krRef = useRef<KriskogramRef>(null)
+  
+  // Sidebar state
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
+  const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1200, height: typeof window !== 'undefined' ? window.innerHeight : 800 })
+
+  // Update window size on resize
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    handleResize() // Initial size
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  
+  // Update window size when sidebars toggle
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Small delay to let layout adjust
+      setTimeout(() => {
+        setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+      }, 100)
+    }
+  }, [leftSidebarCollapsed, rightSidebarCollapsed])
   
   // Kriskogram visualization controls (only used when viewType === 'kriskogram')
   const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
@@ -383,12 +411,15 @@ function ExplorerPage() {
         </div>
       }
     >
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: 600 }}>
+      <div className="flex min-h-screen bg-gray-50">
+        {/* Left Sidebar */}
+        <Sidebar
+          isCollapsed={leftSidebarCollapsed}
+          onToggle={() => setLeftSidebarCollapsed(!leftSidebarCollapsed)}
+        >
           <ErrorBoundary
             fallback={
-              <div className="w-72 bg-white border-r border-gray-200 p-4">
+              <div className="p-4">
                 <h2 className="text-lg font-bold text-red-800 mb-2">Dataset Sidebar Error</h2>
                 <p className="text-sm text-red-700">The dataset sidebar encountered an error.</p>
               </div>
@@ -403,500 +434,16 @@ function ExplorerPage() {
               onRefresh={() => setRefreshKey(prev => prev + 1)}
             />
           </ErrorBoundary>
+        </Sidebar>
 
-          <main className="flex-1 p-6">
-            <header className="mb-4">
-              <h1 className="text-2xl font-bold">Explorer</h1>
-              <p className="text-gray-600 text-sm">Load, store, and explore datasets locally</p>
-            </header>
+        {/* Center Content - Visualization */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {loading && <div className="p-4 bg-yellow-50 text-yellow-800">Loading…</div>}
+          {error && <div className="p-4 bg-red-50 text-red-600">{error}</div>}
 
-            {loading && <div className="p-4">Loading…</div>}
-            {error && <div className="p-4 text-red-600">{error}</div>}
-
-            {dataset && (
-              <div className="space-y-4">
-                {/* View Type Selector */}
-                <div className="p-4 bg-gray-50 rounded">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium">Visualization Type</label>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => {
-                        setViewType('kriskogram')
-                        updateSearchParams({ view: 'kriskogram' })
-                      }}
-                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
-                        viewType === 'kriskogram'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Kriskogram
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewType('table')
-                        updateSearchParams({ view: 'table' })
-                      }}
-                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
-                        viewType === 'table'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Table
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewType('sankey')
-                        updateSearchParams({ view: 'sankey' })
-                      }}
-                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
-                        viewType === 'sankey'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Sankey
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewType('chord')
-                        updateSearchParams({ view: 'chord' })
-                      }}
-                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
-                        viewType === 'chord'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                      }`}
-                    >
-                      Chord
-                    </button>
-                  </div>
-                </div>
-
-                {/* Statistics Panel */}
-                {stats && (
-                  <div className="p-4 bg-gray-50 rounded grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-sm text-gray-600">Total Nodes</div>
-                      <div className="text-2xl font-bold">{stats.totalNodes}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Total Edges</div>
-                      <div className="text-2xl font-bold">{stats.totalEdges.toLocaleString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Visible Nodes</div>
-                      <div className="text-2xl font-bold">{stats.visibleNodes}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-600">Visible Edges</div>
-                      <div className="text-2xl font-bold">{stats.visibleEdges}</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Dataset Info and Controls */}
-                <div className="p-4 bg-gray-50 rounded space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold">{dataset.name}</div>
-                      <div className="text-xs text-gray-600">{dataset.type.toUpperCase()} · {dataset.timeRange.start}{dataset.timeRange.end !== dataset.timeRange.start ? `–${dataset.timeRange.end}` : ''}</div>
-                    </div>
-                  </div>
-
-                  {/* Year Slider */}
-                  {hasTime && currentYear !== undefined && (
-                    <div className="flex items-center space-x-3">
-                      <label className="text-sm font-medium">Year</label>
-                      <input
-                        type="range"
-                        min={dataset.timeRange.start}
-                        max={dataset.timeRange.end}
-                        value={currentYear}
-                        onChange={(e) => handleYearChange(parseInt(e.target.value))}
-                        className="flex-1"
-                      />
-                      <span className="text-sm font-mono">{currentYear}</span>
-                    </div>
-                  )}
-
-                  {/* Edge Type Filter */}
-                  {edgeTypeInfo && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        Edge Type ({edgeTypeInfo.property})
-                      </label>
-                      <select
-                        value={edgeTypeFilter || 'all'}
-                        onChange={(e) => {
-                          const newValue = e.target.value === 'all' ? null : e.target.value
-                          setEdgeTypeFilter(newValue)
-                          updateSearchParams({ edgeType: newValue })
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">All Types (Total)</option>
-                        {edgeTypeInfo.values.map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Filtering Controls */}
-                  {currentSnapshot && stats && (
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium">
-                            Min Threshold: {minThreshold.toLocaleString()}
-                          </label>
-                          {(() => {
-                            const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
-                            const isFiltered = 
-                              minThreshold > minValue || 
-                              maxThreshold < stats.maxValue || 
-                              maxEdges < stats.totalEdges
-                            return (
-                              <button
-                                onClick={() => {
-                                  setMinThreshold(minValue)
-                                  setMaxThreshold(stats.maxValue)
-                                  setMaxEdges(Math.max(500, stats.totalEdges))
-                                }}
-                                disabled={!isFiltered}
-                                type="button"
-                                className={`text-xs transition-colors ${isFiltered ? 'text-blue-600 hover:text-blue-800 font-semibold cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
-                              >
-                                Show All
-                              </button>
-                            )
-                          })()}
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={stats.maxValue || 200000}
-                          step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
-                          value={minThreshold}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value)
-                            const newMin = Math.min(val, maxThreshold)
-                            setMinThreshold(newMin)
-                            updateSearchParams({ minThreshold: newMin })
-                          }}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>0</span>
-                          <span>Avg: {Math.round(stats.avgValue).toLocaleString()}</span>
-                          <span>Max: {stats.maxValue.toLocaleString()}</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Max Threshold: {maxThreshold.toLocaleString()}
-                        </label>
-                        <input
-                          type="range"
-                          min={0}
-                          max={stats.maxValue || 200000}
-                          step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
-                          value={maxThreshold}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value)
-                            const newMax = Math.max(val, minThreshold)
-                            setMaxThreshold(newMax)
-                            updateSearchParams({ maxThreshold: newMax })
-                          }}
-                          className="w-full"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          Max Edges to Display: {maxEdges}
-                        </label>
-                        <input
-                          type="range"
-                          min={10}
-                          max={Math.max(500, stats.totalEdges)}
-                          step={10}
-                          value={maxEdges}
-                          onChange={(e) => {
-                            const newMaxEdges = parseInt(e.target.value)
-                            setMaxEdges(newMaxEdges)
-                            updateSearchParams({ maxEdges: newMaxEdges })
-                          }}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>Min: 10</span>
-                          <span>Total: {stats.totalEdges.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Kriskogram Visualization Controls */}
-                {viewType === 'kriskogram' && dataset?.metadata && (
-                  <div className="p-4 bg-blue-50 rounded space-y-4 border border-blue-200">
-                    <h3 className="text-lg font-semibold text-blue-900 mb-2">Kriskogram Visualization Settings</h3>
-                    
-                    {/* Node Ordering */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-blue-800">Node Ordering (Horizontal Axis)</label>
-                      <div className="flex flex-wrap gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="nodeOrder"
-                            value="alphabetical"
-                            checked={nodeOrderMode === 'alphabetical'}
-                            onChange={(e) => setNodeOrderMode(e.target.value)}
-                            className="w-4 h-4"
-                          />
-                          <span className="text-sm">Alphabetical</span>
-                        </label>
-                        {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
-                          <label key={prop} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeOrder"
-                              value={prop}
-                              checked={nodeOrderMode === prop}
-                              onChange={(e) => setNodeOrderMode(e.target.value)}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">By {prop}</span>
-                          </label>
-                        ))}
-                        {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                          <label key={prop} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeOrder"
-                              value={prop}
-                              checked={nodeOrderMode === prop}
-                              onChange={(e) => setNodeOrderMode(e.target.value)}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">By {prop}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Arc Opacity */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-blue-800">
-                        Arc Opacity: {Math.round(arcOpacity * 100)}%
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={arcOpacity}
-                        onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                      <div className="flex justify-between text-xs text-blue-600">
-                        <span>0% (Transparent)</span>
-                        <span>100% (Opaque)</span>
-                      </div>
-                    </div>
-
-                    {/* Edge Weight Encoding */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-blue-800">Edge Weight Encoding</label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeWeight"
-                            value="width"
-                            checked={edgeWeightEncoding === 'width'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'width')}
-                            className="w-4 h-4"
-                          />
-                          <span className="text-sm">Width</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeWeight"
-                            value="color"
-                            checked={edgeWeightEncoding === 'color'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'color')}
-                            className="w-4 h-4"
-                          />
-                          <span className="text-sm">Color Intensity</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeWeight"
-                            value="opacity"
-                            checked={edgeWeightEncoding === 'opacity'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'opacity')}
-                            className="w-4 h-4"
-                          />
-                          <span className="text-sm">Opacity</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Node Color */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-blue-800">Node Color</label>
-                      <div className="space-y-2">
-                        <div className="flex gap-4 flex-wrap">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeColor"
-                              value="single"
-                              checked={nodeColorMode === 'single'}
-                              onChange={(e) => setNodeColorMode(e.target.value as 'single')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Single Color</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeColor"
-                              value="outgoing"
-                              checked={nodeColorMode === 'outgoing'}
-                              onChange={(e) => setNodeColorMode(e.target.value as 'outgoing')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Total Outgoing (Intensity)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeColor"
-                              value="incoming"
-                              checked={nodeColorMode === 'incoming'}
-                              onChange={(e) => setNodeColorMode(e.target.value as 'incoming')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Total Incoming (Intensity)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeColor"
-                              value="attribute"
-                              checked={nodeColorMode === 'attribute'}
-                              onChange={(e) => setNodeColorMode(e.target.value as 'attribute')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">By Attribute</span>
-                          </label>
-                        </div>
-                        {nodeColorMode === 'attribute' && (
-                          <select
-                            value={nodeColorAttribute || ''}
-                            onChange={(e) => setNodeColorAttribute(e.target.value || null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="">Select attribute...</option>
-                            {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
-                              <option key={prop} value={prop}>
-                                {prop} (categorical)
-                              </option>
-                            ))}
-                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                              <option key={prop} value={prop}>
-                                {prop} (numeric)
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Node Size */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-blue-800">Node Size</label>
-                      <div className="space-y-2">
-                        <div className="flex gap-4 flex-wrap">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeSize"
-                              value="fixed"
-                              checked={nodeSizeMode === 'fixed'}
-                              onChange={(e) => setNodeSizeMode(e.target.value as 'fixed')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Fixed</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeSize"
-                              value="outgoing"
-                              checked={nodeSizeMode === 'outgoing'}
-                              onChange={(e) => setNodeSizeMode(e.target.value as 'outgoing')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Total Outgoing</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeSize"
-                              value="incoming"
-                              checked={nodeSizeMode === 'incoming'}
-                              onChange={(e) => setNodeSizeMode(e.target.value as 'incoming')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">Total Incoming</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="nodeSize"
-                              value="attribute"
-                              checked={nodeSizeMode === 'attribute'}
-                              onChange={(e) => setNodeSizeMode(e.target.value as 'attribute')}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">By Attribute</span>
-                          </label>
-                        </div>
-                        {nodeSizeMode === 'attribute' && (
-                          <select
-                            value={nodeSizeAttribute || ''}
-                            onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="">Select attribute...</option>
-                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                              <option key={prop} value={prop}>
-                                {prop}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="border-2 border-gray-200 rounded-lg p-4">
-                  {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
+            {dataset ? (
+              <div className="flex-1 overflow-auto bg-white p-4">
+                {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
                     <>
                       {viewType === 'kriskogram' && (
                         <ErrorBoundary
@@ -911,8 +458,8 @@ function ExplorerPage() {
                             ref={krRef}
                             nodes={filteredData.nodes}
                             edges={filteredData.edges}
-                            width={1000}
-                            height={600}
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            height={Math.max(600, windowSize.height - 80)}
                             margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
                             arcOpacity={arcOpacity}
                             accessors={(() => {
@@ -1084,7 +631,12 @@ function ExplorerPage() {
                             </div>
                           }
                         >
-                          <SankeyView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                          <SankeyView 
+                            nodes={filteredData.nodes} 
+                            edges={filteredData.edges} 
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            height={Math.max(600, windowSize.height - 80)}
+                          />
                         </ErrorBoundary>
                       )}
                       {viewType === 'chord' && (
@@ -1096,7 +648,12 @@ function ExplorerPage() {
                             </div>
                           }
                         >
-                          <ChordView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                          <ChordView 
+                            nodes={filteredData.nodes} 
+                            edges={filteredData.edges} 
+                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 16 : 320) - (rightSidebarCollapsed ? 0 : 384) - 40)}
+                            height={Math.max(600, windowSize.height - 80)}
+                          />
                         </ErrorBoundary>
                       )}
                     </>
@@ -1105,14 +662,487 @@ function ExplorerPage() {
                       No data meets the current threshold range ({minThreshold.toLocaleString()} - {maxThreshold.toLocaleString()}). Try adjusting the filters.
                     </div>
                   ) : (
-                    <div className="text-gray-500 py-8">No snapshot to display</div>
+                    <div className="text-gray-500 py-8 text-center">No snapshot to display</div>
                   )}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <p className="text-lg mb-2">No dataset selected</p>
+                  <p className="text-sm">Select a dataset from the sidebar to begin exploring</p>
                 </div>
               </div>
             )}
           </main>
-        </div>
-      </div>
+
+          {/* Right Sidebar - Settings Panel */}
+          {dataset && (
+            <SettingsPanel
+              isCollapsed={rightSidebarCollapsed}
+              onToggle={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
+              title="Visualization Settings"
+            >
+              <div className="space-y-4">
+                {/* View Type Selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Visualization Type</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setViewType('kriskogram')
+                        updateSearchParams({ view: 'kriskogram' })
+                      }}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        viewType === 'kriskogram'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Kriskogram
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewType('table')
+                        updateSearchParams({ view: 'table' })
+                      }}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        viewType === 'table'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Table
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewType('sankey')
+                        updateSearchParams({ view: 'sankey' })
+                      }}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        viewType === 'sankey'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Sankey
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewType('chord')
+                        updateSearchParams({ view: 'chord' })
+                      }}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                        viewType === 'chord'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Chord
+                    </button>
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                {stats && (
+                  <div className="p-3 bg-gray-50 rounded grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-xs text-gray-600">Total Nodes</div>
+                      <div className="text-lg font-bold">{stats.totalNodes}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Total Edges</div>
+                      <div className="text-lg font-bold">{stats.totalEdges.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Visible Nodes</div>
+                      <div className="text-lg font-bold">{stats.visibleNodes}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-600">Visible Edges</div>
+                      <div className="text-lg font-bold">{stats.visibleEdges}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dataset Info */}
+                <div className="p-3 bg-gray-50 rounded space-y-2">
+                  <div>
+                    <div className="font-semibold text-sm">{dataset.name}</div>
+                    <div className="text-xs text-gray-600">{dataset.type.toUpperCase()} · {dataset.timeRange.start}{dataset.timeRange.end !== dataset.timeRange.start ? `–${dataset.timeRange.end}` : ''}</div>
+                  </div>
+                </div>
+
+                {/* Year Slider */}
+                {hasTime && currentYear !== undefined && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Year: {currentYear}</label>
+                    <input
+                      type="range"
+                      min={dataset.timeRange.start}
+                      max={dataset.timeRange.end}
+                      value={currentYear}
+                      onChange={(e) => handleYearChange(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                {/* Edge Type Filter */}
+                {edgeTypeInfo && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Edge Type ({edgeTypeInfo.property})
+                    </label>
+                    <select
+                      value={edgeTypeFilter || 'all'}
+                      onChange={(e) => {
+                        const newValue = e.target.value === 'all' ? null : e.target.value
+                        setEdgeTypeFilter(newValue)
+                        updateSearchParams({ edgeType: newValue })
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Types</option>
+                      {edgeTypeInfo.values.map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Filtering Controls */}
+                {currentSnapshot && stats && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">
+                          Min: {minThreshold.toLocaleString()}
+                        </label>
+                        {(() => {
+                          const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
+                          const isFiltered = 
+                            minThreshold > minValue || 
+                            maxThreshold < stats.maxValue || 
+                            maxEdges < stats.totalEdges
+                          return (
+                            <button
+                              onClick={() => {
+                                setMinThreshold(minValue)
+                                setMaxThreshold(stats.maxValue)
+                                setMaxEdges(Math.max(500, stats.totalEdges))
+                              }}
+                              disabled={!isFiltered}
+                              type="button"
+                              className={`text-xs transition-colors ${isFiltered ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'}`}
+                            >
+                              Show All
+                            </button>
+                          )
+                        })()}
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={stats.maxValue || 200000}
+                        step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                        value={minThreshold}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value)
+                          const newMin = Math.min(val, maxThreshold)
+                          setMinThreshold(newMin)
+                          updateSearchParams({ minThreshold: newMin })
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Max: {maxThreshold.toLocaleString()}
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={stats.maxValue || 200000}
+                        step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                        value={maxThreshold}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value)
+                          const newMax = Math.max(val, minThreshold)
+                          setMaxThreshold(newMax)
+                          updateSearchParams({ maxThreshold: newMax })
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Max Edges: {maxEdges}
+                      </label>
+                      <input
+                        type="range"
+                        min={10}
+                        max={Math.max(500, stats.totalEdges)}
+                        step={10}
+                        value={maxEdges}
+                        onChange={(e) => {
+                          const newMaxEdges = parseInt(e.target.value)
+                          setMaxEdges(newMaxEdges)
+                          updateSearchParams({ maxEdges: newMaxEdges })
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Kriskogram Visualization Controls */}
+                {viewType === 'kriskogram' && dataset?.metadata && (
+                  <div className="space-y-4 pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800">Kriskogram Settings</h4>
+                    
+                    {/* Node Ordering */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Node Ordering</label>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeOrder"
+                            value="alphabetical"
+                            checked={nodeOrderMode === 'alphabetical'}
+                            onChange={(e) => setNodeOrderMode(e.target.value)}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Alphabetical</span>
+                        </label>
+                        {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                          <label key={prop} className="flex items-center gap-2 cursor-pointer text-xs">
+                            <input
+                              type="radio"
+                              name="nodeOrder"
+                              value={prop}
+                              checked={nodeOrderMode === prop}
+                              onChange={(e) => setNodeOrderMode(e.target.value)}
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>By {prop}</span>
+                          </label>
+                        ))}
+                        {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                          <label key={prop} className="flex items-center gap-2 cursor-pointer text-xs">
+                            <input
+                              type="radio"
+                              name="nodeOrder"
+                              value={prop}
+                              checked={nodeOrderMode === prop}
+                              onChange={(e) => setNodeOrderMode(e.target.value)}
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>By {prop}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Arc Opacity */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">
+                        Arc Opacity: {Math.round(arcOpacity * 100)}%
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={arcOpacity}
+                        onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Edge Weight Encoding */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Edge Weight</label>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="width"
+                            checked={edgeWeightEncoding === 'width'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'width')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Width</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="color"
+                            checked={edgeWeightEncoding === 'color'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'color')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Color Intensity</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="opacity"
+                            checked={edgeWeightEncoding === 'opacity'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'opacity')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Opacity</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Node Color */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Node Color</label>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeColor"
+                            value="single"
+                            checked={nodeColorMode === 'single'}
+                            onChange={(e) => setNodeColorMode(e.target.value as 'single')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Single</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeColor"
+                            value="outgoing"
+                            checked={nodeColorMode === 'outgoing'}
+                            onChange={(e) => setNodeColorMode(e.target.value as 'outgoing')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Total Outgoing</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeColor"
+                            value="incoming"
+                            checked={nodeColorMode === 'incoming'}
+                            onChange={(e) => setNodeColorMode(e.target.value as 'incoming')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Total Incoming</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeColor"
+                            value="attribute"
+                            checked={nodeColorMode === 'attribute'}
+                            onChange={(e) => setNodeColorMode(e.target.value as 'attribute')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>By Attribute</span>
+                        </label>
+                      </div>
+                      {nodeColorMode === 'attribute' && (
+                        <select
+                          value={nodeColorAttribute || ''}
+                          onChange={(e) => setNodeColorAttribute(e.target.value || null)}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                            <option key={prop} value={prop}>
+                              {prop}
+                            </option>
+                          ))}
+                          {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                            <option key={prop} value={prop}>
+                              {prop}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Node Size */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Node Size</label>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeSize"
+                            value="fixed"
+                            checked={nodeSizeMode === 'fixed'}
+                            onChange={(e) => setNodeSizeMode(e.target.value as 'fixed')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Fixed</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeSize"
+                            value="outgoing"
+                            checked={nodeSizeMode === 'outgoing'}
+                            onChange={(e) => setNodeSizeMode(e.target.value as 'outgoing')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Total Outgoing</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeSize"
+                            value="incoming"
+                            checked={nodeSizeMode === 'incoming'}
+                            onChange={(e) => setNodeSizeMode(e.target.value as 'incoming')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>Total Incoming</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            name="nodeSize"
+                            value="attribute"
+                            checked={nodeSizeMode === 'attribute'}
+                            onChange={(e) => setNodeSizeMode(e.target.value as 'attribute')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>By Attribute</span>
+                        </label>
+                      </div>
+                      {nodeSizeMode === 'attribute' && (
+                        <select
+                          value={nodeSizeAttribute || ''}
+                          onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                            <option key={prop} value={prop}>
+                              {prop}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SettingsPanel>
+          )}
       </div>
     </ErrorBoundary>
   )

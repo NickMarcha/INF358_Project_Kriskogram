@@ -120,7 +120,7 @@ export default function DatasetSidebar({ selectedId, onSelect, onRefresh }: Data
   }
 
   return (
-    <aside className="w-72 bg-white border-r border-gray-200 h-full overflow-y-auto flex flex-col">
+    <aside className="h-full overflow-y-auto flex flex-col">
       <div className="p-4 border-b">
         <h2 className="text-lg font-bold">Datasets</h2>
         <p className="text-xs text-gray-500">Stored in your browser</p>
