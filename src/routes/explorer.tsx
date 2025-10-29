@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import Kriskogram from '../components/Kriskogram'
 import type { KriskogramRef } from '../components/Kriskogram'
 import DatasetSidebar from '../components/DatasetSidebar'
@@ -15,34 +15,128 @@ import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
+interface ExplorerSearchParams {
+  dataset?: string
+  view?: ViewType
+  year?: number
+  minThreshold?: number
+  maxThreshold?: number
+  maxEdges?: number
+  edgeType?: string | null
+}
+
+const defaultSearch: ExplorerSearchParams = {
+  view: 'kriskogram',
+}
+
 export const Route = createFileRoute('/explorer')({
   component: ExplorerPage,
+  validateSearch: (search: Record<string, unknown>): ExplorerSearchParams => {
+    return {
+      dataset: typeof search.dataset === 'string' ? search.dataset : undefined,
+      view: (typeof search.view === 'string' && ['kriskogram', 'table', 'sankey', 'chord'].includes(search.view))
+        ? search.view as ViewType
+        : defaultSearch.view,
+      year: typeof search.year === 'string' ? parseInt(search.year, 10) : (typeof search.year === 'number' ? search.year : undefined),
+      minThreshold: typeof search.minThreshold === 'string' ? parseInt(search.minThreshold, 10) : (typeof search.minThreshold === 'number' ? search.minThreshold : undefined),
+      maxThreshold: typeof search.maxThreshold === 'string' ? parseInt(search.maxThreshold, 10) : (typeof search.maxThreshold === 'number' ? search.maxThreshold : undefined),
+      maxEdges: typeof search.maxEdges === 'string' ? parseInt(search.maxEdges, 10) : (typeof search.maxEdges === 'number' ? search.maxEdges : undefined),
+      edgeType: typeof search.edgeType === 'string' ? (search.edgeType === 'null' || search.edgeType === '' ? null : search.edgeType) : undefined,
+    }
+  },
 })
 
 function ExplorerPage() {
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
+  const search = useSearch({ from: '/explorer', strict: false })
+  const navigate = useNavigate()
+  
+  // Initialize state from search params or defaults
+  const [selectedId, setSelectedId] = useState<string | undefined>(search.dataset)
   const [dataset, setDataset] = useState<StoredDataset | undefined>(undefined)
-  const [currentYear, setCurrentYear] = useState<number | undefined>(undefined)
+  const [currentYear, setCurrentYear] = useState<number | undefined>(search.year)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0) // Force refresh counter
-  const [minThreshold, setMinThreshold] = useState(0)
-  const [maxThreshold, setMaxThreshold] = useState(200000)
-  const [maxEdges, setMaxEdges] = useState(500)
-  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(null)
-  const [viewType, setViewType] = useState<ViewType>('kriskogram')
+  const [minThreshold, setMinThreshold] = useState(search.minThreshold ?? 0)
+  const [maxThreshold, setMaxThreshold] = useState(search.maxThreshold ?? 200000)
+  const [maxEdges, setMaxEdges] = useState(search.maxEdges ?? 500)
+  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
+  const [viewType, setViewType] = useState<ViewType>(search.view ?? 'kriskogram')
   const krRef = useRef<KriskogramRef>(null)
+  
+  // Function to update search params when state changes
+  const updateSearchParams = useMemo(() => {
+    return (updates: Partial<ExplorerSearchParams>, currentState?: {
+      selectedId?: string
+      viewType?: ViewType
+      currentYear?: number
+      minThreshold?: number
+      maxThreshold?: number
+      maxEdges?: number
+      edgeTypeFilter?: string | null
+    }) => {
+      const state = currentState || {
+        selectedId,
+        viewType,
+        currentYear,
+        minThreshold,
+        maxThreshold,
+        maxEdges,
+        edgeTypeFilter,
+      }
+      
+      const currentParams: ExplorerSearchParams = {
+        dataset: state.selectedId,
+        view: state.viewType,
+        year: state.currentYear,
+        minThreshold: state.minThreshold,
+        maxThreshold: state.maxThreshold,
+        maxEdges: state.maxEdges,
+        edgeType: state.edgeTypeFilter,
+      }
+      
+      const newParams = { ...currentParams, ...updates }
+      
+      // Only include defined values, remove undefined ones
+      const paramsToSet: Record<string, string | number> = {}
+      if (newParams.dataset) paramsToSet.dataset = newParams.dataset
+      if (newParams.view && newParams.view !== defaultSearch.view) paramsToSet.view = newParams.view
+      if (newParams.year !== undefined) paramsToSet.year = newParams.year
+      if (newParams.minThreshold !== undefined && newParams.minThreshold !== 0) paramsToSet.minThreshold = newParams.minThreshold
+      if (newParams.maxThreshold !== undefined && newParams.maxThreshold !== 200000) paramsToSet.maxThreshold = newParams.maxThreshold
+      if (newParams.maxEdges !== undefined && newParams.maxEdges !== 500) paramsToSet.maxEdges = newParams.maxEdges
+      if (newParams.edgeType !== undefined) {
+        paramsToSet.edgeType = newParams.edgeType ?? 'null'
+      }
+      
+      navigate({
+        to: '/explorer',
+        search: paramsToSet,
+        replace: true,
+      })
+    }
+  }, [navigate, selectedId, viewType, currentYear, minThreshold, maxThreshold, maxEdges, edgeTypeFilter])
 
   const hasTime = useMemo(() => {
     return dataset && dataset.timeRange.start !== dataset.timeRange.end
   }, [dataset])
+  
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     // Request persistent storage to reduce eviction risk
     ensurePersistentStorage().catch(() => {})
     preloadDefaults()
       .then((firstId) => {
-        if (firstId) setSelectedId(firstId)
+        // Use search param dataset or default to firstId
+        const idToUse = search.dataset || firstId
+        if (idToUse) {
+          setSelectedId(idToUse)
+          if (!search.dataset && isInitialMount.current) {
+            updateSearchParams({ dataset: idToUse })
+          }
+        }
+        isInitialMount.current = false
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to preload datasets'))
   }, [])
@@ -169,7 +263,42 @@ function ExplorerPage() {
 
   const handleYearChange = (year: number) => {
     setCurrentYear(year)
+    if (!isInitialMount.current) {
+      updateSearchParams({ year })
+    }
   }
+  
+  // Update search params when filters change (only after initial mount)
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      updateSearchParams({
+        minThreshold,
+        maxThreshold,
+        maxEdges,
+      })
+    }
+  }, [minThreshold, maxThreshold, maxEdges])
+  
+  // Update search params when view type changes
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      updateSearchParams({ view: viewType })
+    }
+  }, [viewType])
+  
+  // Update search params when edge type filter changes
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      updateSearchParams({ edgeType: edgeTypeFilter })
+    }
+  }, [edgeTypeFilter])
+  
+  // Update search params when dataset changes
+  useEffect(() => {
+    if (!isInitialMount.current && selectedId) {
+      updateSearchParams({ dataset: selectedId })
+    }
+  }, [selectedId])
 
   return (
     <ErrorBoundary
@@ -201,7 +330,10 @@ function ExplorerPage() {
           >
             <DatasetSidebar 
               selectedId={selectedId} 
-              onSelect={setSelectedId}
+              onSelect={(id) => {
+                setSelectedId(id)
+                updateSearchParams({ dataset: id })
+              }}
               onRefresh={() => setRefreshKey(prev => prev + 1)}
             />
           </ErrorBoundary>
@@ -224,7 +356,10 @@ function ExplorerPage() {
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => setViewType('kriskogram')}
+                      onClick={() => {
+                        setViewType('kriskogram')
+                        updateSearchParams({ view: 'kriskogram' })
+                      }}
                       className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'kriskogram'
                           ? 'bg-blue-600 text-white'
@@ -234,7 +369,10 @@ function ExplorerPage() {
                       Kriskogram
                     </button>
                     <button
-                      onClick={() => setViewType('table')}
+                      onClick={() => {
+                        setViewType('table')
+                        updateSearchParams({ view: 'table' })
+                      }}
                       className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'table'
                           ? 'bg-blue-600 text-white'
@@ -244,7 +382,10 @@ function ExplorerPage() {
                       Table
                     </button>
                     <button
-                      onClick={() => setViewType('sankey')}
+                      onClick={() => {
+                        setViewType('sankey')
+                        updateSearchParams({ view: 'sankey' })
+                      }}
                       className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'sankey'
                           ? 'bg-blue-600 text-white'
@@ -254,7 +395,10 @@ function ExplorerPage() {
                       Sankey
                     </button>
                     <button
-                      onClick={() => setViewType('chord')}
+                      onClick={() => {
+                        setViewType('chord')
+                        updateSearchParams({ view: 'chord' })
+                      }}
                       className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'chord'
                           ? 'bg-blue-600 text-white'
@@ -321,7 +465,11 @@ function ExplorerPage() {
                       </label>
                       <select
                         value={edgeTypeFilter || 'all'}
-                        onChange={(e) => setEdgeTypeFilter(e.target.value === 'all' ? null : e.target.value)}
+                        onChange={(e) => {
+                          const newValue = e.target.value === 'all' ? null : e.target.value
+                          setEdgeTypeFilter(newValue)
+                          updateSearchParams({ edgeType: newValue })
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="all">All Types (Total)</option>
@@ -372,7 +520,9 @@ function ExplorerPage() {
                           value={minThreshold}
                           onChange={(e) => {
                             const val = parseInt(e.target.value)
-                            setMinThreshold(Math.min(val, maxThreshold))
+                            const newMin = Math.min(val, maxThreshold)
+                            setMinThreshold(newMin)
+                            updateSearchParams({ minThreshold: newMin })
                           }}
                           className="w-full"
                         />
@@ -395,7 +545,9 @@ function ExplorerPage() {
                           value={maxThreshold}
                           onChange={(e) => {
                             const val = parseInt(e.target.value)
-                            setMaxThreshold(Math.max(val, minThreshold))
+                            const newMax = Math.max(val, minThreshold)
+                            setMaxThreshold(newMax)
+                            updateSearchParams({ maxThreshold: newMax })
                           }}
                           className="w-full"
                         />
@@ -411,7 +563,11 @@ function ExplorerPage() {
                           max={Math.max(500, stats.totalEdges)}
                           step={10}
                           value={maxEdges}
-                          onChange={(e) => setMaxEdges(parseInt(e.target.value))}
+                          onChange={(e) => {
+                            const newMaxEdges = parseInt(e.target.value)
+                            setMaxEdges(newMaxEdges)
+                            updateSearchParams({ maxEdges: newMaxEdges })
+                          }}
                           className="w-full"
                         />
                         <div className="flex justify-between text-xs text-gray-500">
