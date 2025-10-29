@@ -9,6 +9,7 @@ import ChordView from '../components/views/ChordView'
 import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
+import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
@@ -25,6 +26,7 @@ function ExplorerPage() {
   const [minThreshold, setMinThreshold] = useState(0)
   const [maxThreshold, setMaxThreshold] = useState(200000)
   const [maxEdges, setMaxEdges] = useState(500)
+  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(null)
   const [viewType, setViewType] = useState<ViewType>('kriskogram')
   const krRef = useRef<KriskogramRef>(null)
 
@@ -82,11 +84,41 @@ function ExplorerPage() {
     }
   }, [currentSnapshot])
 
+  // Get available edge type property (e.g., migration_type) and values
+  const edgeTypeInfo = useMemo(() => {
+    if (!currentSnapshot || !dataset?.metadata) return null
+    
+    // Look for common edge type properties
+    const possibleProps = ['migration_type', 'type', 'category', 'edge_type']
+    const prop = possibleProps.find(p => 
+      dataset.metadata?.edgeProperties.includes(p) ||
+      dataset.metadata?.hasCategoricalProperties.edges.includes(p)
+    )
+    
+    if (!prop) return null
+    
+    const values = getUniqueEdgePropertyValues(currentSnapshot.edges, prop)
+    return { property: prop, values: values.map(v => String(v)) }
+  }, [currentSnapshot, dataset])
+
+  // Reset edge type filter when dataset changes
+  useEffect(() => {
+    setEdgeTypeFilter(null)
+  }, [selectedId])
+
   // Calculate filtered edges and nodes
   const filteredData = useMemo(() => {
     if (!currentSnapshot) return { nodes: [], edges: [] }
     
-    const filteredEdges = currentSnapshot.edges
+    // First filter by edge type if selected
+    let edgesToFilter = filterEdgesByProperty(
+      currentSnapshot.edges as any[],
+      edgeTypeInfo?.property || '',
+      edgeTypeFilter
+    )
+    
+    // Then filter by value thresholds and limit
+    const filteredEdges = edgesToFilter
       .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
       .sort((a: any, b: any) => b.value - a.value)
       .slice(0, maxEdges)
@@ -100,7 +132,7 @@ function ExplorerPage() {
     const filteredNodes = currentSnapshot.nodes.filter((n: any) => activeNodeIds.has(n.id))
     
     return { nodes: filteredNodes, edges: filteredEdges }
-  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges])
+  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges, edgeTypeFilter, edgeTypeInfo])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -243,6 +275,27 @@ function ExplorerPage() {
                         className="flex-1"
                       />
                       <span className="text-sm font-mono">{currentYear}</span>
+                    </div>
+                  )}
+
+                  {/* Edge Type Filter */}
+                  {edgeTypeInfo && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Edge Type ({edgeTypeInfo.property})
+                      </label>
+                      <select
+                        value={edgeTypeFilter || 'all'}
+                        onChange={(e) => setEdgeTypeFilter(e.target.value === 'all' ? null : e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">All Types (Total)</option>
+                        {edgeTypeInfo.values.map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
 
