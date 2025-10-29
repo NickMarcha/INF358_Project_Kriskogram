@@ -3,6 +3,7 @@ import type { StoredDataset } from '../lib/storage'
 import { getAllDatasets, saveDataset, deleteDataset, duplicateDataset, clearAllDatasets, getDataset } from '../lib/storage'
 import ImportPanel from './ImportPanel'
 import EditPanel from './EditPanel'
+import { ErrorBoundary } from './ErrorBoundary'
 
 interface DatasetSidebarProps {
   selectedId?: string
@@ -137,19 +138,36 @@ export default function DatasetSidebar({ selectedId, onSelect, onRefresh }: Data
           className="hidden"
         />
         {showImportPanel && (
-          <ImportPanel
-            onClose={() => {
-              setShowImportPanel(false)
-              setImportFile(null)
-              if (fileInputRef.current) {
-                fileInputRef.current.value = ''
-              }
-            }}
-            onImport={handleImport}
-            fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
-            onFilesSelected={setImportFile}
-            existingFile={importFile}
-          />
+          <ErrorBoundary
+            fallback={
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+                  <h3 className="text-lg font-bold text-red-800 mb-2">Import Panel Error</h3>
+                  <p className="text-gray-600 mb-4">The import panel encountered an error.</p>
+                  <button
+                    onClick={() => setShowImportPanel(false)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            <ImportPanel
+              onClose={() => {
+                setShowImportPanel(false)
+                setImportFile(null)
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = ''
+                }
+              }}
+              onImport={handleImport}
+              fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
+              onFilesSelected={setImportFile}
+              existingFile={importFile}
+            />
+          </ErrorBoundary>
         )}
       </div>
       <ul className="divide-y flex-1 overflow-y-auto">
@@ -204,13 +222,30 @@ export default function DatasetSidebar({ selectedId, onSelect, onRefresh }: Data
 
       {/* Edit Panel */}
       {editingDataset && (
-        <EditPanel
-          dataset={editingDataset}
-          onClose={() => setEditingDataset(null)}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onDuplicate={handleDuplicate}
-        />
+        <ErrorBoundary
+          fallback={
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+                <h3 className="text-lg font-bold text-red-800 mb-2">Edit Panel Error</h3>
+                <p className="text-gray-600 mb-4">The edit panel encountered an error.</p>
+                <button
+                  onClick={() => setEditingDataset(null)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <EditPanel
+            dataset={editingDataset}
+            onClose={() => setEditingDataset(null)}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onDuplicate={handleDuplicate}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Reset Confirmation */}

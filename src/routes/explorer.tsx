@@ -6,6 +6,7 @@ import DatasetSidebar from '../components/DatasetSidebar'
 import TableView from '../components/views/TableView'
 import SankeyView from '../components/views/SankeyView'
 import ChordView from '../components/views/ChordView'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
@@ -170,14 +171,39 @@ function ExplorerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: 600 }}>
-          <DatasetSidebar 
-            selectedId={selectedId} 
-            onSelect={setSelectedId}
-            onRefresh={() => setRefreshKey(prev => prev + 1)}
-          />
+    <ErrorBoundary
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg mx-4">
+            <h2 className="text-2xl font-bold text-red-800 mb-4">Explorer Error</h2>
+            <p className="text-gray-700 mb-4">The explorer page encountered an error. Please refresh the page.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      }
+    >
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: 600 }}>
+          <ErrorBoundary
+            fallback={
+              <div className="w-72 bg-white border-r border-gray-200 p-4">
+                <h2 className="text-lg font-bold text-red-800 mb-2">Dataset Sidebar Error</h2>
+                <p className="text-sm text-red-700">The dataset sidebar encountered an error.</p>
+              </div>
+            }
+          >
+            <DatasetSidebar 
+              selectedId={selectedId} 
+              onSelect={setSelectedId}
+              onRefresh={() => setRefreshKey(prev => prev + 1)}
+            />
+          </ErrorBoundary>
 
           <main className="flex-1 p-6">
             <header className="mb-4">
@@ -400,67 +426,103 @@ function ExplorerPage() {
                   {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
                     <>
                       {viewType === 'kriskogram' && (
-                        <Kriskogram
-                          ref={krRef}
-                          nodes={filteredData.nodes}
-                          edges={filteredData.edges}
-                          width={1000}
-                          height={600}
-                          margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
-                          accessors={{
-                            nodeOrder: (d) => d.id,
-                            nodeColor: (d) => {
-                              if (d.economic_index) {
-                                const hue = d.economic_index * 120; // Green to red scale
-                                return `hsl(${hue}, 70%, 50%)`;
-                              }
-                              if (d.region && typeof d.region === 'string') {
-                                // Use region-based coloring if available
-                                const regionColors: Record<string, string> = {
-                                  'Northeast': '#3b82f6',
-                                  'Midwest': '#f59e0b',
-                                  'South': '#ef4444',
-                                  'West': '#10b981',
-                                };
-                                return regionColors[d.region] || '#555';
-                              }
-                              return '#555';
-                            },
-                            nodeRadius: (d) => {
-                              if (d.population) {
-                                return Math.sqrt(d.population) / 1000;
-                              }
-                              return 6;
-                            },
-                            edgeWidth: (e) => Math.sqrt(e.value) / 10,
-                            edgeColor: (e, _isAbove) => {
-                              if (!currentSnapshot) return '#1f77b4';
-                              // Find min and max weights for color scaling
-                              const weights = currentSnapshot.edges.map((edge: any) => edge.value);
-                              const minWeight = Math.min(...weights);
-                              const maxWeight = Math.max(...weights);
-                              
-                              // Normalize weight to 0-1 range
-                              const normalized = (e.value - minWeight) / (maxWeight - minWeight);
-                              
-                              // Use single hue (light blue) with varying lightness
-                              const hue = 200; // Light blue
-                              const saturation = 70;
-                              const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
-                              
-                              return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                            },
-                          }}
-                        />
+                        <ErrorBoundary
+                          fallback={
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                              <h3 className="text-lg font-semibold text-red-800 mb-2">Kriskogram Error</h3>
+                              <p className="text-sm text-red-700">The Kriskogram visualization encountered an error.</p>
+                            </div>
+                          }
+                        >
+                          <Kriskogram
+                            ref={krRef}
+                            nodes={filteredData.nodes}
+                            edges={filteredData.edges}
+                            width={1000}
+                            height={600}
+                            margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
+                            accessors={{
+                              nodeOrder: (d) => d.id,
+                              nodeColor: (d) => {
+                                if (d.economic_index) {
+                                  const hue = d.economic_index * 120; // Green to red scale
+                                  return `hsl(${hue}, 70%, 50%)`;
+                                }
+                                if (d.region && typeof d.region === 'string') {
+                                  // Use region-based coloring if available
+                                  const regionColors: Record<string, string> = {
+                                    'Northeast': '#3b82f6',
+                                    'Midwest': '#f59e0b',
+                                    'South': '#ef4444',
+                                    'West': '#10b981',
+                                  };
+                                  return regionColors[d.region] || '#555';
+                                }
+                                return '#555';
+                              },
+                              nodeRadius: (d) => {
+                                if (d.population) {
+                                  return Math.sqrt(d.population) / 1000;
+                                }
+                                return 6;
+                              },
+                              edgeWidth: (e) => Math.sqrt(e.value) / 10,
+                              edgeColor: (e, _isAbove) => {
+                                if (!currentSnapshot) return '#1f77b4';
+                                // Find min and max weights for color scaling
+                                const weights = currentSnapshot.edges.map((edge: any) => edge.value);
+                                const minWeight = Math.min(...weights);
+                                const maxWeight = Math.max(...weights);
+                                
+                                // Normalize weight to 0-1 range
+                                const normalized = (e.value - minWeight) / (maxWeight - minWeight);
+                                
+                                // Use single hue (light blue) with varying lightness
+                                const hue = 200; // Light blue
+                                const saturation = 70;
+                                const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
+                                
+                                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                              },
+                            }}
+                          />
+                        </ErrorBoundary>
                       )}
                       {viewType === 'table' && (
-                        <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                        <ErrorBoundary
+                          fallback={
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                              <h3 className="text-lg font-semibold text-red-800 mb-2">Table View Error</h3>
+                              <p className="text-sm text-red-700">The table view encountered an error.</p>
+                            </div>
+                          }
+                        >
+                          <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                        </ErrorBoundary>
                       )}
                       {viewType === 'sankey' && (
-                        <SankeyView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                        <ErrorBoundary
+                          fallback={
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                              <h3 className="text-lg font-semibold text-red-800 mb-2">Sankey Diagram Error</h3>
+                              <p className="text-sm text-red-700">The Sankey diagram encountered an error.</p>
+                            </div>
+                          }
+                        >
+                          <SankeyView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                        </ErrorBoundary>
                       )}
                       {viewType === 'chord' && (
-                        <ChordView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                        <ErrorBoundary
+                          fallback={
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+                              <h3 className="text-lg font-semibold text-red-800 mb-2">Chord Diagram Error</h3>
+                              <p className="text-sm text-red-700">The chord diagram encountered an error.</p>
+                            </div>
+                          }
+                        >
+                          <ChordView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                        </ErrorBoundary>
                       )}
                     </>
                   ) : currentSnapshot ? (
@@ -476,7 +538,8 @@ function ExplorerPage() {
           </main>
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
 
