@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useSearch, stripSearchParams } from '@tanstack/react-router'
+import { z } from 'zod'
+import { zodValidator } from '@tanstack/zod-adapter'
 import Kriskogram from '../components/Kriskogram'
 import type { KriskogramRef } from '../components/Kriskogram'
 import DatasetSidebar from '../components/DatasetSidebar'
@@ -15,34 +17,110 @@ import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
-interface ExplorerSearchParams {
-  dataset?: string
-  view?: ViewType
-  year?: number
-  minThreshold?: number
-  maxThreshold?: number
-  maxEdges?: number
-  edgeType?: string | null
+const viewTypeSchema = z.enum(['kriskogram', 'table', 'sankey', 'chord'])
+
+// Helper function to coerce to number safely, returning undefined if invalid
+const safeCoerceNumber = (defaultValue?: number) => {
+  return z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return undefined
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      return Number.isNaN(num) ? undefined : num
+    },
+    z.number().optional().default(defaultValue ?? undefined)
+  )
 }
 
-const defaultSearch: ExplorerSearchParams = {
+const explorerSearchSchema = z.object({
+  dataset: z.string().optional(),
+  view: z.preprocess(
+    (val) => {
+      if (typeof val === 'string' && viewTypeSchema.safeParse(val).success) {
+        return val
+      }
+      return 'kriskogram' // default
+    },
+    viewTypeSchema.default('kriskogram')
+  ),
+  year: safeCoerceNumber(),
+  minThreshold: safeCoerceNumber(0),
+  maxThreshold: safeCoerceNumber(200000),
+  maxEdges: safeCoerceNumber(500),
+  edgeType: z.preprocess(
+    (val) => {
+      if (val === 'null' || val === '') return null
+      return typeof val === 'string' ? val : undefined
+    },
+    z.string().nullable().optional()
+  ),
+})
+
+type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
+
+const defaultSearchValues: ExplorerSearchParams = {
   view: 'kriskogram',
+  minThreshold: 0,
+  maxThreshold: 200000,
+  maxEdges: 500,
 }
 
 export const Route = createFileRoute('/explorer')({
   component: ExplorerPage,
-  validateSearch: (search: Record<string, unknown>): ExplorerSearchParams => {
+  validateSearch: (search) => {
+    // Use safeParse to handle validation errors gracefully
+    const result = explorerSearchSchema.safeParse(search)
+    if (result.success) {
+      return result.data
+    }
+    
+    // If validation fails, try to extract valid values and use defaults for invalid ones
+    // This prevents the page from crashing on invalid search params
+    const safeView = typeof search.view === 'string' && 
+      ['kriskogram', 'table', 'sankey', 'chord'].includes(search.view)
+      ? search.view as ViewType
+      : 'kriskogram'
+    
+    const safeYear = (() => {
+      if (search.year === undefined || search.year === null || search.year === '') return undefined
+      const num = typeof search.year === 'string' ? parseFloat(search.year) : Number(search.year)
+      return Number.isNaN(num) ? undefined : num
+    })()
+    
+    const safeMinThreshold = (() => {
+      if (search.minThreshold === undefined || search.minThreshold === null || search.minThreshold === '') return 0
+      const num = typeof search.minThreshold === 'string' ? parseFloat(search.minThreshold) : Number(search.minThreshold)
+      return Number.isNaN(num) ? 0 : num
+    })()
+    
+    const safeMaxThreshold = (() => {
+      if (search.maxThreshold === undefined || search.maxThreshold === null || search.maxThreshold === '') return 200000
+      const num = typeof search.maxThreshold === 'string' ? parseFloat(search.maxThreshold) : Number(search.maxThreshold)
+      return Number.isNaN(num) ? 200000 : num
+    })()
+    
+    const safeMaxEdges = (() => {
+      if (search.maxEdges === undefined || search.maxEdges === null || search.maxEdges === '') return 500
+      const num = typeof search.maxEdges === 'string' ? parseFloat(search.maxEdges) : Number(search.maxEdges)
+      return Number.isNaN(num) ? 500 : num
+    })()
+    
+    const safeEdgeType = (() => {
+      if (search.edgeType === 'null' || search.edgeType === '') return null
+      return typeof search.edgeType === 'string' ? search.edgeType : undefined
+    })()
+    
     return {
       dataset: typeof search.dataset === 'string' ? search.dataset : undefined,
-      view: (typeof search.view === 'string' && ['kriskogram', 'table', 'sankey', 'chord'].includes(search.view))
-        ? search.view as ViewType
-        : defaultSearch.view,
-      year: typeof search.year === 'string' ? parseInt(search.year, 10) : (typeof search.year === 'number' ? search.year : undefined),
-      minThreshold: typeof search.minThreshold === 'string' ? parseInt(search.minThreshold, 10) : (typeof search.minThreshold === 'number' ? search.minThreshold : undefined),
-      maxThreshold: typeof search.maxThreshold === 'string' ? parseInt(search.maxThreshold, 10) : (typeof search.maxThreshold === 'number' ? search.maxThreshold : undefined),
-      maxEdges: typeof search.maxEdges === 'string' ? parseInt(search.maxEdges, 10) : (typeof search.maxEdges === 'number' ? search.maxEdges : undefined),
-      edgeType: typeof search.edgeType === 'string' ? (search.edgeType === 'null' || search.edgeType === '' ? null : search.edgeType) : undefined,
+      view: safeView,
+      year: safeYear,
+      minThreshold: safeMinThreshold,
+      maxThreshold: safeMaxThreshold,
+      maxEdges: safeMaxEdges,
+      edgeType: safeEdgeType,
     }
+  },
+  search: {
+    middlewares: [stripSearchParams(defaultSearchValues)],
   },
 })
 
@@ -50,72 +128,32 @@ function ExplorerPage() {
   const search = useSearch({ from: '/explorer', strict: false })
   const navigate = useNavigate()
   
-  // Initialize state from search params or defaults
+  // Initialize state from search params (Zod ensures we have proper types and defaults)
   const [selectedId, setSelectedId] = useState<string | undefined>(search.dataset)
   const [dataset, setDataset] = useState<StoredDataset | undefined>(undefined)
   const [currentYear, setCurrentYear] = useState<number | undefined>(search.year)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0) // Force refresh counter
-  const [minThreshold, setMinThreshold] = useState(search.minThreshold ?? 0)
-  const [maxThreshold, setMaxThreshold] = useState(search.maxThreshold ?? 200000)
-  const [maxEdges, setMaxEdges] = useState(search.maxEdges ?? 500)
-  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
-  const [viewType, setViewType] = useState<ViewType>(search.view ?? 'kriskogram')
+  const [minThreshold, setMinThreshold] = useState(search.minThreshold)
+  const [maxThreshold, setMaxThreshold] = useState(search.maxThreshold)
+  const [maxEdges, setMaxEdges] = useState(search.maxEdges)
+  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null | undefined>(search.edgeType)
+  const [viewType, setViewType] = useState<ViewType>(search.view)
   const krRef = useRef<KriskogramRef>(null)
   
   // Function to update search params when state changes
+  // Uses functional update pattern - TanStack Router will merge with current search params
+  // The stripSearchParams middleware will automatically remove default values from the URL
   const updateSearchParams = useMemo(() => {
-    return (updates: Partial<ExplorerSearchParams>, currentState?: {
-      selectedId?: string
-      viewType?: ViewType
-      currentYear?: number
-      minThreshold?: number
-      maxThreshold?: number
-      maxEdges?: number
-      edgeTypeFilter?: string | null
-    }) => {
-      const state = currentState || {
-        selectedId,
-        viewType,
-        currentYear,
-        minThreshold,
-        maxThreshold,
-        maxEdges,
-        edgeTypeFilter,
-      }
-      
-      const currentParams: ExplorerSearchParams = {
-        dataset: state.selectedId,
-        view: state.viewType,
-        year: state.currentYear,
-        minThreshold: state.minThreshold,
-        maxThreshold: state.maxThreshold,
-        maxEdges: state.maxEdges,
-        edgeType: state.edgeTypeFilter,
-      }
-      
-      const newParams = { ...currentParams, ...updates }
-      
-      // Only include defined values, remove undefined ones
-      const paramsToSet: Record<string, string | number> = {}
-      if (newParams.dataset) paramsToSet.dataset = newParams.dataset
-      if (newParams.view && newParams.view !== defaultSearch.view) paramsToSet.view = newParams.view
-      if (newParams.year !== undefined) paramsToSet.year = newParams.year
-      if (newParams.minThreshold !== undefined && newParams.minThreshold !== 0) paramsToSet.minThreshold = newParams.minThreshold
-      if (newParams.maxThreshold !== undefined && newParams.maxThreshold !== 200000) paramsToSet.maxThreshold = newParams.maxThreshold
-      if (newParams.maxEdges !== undefined && newParams.maxEdges !== 500) paramsToSet.maxEdges = newParams.maxEdges
-      if (newParams.edgeType !== undefined) {
-        paramsToSet.edgeType = newParams.edgeType ?? 'null'
-      }
-      
+    return (updates: Partial<ExplorerSearchParams>) => {
       navigate({
         to: '/explorer',
-        search: paramsToSet,
+        search: (prev) => ({ ...prev, ...updates }),
         replace: true,
       })
     }
-  }, [navigate, selectedId, viewType, currentYear, minThreshold, maxThreshold, maxEdges, edgeTypeFilter])
+  }, [navigate])
 
   const hasTime = useMemo(() => {
     return dataset && dataset.timeRange.start !== dataset.timeRange.end
