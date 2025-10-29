@@ -64,6 +64,20 @@ function App() {
                 View State Migration Data
               </Link>
             </div>
+
+            <div className="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Sample Datasets</h2>
+              <p className="text-gray-600 mb-4">
+                Download sample datasets including US State-to-State Migration (2021), 
+                Sample Migration (GEXF), and Swiss Relocations (2016) for use with Kriskogram.
+              </p>
+              <Link
+                to="/datasets"
+                className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Browse & Download Datasets
+              </Link>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-lg p-8">

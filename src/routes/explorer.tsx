@@ -9,6 +9,7 @@ import ChordView from '../components/views/ChordView'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
+import { parseTwoFileCSV } from '../lib/csv-two-file-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 
@@ -544,13 +545,14 @@ function ExplorerPage() {
 }
 
 async function preloadDefaults(): Promise<string | undefined> {
-  // Preload two defaults if missing: CSV 2021 and sample GEXF
-  // CSV: src/data/State_to_State_Migrations_Table_2021.csv
+  // Preload three defaults if missing: CSV 2021, sample GEXF, and Swiss Relocations
   const csvId = 'csv-2021'
   const gexfId = 'gexf-sample'
+  const swissId = 'swiss-2016'
 
   const existingCsv = await getDataset(csvId)
   const existingGexf = await getDataset(gexfId)
+  const existingSwiss = await getDataset(swissId)
 
   if (!existingCsv) {
     const csvUrl = new URL('../data/State_to_State_Migrations_Table_2021.csv', import.meta.url)
@@ -583,6 +585,43 @@ async function preloadDefaults(): Promise<string | undefined> {
       type: 'gexf',
       timeRange: graph.timeRange,
       snapshots: snaps as any,
+      metadata,
+      createdAt: Date.now(),
+    }
+    await saveDataset(ds)
+  }
+
+  if (!existingSwiss) {
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const locationsUrl = `${baseUrl}data/Swiss_Relocations_2016_locations.csv`
+    const flowsUrl = `${baseUrl}data/Swiss_Relocations_2016_flows.csv`
+    
+    const locationsText = await loadCSVFromUrl(locationsUrl)
+    const flowsText = await loadCSVFromUrl(flowsUrl)
+    
+    const parsed = parseTwoFileCSV({
+      nodesFile: {
+        content: locationsText,
+        idField: 'id',
+        labelField: 'name',
+      },
+      edgesFile: {
+        content: flowsText,
+        sourceField: 'origin',
+        targetField: 'dest',
+        valueField: 'count',
+      },
+    })
+    
+    const snapshot = { timestamp: 2016, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }
+    const metadata = detectDatasetProperties(snapshot)
+    const ds: StoredDataset = {
+      id: swissId,
+      name: 'Swiss Relocations (2016)',
+      notes: 'Relocations between Swiss cantons in 2016 (two-file CSV format)',
+      type: 'csv-two-file',
+      timeRange: { start: 2016, end: 2016 },
+      snapshots: [snapshot],
       metadata,
       createdAt: Date.now(),
     }

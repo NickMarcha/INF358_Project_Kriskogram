@@ -13,6 +13,7 @@ import { Route as StateMigrationRouteImport } from './routes/state-migration'
 import { Route as KriskogramSimpleRouteImport } from './routes/kriskogram-simple'
 import { Route as KriskogramRouteImport } from './routes/kriskogram'
 import { Route as ExplorerRouteImport } from './routes/explorer'
+import { Route as DatasetsRouteImport } from './routes/datasets'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const ExplorerRoute = ExplorerRouteImport.update({
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DatasetsRoute = DatasetsRouteImport.update({
+  id: '/datasets',
+  path: '/datasets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/datasets': typeof DatasetsRoute
   '/explorer': typeof ExplorerRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/datasets': typeof DatasetsRoute
   '/explorer': typeof ExplorerRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/datasets': typeof DatasetsRoute
   '/explorer': typeof ExplorerRoute
   '/kriskogram': typeof KriskogramRoute
   '/kriskogram-simple': typeof KriskogramSimpleRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/datasets'
     | '/explorer'
     | '/kriskogram'
     | '/kriskogram-simple'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/datasets'
     | '/explorer'
     | '/kriskogram'
     | '/kriskogram-simple'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/datasets'
     | '/explorer'
     | '/kriskogram'
     | '/kriskogram-simple'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  DatasetsRoute: typeof DatasetsRoute
   ExplorerRoute: typeof ExplorerRoute
   KriskogramRoute: typeof KriskogramRoute
   KriskogramSimpleRoute: typeof KriskogramSimpleRoute
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/datasets': {
+      id: '/datasets'
+      path: '/datasets'
+      fullPath: '/datasets'
+      preLoaderRoute: typeof DatasetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  DatasetsRoute: DatasetsRoute,
   ExplorerRoute: ExplorerRoute,
   KriskogramRoute: KriskogramRoute,
   KriskogramSimpleRoute: KriskogramSimpleRoute,
