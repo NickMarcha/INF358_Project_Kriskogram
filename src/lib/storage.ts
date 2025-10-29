@@ -4,6 +4,19 @@ export type StoredSnapshot = {
   edges: any[]
 }
 
+export type DatasetMetadata = {
+  nodeProperties: string[] // e.g., ['region', 'population', 'economic_index', 'latitude', 'longitude']
+  edgeProperties: string[] // e.g., ['migration_type', 'distance_km', 'economic_factor']
+  hasNumericProperties: {
+    nodes: string[] // numeric node properties like 'population', 'economic_index'
+    edges: string[] // numeric edge properties
+  }
+  hasCategoricalProperties: {
+    nodes: string[] // categorical node properties like 'region', 'division'
+    edges: string[] // categorical edge properties like 'migration_type'
+  }
+}
+
 export type StoredDataset = {
   id: string
   name: string
@@ -11,7 +24,63 @@ export type StoredDataset = {
   type: 'csv' | 'gexf' | 'manual'
   timeRange: { start: number; end: number }
   snapshots: StoredSnapshot[]
+  metadata?: DatasetMetadata // Detected properties for dynamic UI
   createdAt: number
+}
+
+/**
+ * Detect all properties in nodes and edges for metadata
+ */
+export function detectDatasetProperties(snapshot: StoredSnapshot): DatasetMetadata {
+  const nodeProperties = new Set<string>()
+  const edgeProperties = new Set<string>()
+  const numericNodeProps = new Set<string>()
+  const numericEdgeProps = new Set<string>()
+  const categoricalNodeProps = new Set<string>()
+  const categoricalEdgeProps = new Set<string>()
+
+  // Scan all nodes
+  snapshot.nodes.forEach(node => {
+    Object.keys(node).forEach(key => {
+      if (key !== 'id' && key !== 'label') {
+        nodeProperties.add(key)
+        const value = node[key]
+        if (typeof value === 'number') {
+          numericNodeProps.add(key)
+        } else if (typeof value === 'string') {
+          categoricalNodeProps.add(key)
+        }
+      }
+    })
+  })
+
+  // Scan all edges
+  snapshot.edges.forEach(edge => {
+    Object.keys(edge).forEach(key => {
+      if (key !== 'source' && key !== 'target' && key !== 'value') {
+        edgeProperties.add(key)
+        const value = edge[key]
+        if (typeof value === 'number') {
+          numericEdgeProps.add(key)
+        } else if (typeof value === 'string') {
+          categoricalEdgeProps.add(key)
+        }
+      }
+    })
+  })
+
+  return {
+    nodeProperties: Array.from(nodeProperties),
+    edgeProperties: Array.from(edgeProperties),
+    hasNumericProperties: {
+      nodes: Array.from(numericNodeProps),
+      edges: Array.from(numericEdgeProps),
+    },
+    hasCategoricalProperties: {
+      nodes: Array.from(categoricalNodeProps),
+      edges: Array.from(categoricalEdgeProps),
+    },
+  }
 }
 
 const DB_NAME = 'kriskogram-db'

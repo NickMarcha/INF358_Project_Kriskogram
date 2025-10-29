@@ -9,10 +9,6 @@ export default function Header() {
         </div>
 
         <div className="px-2 font-bold">
-          <Link to="/demo/table">TanStack Table</Link>
-        </div>
-
-        <div className="px-2 font-bold">
           <Link to="/state-migration">State Migration</Link>
         </div>
 

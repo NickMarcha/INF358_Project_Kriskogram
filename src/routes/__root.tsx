@@ -1,10 +1,16 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { Outlet, createRootRoute, redirect } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanstackDevtools } from '@tanstack/react-devtools'
 
 import Header from '../components/Header'
 
 export const Route = createRootRoute({
+  notFoundComponent: () => {
+    // Redirect unknown routes to home
+    throw redirect({
+      to: '/',
+    })
+  },
   component: () => (
     <>
       <Header />

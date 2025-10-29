@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { StoredDataset } from '../lib/storage'
-import { getAllDatasets, saveDataset } from '../lib/storage'
+import { getAllDatasets, saveDataset, detectDatasetProperties } from '../lib/storage'
 import { parseStateMigrationCSV } from '../lib/csv-parser'
 import { parseGexf, gexfToKriskogramSnapshots } from '../lib/gexf-parser'
 
@@ -35,6 +35,8 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
 
       if (fileName.endsWith('.csv')) {
         const parsed = parseStateMigrationCSV(text)
+        const snapshot = { timestamp: 2021, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }
+        const metadata = detectDatasetProperties(snapshot)
         const id = `csv-${Date.now()}`
         dataset = {
           id,
@@ -42,7 +44,8 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
           description: 'Imported CSV migration data',
           type: 'csv',
           timeRange: { start: 2021, end: 2021 },
-          snapshots: [{ timestamp: 2021, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }],
+          snapshots: [snapshot],
+          metadata,
           createdAt: Date.now(),
         }
         await saveDataset(dataset)
@@ -50,6 +53,8 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
       } else if (fileName.endsWith('.gexf')) {
         const graph = parseGexf(text)
         const snaps = gexfToKriskogramSnapshots(graph)
+        // Detect properties from first snapshot (assuming all snapshots have same structure)
+        const metadata = snaps.length > 0 ? detectDatasetProperties(snaps[0]) : undefined
         const id = `gexf-${Date.now()}`
         dataset = {
           id,
@@ -58,6 +63,7 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
           type: 'gexf',
           timeRange: graph.timeRange,
           snapshots: snaps as any,
+          metadata,
           createdAt: Date.now(),
         }
         await saveDataset(dataset)

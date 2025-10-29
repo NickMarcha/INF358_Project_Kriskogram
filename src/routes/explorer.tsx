@@ -3,9 +3,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import Kriskogram from '../components/Kriskogram'
 import type { KriskogramRef } from '../components/Kriskogram'
 import DatasetSidebar from '../components/DatasetSidebar'
-import { ensurePersistentStorage, getDataset, saveDataset, type StoredDataset } from '../lib/storage'
+import TableView from '../components/views/TableView'
+import SankeyView from '../components/views/SankeyView'
+import ChordView from '../components/views/ChordView'
+import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
+
+type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
 export const Route = createFileRoute('/explorer')({
   component: ExplorerPage,
@@ -17,6 +22,10 @@ function ExplorerPage() {
   const [currentYear, setCurrentYear] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [minThreshold, setMinThreshold] = useState(0)
+  const [maxThreshold, setMaxThreshold] = useState(200000)
+  const [maxEdges, setMaxEdges] = useState(500)
+  const [viewType, setViewType] = useState<ViewType>('kriskogram')
   const krRef = useRef<KriskogramRef>(null)
 
   const hasTime = useMemo(() => {
@@ -42,11 +51,10 @@ function ExplorerPage() {
         setDataset(d)
         if (d) {
           setCurrentYear(d.timeRange.start)
-          // initial render
-          const snap = d.snapshots.find(s => s.timestamp === d.timeRange.start) || d.snapshots[0]
-          if (snap && krRef.current) {
-            krRef.current.updateData(snap.nodes, snap.edges)
-          }
+          // Reset filters when switching datasets
+          setMinThreshold(0)
+          setMaxEdges(500)
+          // Max threshold will be adjusted when snapshot loads
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load dataset'))
@@ -55,15 +63,74 @@ function ExplorerPage() {
 
   const currentSnapshot: KriskogramSnapshot | undefined = useMemo(() => {
     if (!dataset || currentYear === undefined) return undefined
-    return dataset.snapshots.find(s => s.timestamp === currentYear) as any
+    // Find snapshot matching the year (handle both number and string timestamps)
+    return dataset.snapshots.find(s => {
+      const ts = typeof s.timestamp === 'string' ? parseInt(s.timestamp, 10) : s.timestamp
+      return ts === currentYear
+    }) as any
   }, [dataset, currentYear])
+
+  // Auto-adjust max threshold and reset filters when snapshot changes
+  useEffect(() => {
+    if (currentSnapshot && currentSnapshot.edges.length > 0) {
+      const maxValue = Math.max(...currentSnapshot.edges.map((e: any) => e.value))
+      const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
+      // Reset to show all data when snapshot changes
+      setMinThreshold(minValue)
+      setMaxThreshold(Math.max(maxValue, minValue))
+      setMaxEdges(Math.min(500, currentSnapshot.edges.length)) // Reset to total edges or 500, whichever is smaller
+    }
+  }, [currentSnapshot])
+
+  // Calculate filtered edges and nodes
+  const filteredData = useMemo(() => {
+    if (!currentSnapshot) return { nodes: [], edges: [] }
+    
+    const filteredEdges = currentSnapshot.edges
+      .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
+      .sort((a: any, b: any) => b.value - a.value)
+      .slice(0, maxEdges)
+    
+    const activeNodeIds = new Set<string>()
+    filteredEdges.forEach((e: any) => {
+      activeNodeIds.add(e.source)
+      activeNodeIds.add(e.target)
+    })
+    
+    const filteredNodes = currentSnapshot.nodes.filter((n: any) => activeNodeIds.has(n.id))
+    
+    return { nodes: filteredNodes, edges: filteredEdges }
+  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges])
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    if (!currentSnapshot) return null
+    
+    const totalEdges = currentSnapshot.edges.length
+    const totalNodes = currentSnapshot.nodes.length
+    const totalValue = currentSnapshot.edges.reduce((sum: number, e: any) => sum + e.value, 0)
+    const avgValue = totalEdges > 0 ? totalValue / totalEdges : 0
+    const maxValue = totalEdges > 0 ? Math.max(...currentSnapshot.edges.map((e: any) => e.value)) : 0
+    
+    return {
+      totalNodes,
+      totalEdges,
+      visibleNodes: filteredData.nodes.length,
+      visibleEdges: filteredData.edges.length,
+      avgValue,
+      maxValue,
+    }
+  }, [currentSnapshot, filteredData])
+
+  // Update visualization when filtered data changes (only for kriskogram view)
+  useEffect(() => {
+    if (viewType === 'kriskogram' && filteredData.nodes.length > 0 && filteredData.edges.length > 0 && krRef.current) {
+      krRef.current.updateData(filteredData.nodes, filteredData.edges)
+    }
+  }, [filteredData, viewType])
 
   const handleYearChange = (year: number) => {
     setCurrentYear(year)
-    const snap = dataset?.snapshots.find(s => s.timestamp === year)
-    if (snap && krRef.current) {
-      krRef.current.updateData(snap.nodes, snap.edges)
-    }
   }
 
   return (
@@ -83,15 +150,89 @@ function ExplorerPage() {
 
             {dataset && (
               <div className="space-y-4">
+                {/* View Type Selector */}
                 <div className="p-4 bg-gray-50 rounded">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">Visualization Type</label>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setViewType('kriskogram')}
+                      className={`px-4 py-2 rounded text-sm font-medium ${
+                        viewType === 'kriskogram'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Kriskogram
+                    </button>
+                    <button
+                      onClick={() => setViewType('table')}
+                      className={`px-4 py-2 rounded text-sm font-medium ${
+                        viewType === 'table'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Table
+                    </button>
+                    <button
+                      onClick={() => setViewType('sankey')}
+                      className={`px-4 py-2 rounded text-sm font-medium ${
+                        viewType === 'sankey'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Sankey
+                    </button>
+                    <button
+                      onClick={() => setViewType('chord')}
+                      className={`px-4 py-2 rounded text-sm font-medium ${
+                        viewType === 'chord'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Chord
+                    </button>
+                  </div>
+                </div>
+
+                {/* Statistics Panel */}
+                {stats && (
+                  <div className="p-4 bg-gray-50 rounded grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <div className="text-sm text-gray-600">Total Nodes</div>
+                      <div className="text-2xl font-bold">{stats.totalNodes}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Total Edges</div>
+                      <div className="text-2xl font-bold">{stats.totalEdges.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Visible Nodes</div>
+                      <div className="text-2xl font-bold">{stats.visibleNodes}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Visible Edges</div>
+                      <div className="text-2xl font-bold">{stats.visibleEdges}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dataset Info and Controls */}
+                <div className="p-4 bg-gray-50 rounded space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-semibold">{dataset.name}</div>
                       <div className="text-xs text-gray-600">{dataset.type.toUpperCase()} · {dataset.timeRange.start}{dataset.timeRange.end !== dataset.timeRange.start ? `–${dataset.timeRange.end}` : ''}</div>
                     </div>
                   </div>
+
+                  {/* Year Slider */}
                   {hasTime && currentYear !== undefined && (
-                    <div className="mt-4 flex items-center space-x-3">
+                    <div className="flex items-center space-x-3">
                       <label className="text-sm font-medium">Year</label>
                       <input
                         type="range"
@@ -104,62 +245,166 @@ function ExplorerPage() {
                       <span className="text-sm font-mono">{currentYear}</span>
                     </div>
                   )}
+
+                  {/* Filtering Controls */}
+                  {currentSnapshot && stats && (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium">
+                            Min Threshold: {minThreshold.toLocaleString()}
+                          </label>
+                          {(() => {
+                            const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
+                            const isFiltered = 
+                              minThreshold > minValue || 
+                              maxThreshold < stats.maxValue || 
+                              maxEdges < stats.totalEdges
+                            return (
+                              <button
+                                onClick={() => {
+                                  setMinThreshold(minValue)
+                                  setMaxThreshold(stats.maxValue)
+                                  setMaxEdges(Math.max(500, stats.totalEdges))
+                                }}
+                                disabled={!isFiltered}
+                                className={`text-xs ${isFiltered ? 'text-blue-600 hover:text-blue-800 font-semibold cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                              >
+                                Show All
+                              </button>
+                            )
+                          })()}
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={stats.maxValue || 200000}
+                          step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                          value={minThreshold}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            setMinThreshold(Math.min(val, maxThreshold))
+                          }}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>0</span>
+                          <span>Avg: {Math.round(stats.avgValue).toLocaleString()}</span>
+                          <span>Max: {stats.maxValue.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Max Threshold: {maxThreshold.toLocaleString()}
+                        </label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={stats.maxValue || 200000}
+                          step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                          value={maxThreshold}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            setMaxThreshold(Math.max(val, minThreshold))
+                          }}
+                          className="w-full"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Max Edges to Display: {maxEdges}
+                        </label>
+                        <input
+                          type="range"
+                          min={10}
+                          max={Math.max(500, stats.totalEdges)}
+                          step={10}
+                          value={maxEdges}
+                          onChange={(e) => setMaxEdges(parseInt(e.target.value))}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>Min: 10</span>
+                          <span>Total: {stats.totalEdges.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="border-2 border-gray-200 rounded-lg p-4">
-                  {currentSnapshot ? (
-                    <Kriskogram
-                      ref={krRef}
-                      nodes={currentSnapshot.nodes}
-                      edges={currentSnapshot.edges}
-                      width={1000}
-                      height={600}
-                      margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
-                      accessors={{
-                        nodeOrder: (d) => d.id,
-                        nodeColor: (d) => {
-                          if (d.economic_index) {
-                            const hue = d.economic_index * 120; // Green to red scale
-                            return `hsl(${hue}, 70%, 50%)`;
-                          }
-                          if (d.region && typeof d.region === 'string') {
-                            // Use region-based coloring if available
-                            const regionColors: Record<string, string> = {
-                              'Northeast': '#3b82f6',
-                              'Midwest': '#f59e0b',
-                              'South': '#ef4444',
-                              'West': '#10b981',
-                            };
-                            return regionColors[d.region] || '#555';
-                          }
-                          return '#555';
-                        },
-                        nodeRadius: (d) => {
-                          if (d.population) {
-                            return Math.sqrt(d.population) / 1000;
-                          }
-                          return 6;
-                        },
-                        edgeWidth: (e) => Math.sqrt(e.value) / 10,
-                        edgeColor: (e, _isAbove) => {
-                          if (!currentSnapshot) return '#1f77b4';
-                          // Find min and max weights for color scaling
-                          const weights = currentSnapshot.edges.map((edge: any) => edge.value);
-                          const minWeight = Math.min(...weights);
-                          const maxWeight = Math.max(...weights);
-                          
-                          // Normalize weight to 0-1 range
-                          const normalized = (e.value - minWeight) / (maxWeight - minWeight);
-                          
-                          // Use single hue (light blue) with varying lightness
-                          const hue = 200; // Light blue
-                          const saturation = 70;
-                          const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
-                          
-                          return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                        },
-                      }}
-                    />
+                  {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
+                    <>
+                      {viewType === 'kriskogram' && (
+                        <Kriskogram
+                          ref={krRef}
+                          nodes={filteredData.nodes}
+                          edges={filteredData.edges}
+                          width={1000}
+                          height={600}
+                          margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
+                          accessors={{
+                            nodeOrder: (d) => d.id,
+                            nodeColor: (d) => {
+                              if (d.economic_index) {
+                                const hue = d.economic_index * 120; // Green to red scale
+                                return `hsl(${hue}, 70%, 50%)`;
+                              }
+                              if (d.region && typeof d.region === 'string') {
+                                // Use region-based coloring if available
+                                const regionColors: Record<string, string> = {
+                                  'Northeast': '#3b82f6',
+                                  'Midwest': '#f59e0b',
+                                  'South': '#ef4444',
+                                  'West': '#10b981',
+                                };
+                                return regionColors[d.region] || '#555';
+                              }
+                              return '#555';
+                            },
+                            nodeRadius: (d) => {
+                              if (d.population) {
+                                return Math.sqrt(d.population) / 1000;
+                              }
+                              return 6;
+                            },
+                            edgeWidth: (e) => Math.sqrt(e.value) / 10,
+                            edgeColor: (e, _isAbove) => {
+                              if (!currentSnapshot) return '#1f77b4';
+                              // Find min and max weights for color scaling
+                              const weights = currentSnapshot.edges.map((edge: any) => edge.value);
+                              const minWeight = Math.min(...weights);
+                              const maxWeight = Math.max(...weights);
+                              
+                              // Normalize weight to 0-1 range
+                              const normalized = (e.value - minWeight) / (maxWeight - minWeight);
+                              
+                              // Use single hue (light blue) with varying lightness
+                              const hue = 200; // Light blue
+                              const saturation = 70;
+                              const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
+                              
+                              return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                            },
+                          }}
+                        />
+                      )}
+                      {viewType === 'table' && (
+                        <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                      )}
+                      {viewType === 'sankey' && (
+                        <SankeyView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                      )}
+                      {viewType === 'chord' && (
+                        <ChordView nodes={filteredData.nodes} edges={filteredData.edges} width={1000} height={600} />
+                      )}
+                    </>
+                  ) : currentSnapshot ? (
+                    <div className="text-center text-gray-500 py-8">
+                      No data meets the current threshold range ({minThreshold.toLocaleString()} - {maxThreshold.toLocaleString()}). Try adjusting the filters.
+                    </div>
                   ) : (
                     <div className="text-gray-500 py-8">No snapshot to display</div>
                   )}
@@ -186,13 +431,16 @@ async function preloadDefaults(): Promise<string | undefined> {
     const csvUrl = new URL('../data/State_to_State_Migrations_Table_2021.csv', import.meta.url)
     const csvText = await loadCSVFromUrl(csvUrl.toString())
     const parsed = parseStateMigrationCSV(csvText)
+    const snapshot = { timestamp: 2021, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }
+    const metadata = detectDatasetProperties(snapshot)
     const ds: StoredDataset = {
       id: csvId,
       name: 'US State-to-State Migration (2021)',
       description: 'Census 2021 state-to-state migration estimates (single snapshot)',
       type: 'csv',
       timeRange: { start: 2021, end: 2021 },
-      snapshots: [{ timestamp: 2021, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }],
+      snapshots: [snapshot],
+      metadata,
       createdAt: Date.now(),
     }
     await saveDataset(ds)
@@ -202,6 +450,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const gexfUrl = new URL('../data/sample-migration-data.gexf', import.meta.url)
     const graph = await loadGexfFromUrl(gexfUrl.toString())
     const snaps = gexfToKriskogramSnapshots(graph)
+    const metadata = snaps.length > 0 ? detectDatasetProperties(snaps[0]) : undefined
     const ds: StoredDataset = {
       id: gexfId,
       name: 'Sample Migration (GEXF)',
@@ -209,6 +458,7 @@ async function preloadDefaults(): Promise<string | undefined> {
       type: 'gexf',
       timeRange: graph.timeRange,
       snapshots: snaps as any,
+      metadata,
       createdAt: Date.now(),
     }
     await saveDataset(ds)
