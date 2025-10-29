@@ -23,6 +23,7 @@ function ExplorerPage() {
   const [currentYear, setCurrentYear] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0) // Force refresh counter
   const [minThreshold, setMinThreshold] = useState(0)
   const [maxThreshold, setMaxThreshold] = useState(200000)
   const [maxEdges, setMaxEdges] = useState(500)
@@ -45,7 +46,10 @@ function ExplorerPage() {
   }, [])
 
   useEffect(() => {
-    if (!selectedId) return
+    if (!selectedId) {
+      setDataset(undefined)
+      return
+    }
     setLoading(true)
     setError(null)
     getDataset(selectedId)
@@ -61,7 +65,7 @@ function ExplorerPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load dataset'))
       .finally(() => setLoading(false))
-  }, [selectedId])
+  }, [selectedId, refreshKey]) // Include refreshKey to force reload
 
   const currentSnapshot: KriskogramSnapshot | undefined = useMemo(() => {
     if (!dataset || currentYear === undefined) return undefined
@@ -169,7 +173,11 @@ function ExplorerPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-6">
         <div className="flex bg-white rounded-lg shadow-lg overflow-hidden" style={{ minHeight: 600 }}>
-          <DatasetSidebar selectedId={selectedId} onSelect={setSelectedId} />
+          <DatasetSidebar 
+            selectedId={selectedId} 
+            onSelect={setSelectedId}
+            onRefresh={() => setRefreshKey(prev => prev + 1)}
+          />
 
           <main className="flex-1 p-6">
             <header className="mb-4">
@@ -190,40 +198,40 @@ function ExplorerPage() {
                   <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => setViewType('kriskogram')}
-                      className={`px-4 py-2 rounded text-sm font-medium ${
+                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'kriskogram'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                       }`}
                     >
                       Kriskogram
                     </button>
                     <button
                       onClick={() => setViewType('table')}
-                      className={`px-4 py-2 rounded text-sm font-medium ${
+                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'table'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                       }`}
                     >
                       Table
                     </button>
                     <button
                       onClick={() => setViewType('sankey')}
-                      className={`px-4 py-2 rounded text-sm font-medium ${
+                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'sankey'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                       }`}
                     >
                       Sankey
                     </button>
                     <button
                       onClick={() => setViewType('chord')}
-                      className={`px-4 py-2 rounded text-sm font-medium ${
+                      className={`px-4 py-2 rounded text-sm font-medium transition-colors cursor-pointer ${
                         viewType === 'chord'
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                       }`}
                     >
                       Chord
@@ -321,7 +329,8 @@ function ExplorerPage() {
                                   setMaxEdges(Math.max(500, stats.totalEdges))
                                 }}
                                 disabled={!isFiltered}
-                                className={`text-xs ${isFiltered ? 'text-blue-600 hover:text-blue-800 font-semibold cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
+                                type="button"
+                                className={`text-xs transition-colors ${isFiltered ? 'text-blue-600 hover:text-blue-800 font-semibold cursor-pointer' : 'text-gray-400 cursor-not-allowed'}`}
                               >
                                 Show All
                               </button>
@@ -489,7 +498,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const ds: StoredDataset = {
       id: csvId,
       name: 'US State-to-State Migration (2021)',
-      description: 'Census 2021 state-to-state migration estimates (single snapshot)',
+      notes: 'Census 2021 state-to-state migration estimates (single snapshot)',
       type: 'csv',
       timeRange: { start: 2021, end: 2021 },
       snapshots: [snapshot],
@@ -507,7 +516,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const ds: StoredDataset = {
       id: gexfId,
       name: 'Sample Migration (GEXF)',
-      description: 'Sample network with time slices parsed from GEXF',
+      notes: 'Sample network with time slices parsed from GEXF',
       type: 'gexf',
       timeRange: graph.timeRange,
       snapshots: snaps as any,

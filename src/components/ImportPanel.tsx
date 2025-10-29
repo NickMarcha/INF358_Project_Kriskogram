@@ -379,7 +379,6 @@ export default function ImportPanel({
 
       const dataset: Omit<StoredDataset, 'id' | 'createdAt'> = {
         name: datasetName.trim(),
-        description: notes.trim() || undefined,
         filename: selectedFiles.map(f => f.name).join(', '),
         notes: notes.trim() || undefined,
         type: importMode === 'two-file' ? 'csv' : (fileType || 'csv'),
@@ -827,19 +826,21 @@ export default function ImportPanel({
         <div className="p-6 border-t flex justify-end gap-3">
           <button
             onClick={onClose}
+            type="button"
             disabled={isImporting}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleImport}
+            type="button"
             disabled={isImporting || (() => {
               // Button is disabled if there are blocking errors (not just summary warnings)
               const blockingErrors = Object.keys(validationErrors).filter(k => k !== 'summary')
               return blockingErrors.length > 0 || !parsedData
             })()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
           >
             {isImporting ? 'Importing...' : 'Import Dataset'}
           </button>

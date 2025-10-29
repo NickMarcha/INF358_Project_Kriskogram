@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { StoredDataset } from '../lib/storage'
 import { detectDatasetProperties } from '../lib/storage'
 import TableView from './views/TableView'
@@ -98,7 +98,8 @@ export default function EditPanel({
           <h2 className="text-2xl font-bold">Edit Dataset</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+            type="button"
+            className="text-gray-400 hover:text-gray-600 text-2xl cursor-pointer transition-colors"
           >
             ×
           </button>
@@ -108,7 +109,8 @@ export default function EditPanel({
         <div className="border-b flex">
           <button
             onClick={() => setActiveTab('info')}
-            className={`px-6 py-3 font-medium ${
+            type="button"
+            className={`px-6 py-3 font-medium cursor-pointer transition-colors ${
               activeTab === 'info'
                 ? 'border-b-2 border-blue-600 text-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
@@ -118,7 +120,8 @@ export default function EditPanel({
           </button>
           <button
             onClick={() => setActiveTab('data')}
-            className={`px-6 py-3 font-medium ${
+            type="button"
+            className={`px-6 py-3 font-medium cursor-pointer transition-colors ${
               activeTab === 'data'
                 ? 'border-b-2 border-blue-600 text-blue-600'
                 : 'text-gray-600 hover:text-gray-900'
@@ -178,13 +181,15 @@ export default function EditPanel({
               <div className="border-t pt-4 space-y-3">
                 <button
                   onClick={onDuplicate}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  type="button"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   Duplicate Dataset
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  type="button"
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer transition-colors"
                 >
                   Delete Dataset
                 </button>
@@ -205,15 +210,17 @@ export default function EditPanel({
         <div className="p-6 border-t flex justify-end gap-3">
           <button
             onClick={onClose}
+            type="button"
             disabled={isSaving || isDeleting}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
+            type="button"
             disabled={isSaving || isDeleting || (!hasChanges && activeTab === 'info') || !name.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
           >
             {isSaving ? 'Saving...' : editedData ? 'Save All Changes' : 'Save Changes'}
           </button>
@@ -228,18 +235,20 @@ export default function EditPanel({
                 Are you sure you want to delete "{dataset.name}"? This action cannot be undone.
               </p>
               <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={isDeleting}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                type="button"
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                type="button"
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 cursor-pointer transition-colors"
+              >
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
@@ -261,14 +270,41 @@ function DataEditor({ nodes, edges, onUpdate }: DataEditorProps) {
   const [editedNodes, setEditedNodes] = useState(nodes)
   const [editedEdges, setEditedEdges] = useState(edges)
 
+  // Only reset when the source data changes (not on every edit)
   useEffect(() => {
     setEditedNodes([...nodes])
     setEditedEdges([...edges])
   }, [nodes, edges])
 
+  // Track latest values with ref to avoid stale closure
+  const editedNodesRef = useRef(editedNodes)
+  const editedEdgesRef = useRef(editedEdges)
+  
   useEffect(() => {
-    onUpdate(editedNodes, editedEdges)
-  }, [editedNodes, editedEdges, onUpdate])
+    editedNodesRef.current = editedNodes
+    editedEdgesRef.current = editedEdges
+  }, [editedNodes, editedEdges])
+
+  // Only update parent on blur (when field is exited), not on every keystroke
+  const handleNodesChange = useCallback((newNodes: any[]) => {
+    setEditedNodes(newNodes)
+    editedNodesRef.current = newNodes
+  }, [])
+
+  const handleEdgesChange = useCallback((newEdges: any[]) => {
+    setEditedEdges(newEdges)
+    editedEdgesRef.current = newEdges
+  }, [])
+
+  // Use a ref to track if we need to save on blur
+  const pendingUpdateRef = useRef(false)
+  
+  const handleBlur = useCallback(() => {
+    if (pendingUpdateRef.current) {
+      onUpdate(editedNodesRef.current, editedEdgesRef.current)
+      pendingUpdateRef.current = false
+    }
+  }, [onUpdate])
 
   return (
     <div className="h-full">
@@ -276,13 +312,14 @@ function DataEditor({ nodes, edges, onUpdate }: DataEditorProps) {
         nodes={editedNodes}
         edges={editedEdges}
         onNodesChange={(newNodes) => {
-          setEditedNodes(newNodes)
-          onUpdate(newNodes, editedEdges)
+          handleNodesChange(newNodes)
+          pendingUpdateRef.current = true
         }}
         onEdgesChange={(newEdges) => {
-          setEditedEdges(newEdges)
-          onUpdate(editedNodes, newEdges)
+          handleEdgesChange(newEdges)
+          pendingUpdateRef.current = true
         }}
+        onBlur={handleBlur}
         editable={true}
       />
     </div>

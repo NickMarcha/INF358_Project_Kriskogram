@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -25,6 +25,7 @@ interface TableViewProps {
   edges: Edge[]
   onNodesChange?: (nodes: Node[]) => void
   onEdgesChange?: (edges: Edge[]) => void
+  onBlur?: () => void
   editable?: boolean
 }
 
@@ -33,16 +34,24 @@ export default function TableView({
   edges, 
   onNodesChange, 
   onEdgesChange,
+  onBlur,
   editable = false 
 }: TableViewProps) {
   const [activeTab, setActiveTab] = useState<'nodes' | 'edges'>('nodes')
   const [editedNodes, setEditedNodes] = useState(nodes)
   const [editedEdges, setEditedEdges] = useState(edges)
   
-  // Update local state when props change
+  // Track pending updates to avoid unnecessary re-renders during typing
+  const pendingNodesUpdate = useRef<Map<string, { key: string; value: any }>>(new Map())
+  const pendingEdgesUpdate = useRef<Map<string, { key: string; value: any }>>(new Map())
+  
+  // Update local state when props change (but not from edits)
   useEffect(() => {
+    // Only update if the data actually changed from props, not from our own edits
     setEditedNodes([...nodes])
     setEditedEdges([...edges])
+    pendingNodesUpdate.current.clear()
+    pendingEdgesUpdate.current.clear()
   }, [nodes, edges])
 
   // Dynamically extract all property keys from nodes
@@ -68,27 +77,32 @@ export default function TableView({
       cell: (info: any) => {
         const value = info.getValue()
         if (editable && key !== 'id') {
+          // Use the actual row data, not index, in case table is sorted/filtered
+          const rowData = info.row.original as Node
+          const rowId = rowData.id
+          // Find the actual index in editedNodes by ID
+          const actualIndex = editedNodes.findIndex(n => n.id === rowId)
+          
+          if (actualIndex === -1) return <span>-</span>
+          
+          const currentValue = editedNodes[actualIndex]?.[key] ?? value
+          const inputId = `${rowId}-${key}`
+          
           return (
-            <input
-              type={typeof value === 'number' ? 'number' : 'text'}
-              value={value === null || value === undefined ? '' : String(value)}
-              onChange={(e) => {
-                const rowIndex = info.row.index
+            <EditableInput
+              key={inputId}
+              id={inputId}
+              type={typeof currentValue === 'number' ? 'number' : 'text'}
+              initialValue={currentValue === null || currentValue === undefined ? '' : String(currentValue)}
+              isNumber={typeof currentValue === 'number'}
+              onBlur={(newValue: string) => {
+                // Only update state on blur to avoid re-renders while typing
                 const newNodes = [...editedNodes]
-                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                newNodes[rowIndex] = { ...newNodes[rowIndex], [key]: newValue }
+                const finalValue = typeof currentValue === 'number' ? parseFloat(newValue) || 0 : newValue
+                newNodes[actualIndex] = { ...newNodes[actualIndex], [key]: finalValue }
                 setEditedNodes(newNodes)
                 onNodesChange?.(newNodes)
-              }}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-              onBlur={(e) => {
-                // Finalize the change
-                const rowIndex = info.row.index
-                const newNodes = [...editedNodes]
-                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                newNodes[rowIndex] = { ...newNodes[rowIndex], [key]: newValue }
-                setEditedNodes(newNodes)
-                onNodesChange?.(newNodes)
+                onBlur?.()
               }}
             />
           )
@@ -98,7 +112,7 @@ export default function TableView({
         return String(value)
       },
     }))
-  }, [nodes, editable, editedNodes, onNodesChange])
+  }, [nodes, editable])
 
   // Dynamically extract all property keys from edges
   const edgeColumns = useMemo<ColumnDef<Edge, any>[]>(() => {
@@ -124,26 +138,61 @@ export default function TableView({
       cell: (info: any) => {
         const value = info.getValue()
         if (editable && key !== 'source' && key !== 'target') {
+          // Use the actual row data to find by source/target pair
+          const rowData = info.row.original as Edge
+          // Find the actual edge by source/target since edges don't have unique IDs
+          const actualIndex = editedEdges.findIndex(
+            e => e.source === rowData.source && e.target === rowData.target && e.value === rowData.value
+          )
+          
+          if (actualIndex === -1) {
+            // Fallback: try just source/target
+            const fallbackIndex = editedEdges.findIndex(
+              e => e.source === rowData.source && e.target === rowData.target
+            )
+            if (fallbackIndex === -1) return <span>-</span>
+            
+            const currentValue = editedEdges[fallbackIndex]?.[key] ?? value
+            const inputId = `${rowData.source}-${rowData.target}-${key}-fallback`
+            
+            return (
+              <EditableInput
+                key={inputId}
+                id={inputId}
+                type={typeof currentValue === 'number' ? 'number' : 'text'}
+                initialValue={currentValue === null || currentValue === undefined ? '' : String(currentValue)}
+                isNumber={typeof currentValue === 'number'}
+                onBlur={(newValue: string) => {
+                  // Only update state on blur to avoid re-renders while typing
+                  const newEdges = [...editedEdges]
+                  const finalValue = typeof currentValue === 'number' ? parseFloat(newValue) || 0 : newValue
+                  newEdges[fallbackIndex] = { ...newEdges[fallbackIndex], [key]: finalValue }
+                  setEditedEdges(newEdges)
+                  onEdgesChange?.(newEdges)
+                  onBlur?.()
+                }}
+              />
+            )
+          }
+          
+          const currentValue = editedEdges[actualIndex]?.[key] ?? value
+          const inputId = `${rowData.source}-${rowData.target}-${key}`
+          
           return (
-            <input
-              type={typeof value === 'number' ? 'number' : 'text'}
-              value={value === null || value === undefined ? '' : String(value)}
-              onChange={(e) => {
-                const rowIndex = info.row.index
+            <EditableInput
+              key={inputId}
+              id={inputId}
+              type={typeof currentValue === 'number' ? 'number' : 'text'}
+              initialValue={currentValue === null || currentValue === undefined ? '' : String(currentValue)}
+              isNumber={typeof currentValue === 'number'}
+              onBlur={(newValue: string) => {
+                // Only update state on blur to avoid re-renders while typing
                 const newEdges = [...editedEdges]
-                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                newEdges[rowIndex] = { ...newEdges[rowIndex], [key]: newValue }
+                const finalValue = typeof currentValue === 'number' ? parseFloat(newValue) || 0 : newValue
+                newEdges[actualIndex] = { ...newEdges[actualIndex], [key]: finalValue }
                 setEditedEdges(newEdges)
                 onEdgesChange?.(newEdges)
-              }}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-              onBlur={(e) => {
-                const rowIndex = info.row.index
-                const newEdges = [...editedEdges]
-                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                newEdges[rowIndex] = { ...newEdges[rowIndex], [key]: newValue }
-                setEditedEdges(newEdges)
-                onEdgesChange?.(newEdges)
+                onBlur?.()
               }}
             />
           )
@@ -153,7 +202,7 @@ export default function TableView({
         return String(value)
       },
     }))
-  }, [edges, editable, editedEdges, onEdgesChange])
+  }, [edges, editable])
 
   const nodeTable = useReactTable({
     data: editable ? editedNodes : nodes,
@@ -219,8 +268,8 @@ export default function TableView({
                         }}
                       >
                         {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
+                          header.column.columnDef.header as any,
+                          header.getContext() as any
                         )}
                         {{
                           asc: ' ↑',
@@ -238,7 +287,7 @@ export default function TableView({
               <tr key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-2">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    {flexRender(cell.column.columnDef.cell as any, cell.getContext() as any)}
                   </td>
                 ))}
               </tr>
@@ -252,6 +301,49 @@ export default function TableView({
         )}
       </div>
     </div>
+  )
+}
+
+// Separate component for editable inputs to prevent re-renders from parent state updates
+function EditableInput({
+  id,
+  type,
+  initialValue,
+  onBlur,
+}: {
+  id: string
+  type: 'text' | 'number'
+  initialValue: string
+  isNumber?: boolean
+  onBlur: (value: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [localValue, setLocalValue] = useState(initialValue)
+  
+  // Only update local value when initialValue changes from props AND input is not focused
+  useEffect(() => {
+    if (inputRef.current && document.activeElement !== inputRef.current) {
+      setLocalValue(initialValue)
+    }
+  }, [initialValue])
+  
+  return (
+    <input
+      ref={inputRef}
+      id={id}
+      type={type}
+      value={localValue}
+      onChange={(e) => {
+        // Update local state only - don't trigger parent re-renders
+        setLocalValue(e.target.value)
+      }}
+      onBlur={(e) => {
+        // Notify parent only on blur (when field is exited)
+        onBlur(e.target.value)
+      }}
+      className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      autoComplete="off"
+    />
   )
 }
 

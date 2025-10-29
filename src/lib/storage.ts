@@ -20,9 +20,8 @@ export type DatasetMetadata = {
 export type StoredDataset = {
   id: string
   name: string
-  description?: string
   filename?: string  // Original filename from import
-  notes?: string     // User-provided notes
+  notes?: string     // User-provided notes/description
   type: 'csv' | 'gexf' | 'manual'
   timeRange: { start: number; end: number }
   snapshots: StoredSnapshot[]

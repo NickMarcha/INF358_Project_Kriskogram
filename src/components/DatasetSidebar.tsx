@@ -7,9 +7,10 @@ import EditPanel from './EditPanel'
 interface DatasetSidebarProps {
   selectedId?: string
   onSelect: (id: string) => void
+  onRefresh?: () => void // Optional callback to force refresh in parent
 }
 
-export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarProps) {
+export default function DatasetSidebar({ selectedId, onSelect, onRefresh }: DatasetSidebarProps) {
   const [datasets, setDatasets] = useState<StoredDataset[]>([])
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [editingDataset, setEditingDataset] = useState<StoredDataset | null>(null)
@@ -85,7 +86,8 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
     await saveDataset(updated)
     await refresh()
     if (selectedId === updated.id) {
-      onSelect(updated.id) // Refresh selection
+      // Trigger refresh in parent to reload the dataset
+      onRefresh?.()
     }
   }
 
@@ -164,14 +166,15 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
                     <div className="text-xs text-gray-500">{d.type.toUpperCase()} · {d.timeRange.start}{d.timeRange.end !== d.timeRange.start ? `–${d.timeRange.end}` : ''}</div>
                   </div>
                 </div>
-                {d.description && (
-                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">{d.description}</div>
+                {d.notes && (
+                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">{d.notes}</div>
                 )}
               </button>
               <button
                 onClick={(e) => handleEdit(d.id, e)}
-                className="px-2 py-1 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-all mr-2"
+                className="px-2 py-1 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-all mr-2 cursor-pointer"
                 title="Edit dataset"
+                type="button"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -189,7 +192,8 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
       <div className="p-4 border-t">
         <button
           onClick={() => setShowResetConfirm(true)}
-          className="w-full px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+          type="button"
+          className="w-full px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 cursor-pointer transition-colors"
         >
           Reset All Data
         </button>
@@ -220,13 +224,15 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                type="button"
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleResetStorage}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                type="button"
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer transition-colors"
               >
                 Reset All Data
               </button>
