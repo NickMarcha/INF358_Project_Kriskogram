@@ -142,6 +142,15 @@ function ExplorerPage() {
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const krRef = useRef<KriskogramRef>(null)
   
+  // Kriskogram visualization controls (only used when viewType === 'kriskogram')
+  const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
+  const [arcOpacity, setArcOpacity] = useState(0.85)
+  const [edgeWeightEncoding, setEdgeWeightEncoding] = useState<'color' | 'opacity' | 'width'>('width')
+  const [nodeColorMode, setNodeColorMode] = useState<'single' | 'attribute' | 'outgoing' | 'incoming'>('single')
+  const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
+  const [nodeSizeMode, setNodeSizeMode] = useState<'fixed' | 'attribute' | 'outgoing' | 'incoming'>('fixed')
+  const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
+  
   // Function to update search params when state changes
   // Uses functional update pattern - TanStack Router will merge with current search params
   // The stripSearchParams middleware will automatically remove default values from the URL
@@ -267,9 +276,28 @@ function ExplorerPage() {
       activeNodeIds.add(e.target)
     })
     
-    const filteredNodes = currentSnapshot.nodes.filter((n: any) => activeNodeIds.has(n.id))
+    const filteredNodes = (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
     
-    return { nodes: filteredNodes, edges: filteredEdges }
+    // Compute dynamic attributes (total incoming/outgoing) for each node
+    const nodeIncoming = new Map<string, number>()
+    const nodeOutgoing = new Map<string, number>()
+    
+    filteredEdges.forEach((e: any) => {
+      const outgoing = nodeOutgoing.get(e.source) || 0
+      nodeOutgoing.set(e.source, outgoing + e.value)
+      
+      const incoming = nodeIncoming.get(e.target) || 0
+      nodeIncoming.set(e.target, incoming + e.value)
+    })
+    
+    // Add computed attributes to nodes
+    const nodesWithDynamicAttrs = filteredNodes.map((n: any) => ({
+      ...n,
+      _totalIncoming: nodeIncoming.get(n.id) || 0,
+      _totalOutgoing: nodeOutgoing.get(n.id) || 0,
+    }))
+    
+    return { nodes: nodesWithDynamicAttrs, edges: filteredEdges }
   }, [currentSnapshot, minThreshold, maxThreshold, maxEdges, edgeTypeFilter, edgeTypeInfo])
 
   // Calculate statistics
@@ -617,6 +645,256 @@ function ExplorerPage() {
                   )}
                 </div>
 
+                {/* Kriskogram Visualization Controls */}
+                {viewType === 'kriskogram' && dataset?.metadata && (
+                  <div className="p-4 bg-blue-50 rounded space-y-4 border border-blue-200">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">Kriskogram Visualization Settings</h3>
+                    
+                    {/* Node Ordering */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-blue-800">Node Ordering (Horizontal Axis)</label>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="nodeOrder"
+                            value="alphabetical"
+                            checked={nodeOrderMode === 'alphabetical'}
+                            onChange={(e) => setNodeOrderMode(e.target.value)}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">Alphabetical</span>
+                        </label>
+                        {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                          <label key={prop} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeOrder"
+                              value={prop}
+                              checked={nodeOrderMode === prop}
+                              onChange={(e) => setNodeOrderMode(e.target.value)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">By {prop}</span>
+                          </label>
+                        ))}
+                        {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                          <label key={prop} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeOrder"
+                              value={prop}
+                              checked={nodeOrderMode === prop}
+                              onChange={(e) => setNodeOrderMode(e.target.value)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">By {prop}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Arc Opacity */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-blue-800">
+                        Arc Opacity: {Math.round(arcOpacity * 100)}%
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={arcOpacity}
+                        onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-blue-600">
+                        <span>0% (Transparent)</span>
+                        <span>100% (Opaque)</span>
+                      </div>
+                    </div>
+
+                    {/* Edge Weight Encoding */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-blue-800">Edge Weight Encoding</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="width"
+                            checked={edgeWeightEncoding === 'width'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'width')}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">Width</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="color"
+                            checked={edgeWeightEncoding === 'color'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'color')}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">Color Intensity</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeWeight"
+                            value="opacity"
+                            checked={edgeWeightEncoding === 'opacity'}
+                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'opacity')}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">Opacity</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Node Color */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-blue-800">Node Color</label>
+                      <div className="space-y-2">
+                        <div className="flex gap-4 flex-wrap">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeColor"
+                              value="single"
+                              checked={nodeColorMode === 'single'}
+                              onChange={(e) => setNodeColorMode(e.target.value as 'single')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Single Color</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeColor"
+                              value="outgoing"
+                              checked={nodeColorMode === 'outgoing'}
+                              onChange={(e) => setNodeColorMode(e.target.value as 'outgoing')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Total Outgoing (Intensity)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeColor"
+                              value="incoming"
+                              checked={nodeColorMode === 'incoming'}
+                              onChange={(e) => setNodeColorMode(e.target.value as 'incoming')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Total Incoming (Intensity)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeColor"
+                              value="attribute"
+                              checked={nodeColorMode === 'attribute'}
+                              onChange={(e) => setNodeColorMode(e.target.value as 'attribute')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">By Attribute</span>
+                          </label>
+                        </div>
+                        {nodeColorMode === 'attribute' && (
+                          <select
+                            value={nodeColorAttribute || ''}
+                            onChange={(e) => setNodeColorAttribute(e.target.value || null)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          >
+                            <option value="">Select attribute...</option>
+                            {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                              <option key={prop} value={prop}>
+                                {prop} (categorical)
+                              </option>
+                            ))}
+                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                              <option key={prop} value={prop}>
+                                {prop} (numeric)
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Node Size */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-blue-800">Node Size</label>
+                      <div className="space-y-2">
+                        <div className="flex gap-4 flex-wrap">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeSize"
+                              value="fixed"
+                              checked={nodeSizeMode === 'fixed'}
+                              onChange={(e) => setNodeSizeMode(e.target.value as 'fixed')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Fixed</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeSize"
+                              value="outgoing"
+                              checked={nodeSizeMode === 'outgoing'}
+                              onChange={(e) => setNodeSizeMode(e.target.value as 'outgoing')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Total Outgoing</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeSize"
+                              value="incoming"
+                              checked={nodeSizeMode === 'incoming'}
+                              onChange={(e) => setNodeSizeMode(e.target.value as 'incoming')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Total Incoming</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="nodeSize"
+                              value="attribute"
+                              checked={nodeSizeMode === 'attribute'}
+                              onChange={(e) => setNodeSizeMode(e.target.value as 'attribute')}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">By Attribute</span>
+                          </label>
+                        </div>
+                        {nodeSizeMode === 'attribute' && (
+                          <select
+                            value={nodeSizeAttribute || ''}
+                            onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          >
+                            <option value="">Select attribute...</option>
+                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                              <option key={prop} value={prop}>
+                                {prop}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="border-2 border-gray-200 rounded-lg p-4">
                   {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
                     <>
@@ -636,50 +914,152 @@ function ExplorerPage() {
                             width={1000}
                             height={600}
                             margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
-                            accessors={{
-                              nodeOrder: (d) => d.id,
-                              nodeColor: (d) => {
-                                if (d.economic_index) {
-                                  const hue = d.economic_index * 120; // Green to red scale
-                                  return `hsl(${hue}, 70%, 50%)`;
-                                }
-                                if (d.region && typeof d.region === 'string') {
-                                  // Use region-based coloring if available
-                                  const regionColors: Record<string, string> = {
-                                    'Northeast': '#3b82f6',
-                                    'Midwest': '#f59e0b',
-                                    'South': '#ef4444',
-                                    'West': '#10b981',
-                                  };
-                                  return regionColors[d.region] || '#555';
-                                }
-                                return '#555';
-                              },
-                              nodeRadius: (d) => {
-                                if (d.population) {
-                                  return Math.sqrt(d.population) / 1000;
-                                }
-                                return 6;
-                              },
-                              edgeWidth: (e) => Math.sqrt(e.value) / 10,
-                              edgeColor: (e, _isAbove) => {
-                                if (!currentSnapshot) return '#1f77b4';
-                                // Find min and max weights for color scaling
-                                const weights = currentSnapshot.edges.map((edge: any) => edge.value);
-                                const minWeight = Math.min(...weights);
-                                const maxWeight = Math.max(...weights);
+                            arcOpacity={arcOpacity}
+                            accessors={(() => {
+                              // Compute edge weight min/max for scaling
+                              const edgeWeights = filteredData.edges.map((e: any) => e.value)
+                              const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
+                              const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
+                              const edgeWeightRange = maxEdgeWeight - minEdgeWeight || 1
+                              
+                              // Compute node attribute ranges for color/size scaling
+                              const nodeOutgoingValues = filteredData.nodes.map((n: any) => n._totalOutgoing || 0)
+                              const nodeIncomingValues = filteredData.nodes.map((n: any) => n._totalIncoming || 0)
+                              const maxOutgoing = nodeOutgoingValues.length > 0 ? Math.max(...nodeOutgoingValues) : 1
+                              const maxIncoming = nodeIncomingValues.length > 0 ? Math.max(...nodeIncomingValues) : 1
+                              
+                              // Get unique categorical values for color assignment
+                              const getCategoricalColor = (propName: string, propValue: any, colors: string[]) => {
+                                const uniqueValues = Array.from(new Set(
+                                  filteredData.nodes.map((n: any) => n[propName]).filter((v: any) => v != null)
+                                ))
+                                const colorMap = new Map()
+                                uniqueValues.forEach((val, idx) => {
+                                  colorMap.set(val, colors[idx % colors.length])
+                                })
+                                return colorMap.get(propValue) || colors[0]
+                              }
+                              
+                              const categoricalColors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                              
+                              return {
+                                // Node ordering
+                                nodeOrder: (d: any) => {
+                                  if (nodeOrderMode === 'alphabetical') {
+                                    return d.label || d.id
+                                  }
+                                  // Order by property value (categorical or numeric)
+                                  const propValue = d[nodeOrderMode]
+                                  if (propValue === undefined || propValue === null) {
+                                    return `ZZZ_${d.label || d.id}` // Put undefined values at the end
+                                  }
+                                  if (typeof propValue === 'number') {
+                                    return `${String(1e6 - propValue).padStart(10, '0')}_${d.label || d.id}` // Descending numeric
+                                  }
+                                  return `${String(propValue)}_${d.label || d.id}` // Ascending categorical
+                                },
                                 
-                                // Normalize weight to 0-1 range
-                                const normalized = (e.value - minWeight) / (maxWeight - minWeight);
+                                // Node color
+                                nodeColor: (d: any) => {
+                                  if (nodeColorMode === 'single') {
+                                    return '#2563eb'
+                                  } else if (nodeColorMode === 'outgoing') {
+                                    const normalized = maxOutgoing > 0 ? (d._totalOutgoing || 0) / maxOutgoing : 0
+                                    const lightness = 20 + (normalized * 50) // 20% (dark) to 70% (light) for intensity
+                                    return `hsl(200, 70%, ${lightness}%)`
+                                  } else if (nodeColorMode === 'incoming') {
+                                    const normalized = maxIncoming > 0 ? (d._totalIncoming || 0) / maxIncoming : 0
+                                    const lightness = 20 + (normalized * 50)
+                                    return `hsl(200, 70%, ${lightness}%)`
+                                  } else if (nodeColorMode === 'attribute' && nodeColorAttribute) {
+                                    const propValue = d[nodeColorAttribute]
+                                    if (propValue === undefined || propValue === null) return '#999'
+                                    
+                                    // Check if it's a numeric property
+                                    if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
+                                      // Scale numeric value to color (using a color scale)
+                                      const allValues = filteredData.nodes
+                                        .map((n: any) => n[nodeColorAttribute])
+                                        .filter((v: any) => typeof v === 'number') as number[]
+                                      if (allValues.length === 0) return '#2563eb'
+                                      
+                                      const minVal = Math.min(...allValues)
+                                      const maxVal = Math.max(...allValues)
+                                      const range = maxVal - minVal || 1
+                                      const normalized = (Number(propValue) - minVal) / range
+                                      
+                                      // Use hue from green (120) to red (0)
+                                      const hue = 120 - (normalized * 120)
+                                      return `hsl(${hue}, 70%, 50%)`
+                                    } else {
+                                      // Categorical - assign distinct colors
+                                      return getCategoricalColor(nodeColorAttribute, propValue, categoricalColors)
+                                    }
+                                  }
+                                  return '#2563eb'
+                                },
                                 
-                                // Use single hue (light blue) with varying lightness
-                                const hue = 200; // Light blue
-                                const saturation = 70;
-                                const lightness = 75 - (normalized * 50); // 75% (light) to 25% (dark)
+                                // Node size
+                                nodeRadius: (d: any) => {
+                                  if (nodeSizeMode === 'fixed') {
+                                    return 6
+                                  } else if (nodeSizeMode === 'outgoing') {
+                                    const normalized = maxOutgoing > 0 ? (d._totalOutgoing || 0) / maxOutgoing : 0
+                                    return 3 + (normalized * 9) // 3 to 12
+                                  } else if (nodeSizeMode === 'incoming') {
+                                    const normalized = maxIncoming > 0 ? (d._totalIncoming || 0) / maxIncoming : 0
+                                    return 3 + (normalized * 9) // 3 to 12
+                                  } else if (nodeSizeMode === 'attribute' && nodeSizeAttribute) {
+                                    const propValue = d[nodeSizeAttribute]
+                                    if (typeof propValue !== 'number') return 6
+                                    
+                                    const allValues = filteredData.nodes
+                                      .map((n: any) => n[nodeSizeAttribute])
+                                      .filter((v: any) => typeof v === 'number') as number[]
+                                    if (allValues.length === 0) return 6
+                                    
+                                    const minVal = Math.min(...allValues)
+                                    const maxVal = Math.max(...allValues)
+                                    const range = maxVal - minVal || 1
+                                    const normalized = (propValue - minVal) / range
+                                    return 3 + (normalized * 9) // 3 to 12
+                                  }
+                                  return 6
+                                },
                                 
-                                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                              },
-                            }}
+                                // Edge width
+                                edgeWidth: (e: any) => {
+                                  if (edgeWeightEncoding === 'width') {
+                                    const normalized = (e.value - minEdgeWeight) / edgeWeightRange
+                                    return 0.5 + (normalized * 15) // 0.5 to 15.5
+                                  }
+                                  // If using color or opacity, use a base width
+                                  return Math.sqrt(e.value) / 10
+                                },
+                                
+                                // Edge color
+                                edgeColor: (e: any, isAbove: boolean) => {
+                                  const normalized = (e.value - minEdgeWeight) / edgeWeightRange
+                                  
+                                  if (edgeWeightEncoding === 'color') {
+                                    // Color intensity based on weight
+                                    const hue = 200 // Light blue
+                                    const saturation = 70
+                                    const lightness = 75 - (normalized * 50) // 75% (light) to 25% (dark)
+                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                                  } else if (edgeWeightEncoding === 'opacity') {
+                                    // Base color with opacity variation - opacity will be applied via stroke-opacity in SVG
+                                    // Return RGBA with varying alpha based on weight
+                                    const alpha = 0.3 + (normalized * 0.7) // 0.3 to 1.0
+                                    const baseColor = isAbove ? [31, 119, 180] : [214, 39, 40] // rgb values
+                                    return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${alpha})`
+                                  } else {
+                                    // Width encoding - use base colors
+                                    return isAbove ? '#1f77b4' : '#d62728'
+                                  }
+                                },
+                              }
+                            })()}
                           />
                         </ErrorBoundary>
                       )}
