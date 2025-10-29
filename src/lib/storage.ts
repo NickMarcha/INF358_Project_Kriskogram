@@ -148,6 +148,34 @@ export async function deleteDataset(id: string): Promise<void> {
   })
 }
 
+export async function duplicateDataset(id: string): Promise<StoredDataset> {
+  const original = await getDataset(id)
+  if (!original) {
+    throw new Error(`Dataset ${id} not found`)
+  }
+  
+  const duplicate: StoredDataset = {
+    ...original,
+    id: `${original.type}-${Date.now()}`,
+    name: `${original.name} (Copy)`,
+    createdAt: Date.now(),
+  }
+  
+  await saveDataset(duplicate)
+  return duplicate
+}
+
+export async function clearAllDatasets(): Promise<void> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_DATASETS, 'readwrite')
+    const store = tx.objectStore(STORE_DATASETS)
+    store.clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 export async function ensurePersistentStorage(): Promise<boolean> {
   if ('storage' in navigator && 'persist' in navigator.storage) {
     try {

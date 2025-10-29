@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -23,10 +23,27 @@ interface Node {
 interface TableViewProps {
   nodes: Node[]
   edges: Edge[]
+  onNodesChange?: (nodes: Node[]) => void
+  onEdgesChange?: (edges: Edge[]) => void
+  editable?: boolean
 }
 
-export default function TableView({ nodes, edges }: TableViewProps) {
+export default function TableView({ 
+  nodes, 
+  edges, 
+  onNodesChange, 
+  onEdgesChange,
+  editable = false 
+}: TableViewProps) {
   const [activeTab, setActiveTab] = useState<'nodes' | 'edges'>('nodes')
+  const [editedNodes, setEditedNodes] = useState(nodes)
+  const [editedEdges, setEditedEdges] = useState(edges)
+  
+  // Update local state when props change
+  useEffect(() => {
+    setEditedNodes([...nodes])
+    setEditedEdges([...edges])
+  }, [nodes, edges])
 
   // Dynamically extract all property keys from nodes
   const nodeColumns = useMemo<ColumnDef<Node, any>[]>(() => {
@@ -50,12 +67,38 @@ export default function TableView({ nodes, edges }: TableViewProps) {
       accessorKey: key,
       cell: (info: any) => {
         const value = info.getValue()
+        if (editable && key !== 'id') {
+          return (
+            <input
+              type={typeof value === 'number' ? 'number' : 'text'}
+              value={value === null || value === undefined ? '' : String(value)}
+              onChange={(e) => {
+                const rowIndex = info.row.index
+                const newNodes = [...editedNodes]
+                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                newNodes[rowIndex] = { ...newNodes[rowIndex], [key]: newValue }
+                setEditedNodes(newNodes)
+                onNodesChange?.(newNodes)
+              }}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              onBlur={(e) => {
+                // Finalize the change
+                const rowIndex = info.row.index
+                const newNodes = [...editedNodes]
+                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                newNodes[rowIndex] = { ...newNodes[rowIndex], [key]: newValue }
+                setEditedNodes(newNodes)
+                onNodesChange?.(newNodes)
+              }}
+            />
+          )
+        }
         if (value === null || value === undefined) return '-'
         if (typeof value === 'number') return value.toLocaleString()
         return String(value)
       },
     }))
-  }, [nodes])
+  }, [nodes, editable, editedNodes, onNodesChange])
 
   // Dynamically extract all property keys from edges
   const edgeColumns = useMemo<ColumnDef<Edge, any>[]>(() => {
@@ -80,29 +123,54 @@ export default function TableView({ nodes, edges }: TableViewProps) {
       accessorKey: key,
       cell: (info: any) => {
         const value = info.getValue()
+        if (editable && key !== 'source' && key !== 'target') {
+          return (
+            <input
+              type={typeof value === 'number' ? 'number' : 'text'}
+              value={value === null || value === undefined ? '' : String(value)}
+              onChange={(e) => {
+                const rowIndex = info.row.index
+                const newEdges = [...editedEdges]
+                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                newEdges[rowIndex] = { ...newEdges[rowIndex], [key]: newValue }
+                setEditedEdges(newEdges)
+                onEdgesChange?.(newEdges)
+              }}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              onBlur={(e) => {
+                const rowIndex = info.row.index
+                const newEdges = [...editedEdges]
+                const newValue = typeof value === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
+                newEdges[rowIndex] = { ...newEdges[rowIndex], [key]: newValue }
+                setEditedEdges(newEdges)
+                onEdgesChange?.(newEdges)
+              }}
+            />
+          )
+        }
         if (value === null || value === undefined) return '-'
         if (typeof value === 'number') return value.toLocaleString()
         return String(value)
       },
     }))
-  }, [edges])
+  }, [edges, editable, editedEdges, onEdgesChange])
 
   const nodeTable = useReactTable({
-    data: nodes,
+    data: editable ? editedNodes : nodes,
     columns: nodeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
   const edgeTable = useReactTable({
-    data: edges,
+    data: editable ? editedEdges : edges,
     columns: edgeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
   const activeTable = activeTab === 'nodes' ? nodeTable : edgeTable
-  const activeData = activeTab === 'nodes' ? nodes : edges
+  const activeData = activeTab === 'nodes' ? (editable ? editedNodes : nodes) : (editable ? editedEdges : edges)
 
   return (
     <div className="h-full flex flex-col">
