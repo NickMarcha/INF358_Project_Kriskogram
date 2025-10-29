@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { StoredDataset } from '../lib/storage'
-import { getAllDatasets, saveDataset, detectDatasetProperties } from '../lib/storage'
-import { parseStateMigrationCSV } from '../lib/csv-parser'
-import { parseGexf, gexfToKriskogramSnapshots } from '../lib/gexf-parser'
+import { getAllDatasets, saveDataset } from '../lib/storage'
 import ImportPanel from './ImportPanel'
 
 interface DatasetSidebarProps {
@@ -14,9 +12,9 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
   const [datasets, setDatasets] = useState<StoredDataset[]>([])
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importFile, setImportFile] = useState<{
-    file: File
-    content: string
-    type: 'csv' | 'gexf'
+    files: File[]
+    contents: string[]
+    type: 'csv' | 'gexf' | 'csv-two-file'
     parsedData?: {
       nodes: any[]
       edges: any[]
@@ -34,75 +32,26 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
     setDatasets(all)
   }
 
-  async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
+  // File selection is now handled within ImportPanel
 
-    try {
-      const text = await file.text()
-      const fileName = file.name.toLowerCase()
-      let parsedData: {
-        nodes: any[]
-        edges: any[]
-        timeRange?: { start: number; end: number }
-      } | undefined
-
-      if (fileName.endsWith('.csv')) {
-        const parsed = parseStateMigrationCSV(text)
-        parsedData = {
-          nodes: parsed.nodes as any[],
-          edges: parsed.edges as any[],
-          timeRange: { start: 2021, end: 2021 },
-        }
-        setImportFile({ file, content: text, type: 'csv', parsedData })
-        setShowImportPanel(true)
-      } else if (fileName.endsWith('.gexf')) {
-        const graph = parseGexf(text)
-        const snaps = gexfToKriskogramSnapshots(graph)
-        parsedData = {
-          nodes: snaps.length > 0 ? snaps[0].nodes : [],
-          edges: snaps.length > 0 ? snaps[0].edges : [],
-          timeRange: graph.timeRange,
-        }
-        setImportFile({ file, content: text, type: 'gexf', parsedData })
-        setShowImportPanel(true)
-      } else {
-        alert('Unsupported file type. Please use .csv or .gexf files.')
-        return
-      }
-    } catch (error) {
-      alert(`Error parsing file: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+  async function handleImport(
+    datasetData: Omit<StoredDataset, 'id' | 'createdAt'>,
+    parsedResult: {
+      nodes: any[]
+      edges: any[]
+      snapshots: any[]
+      metadata?: any
     }
-  }
-
-  async function handleImport(datasetData: Omit<StoredDataset, 'id' | 'createdAt'>) {
-    if (!importFile) return
-
+  ) {
     try {
-      // Re-parse if needed to get all snapshots for GEXF
-      let snapshots: any[]
-      let metadata
-
-      if (importFile.type === 'csv') {
-        const parsed = parseStateMigrationCSV(importFile.content)
-        const snapshot = { timestamp: datasetData.timeRange.start, nodes: parsed.nodes as any[], edges: parsed.edges as any[] }
-        metadata = detectDatasetProperties(snapshot)
-        snapshots = [snapshot]
-      } else {
-        const graph = parseGexf(importFile.content)
-        snapshots = gexfToKriskogramSnapshots(graph) as any[]
-        metadata = snapshots.length > 0 ? detectDatasetProperties(snapshots[0]) : undefined
-      }
-
-      const id = `${importFile.type}-${Date.now()}`
+      // Use dataset type for ID generation
+      const type = datasetData.type || 'csv'
+      const id = `${type}-${Date.now()}`
       const dataset: StoredDataset = {
         ...datasetData,
         id,
-        snapshots,
-        metadata,
+        snapshots: parsedResult.snapshots,
+        metadata: parsedResult.metadata,
         createdAt: Date.now(),
       }
 
@@ -112,6 +61,7 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
       setImportFile(null)
       onSelect(id)
     } catch (error) {
+      console.error('Import error:', error)
       throw error
     } finally {
       if (fileInputRef.current) {
@@ -126,7 +76,7 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
         <h2 className="text-lg font-bold">Datasets</h2>
         <p className="text-xs text-gray-500">Stored in your browser</p>
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => setShowImportPanel(true)}
           className="mt-3 w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
         >
           Import Dataset
@@ -135,10 +85,10 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
           ref={fileInputRef}
           type="file"
           accept=".csv,.gexf"
-          onChange={handleFileSelect}
+          multiple
           className="hidden"
         />
-        {showImportPanel && importFile && (
+        {showImportPanel && (
           <ImportPanel
             onClose={() => {
               setShowImportPanel(false)
@@ -148,10 +98,9 @@ export default function DatasetSidebar({ selectedId, onSelect }: DatasetSidebarP
               }
             }}
             onImport={handleImport}
-            fileName={importFile.file.name}
-            fileType={importFile.type}
-            fileContent={importFile.content}
-            parsedData={importFile.parsedData}
+            fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
+            onFilesSelected={setImportFile}
+            existingFile={importFile}
           />
         )}
       </div>
