@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute, redirect } from '@tanstack/react-router'
+import { Outlet, createRootRoute, redirect, useLocation } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanstackDevtools } from '@tanstack/react-devtools'
 import { SidebarProvider, useSidebar } from '../contexts/SidebarContext'
@@ -24,6 +24,9 @@ function RootComponent() {
 
 function RootLayout() {
   const { leftSidebarCollapsed, setLeftSidebarCollapsed, setLeftSidebarWidth, sidebarContent } = useSidebar()
+  const location = useLocation()
+  const pathname = location.pathname || ''
+  const isExplorer = pathname.includes('/explorer')
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -38,7 +41,13 @@ function RootLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden" style={{ height: '100vh', maxHeight: '100vh' }}>
-        <Outlet />
+        {isExplorer ? (
+          <Outlet />
+        ) : (
+          <div className="flex-1 min-h-0 h-full overflow-auto">
+            <Outlet />
+          </div>
+        )}
       </div>
 
       <TanstackDevtools

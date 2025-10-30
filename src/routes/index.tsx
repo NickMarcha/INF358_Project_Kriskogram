@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import logo from '../logo.svg'
+import { Globe, Info } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -10,11 +10,6 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-12">
-          <img
-            src={logo}
-            className="h-32 mx-auto mb-8 animate-[spin_20s_linear_infinite]"
-            alt="Kriskogram Logo"
-          />
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
             Kriskogram
           </h1>
@@ -24,127 +19,147 @@ function App() {
         </header>
 
         <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">Simple Demo</h2>
-              <p className="text-gray-600 mb-4">
-                A basic Kriskogram showing migration flows between cities with interactive features.
-              </p>
-              <Link
-                to="/kriskogram-simple"
-                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                View Simple Demo
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">Full Demo</h2>
-              <p className="text-gray-600 mb-4">
-                Complete demo with GEXF data loading, temporal animation, and rich migration data.
-              </p>
-              <Link
-                to="/kriskogram"
-                className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                View Full Demo
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">State-to-State Migration (2021)</h2>
-              <p className="text-gray-600 mb-4">
-                Real U.S. Census Bureau data showing migration flows between all 50 states. 
-                Explore over 2,500 migration patterns with interactive filtering and visual analysis.
-              </p>
-              <Link
-                to="/state-migration"
-                className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                View State Migration Data
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
-              <h2 className="text-2xl font-bold mb-4 text-gray-800">Sample Datasets</h2>
-              <p className="text-gray-600 mb-4">
-                Download sample datasets including US State-to-State Migration (2021), 
-                Sample Migration (GEXF), and Swiss Relocations (2016) for use with Kriskogram.
-              </p>
-              <Link
-                to="/datasets"
-                className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Browse & Download Datasets
-              </Link>
-            </div>
+          {/* Explore Button */}
+          <div className="text-center mb-12">
+            <Link
+              to="/explorer"
+              search={{
+                view: 'kriskogram' as const,
+                year: undefined as number | undefined,
+                minThreshold: 0,
+                maxThreshold: 200000,
+                maxEdges: 500,
+              }}
+              className="explore-button relative inline-flex items-center gap-3 text-white text-xl font-bold px-12 py-6 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 overflow-hidden group"
+              style={{
+                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%)',
+                backgroundSize: '200% 200%',
+              }}
+            >
+              <style>{`
+                @keyframes gradient-shift {
+                  0%, 100% { background-position: 0% 50%; }
+                  50% { background-position: 100% 50%; }
+                }
+                @keyframes bounce-subtle {
+                  0%, 100% { transform: translateY(0px); }
+                  20% { transform: translateY(-6px); }
+                  40% { transform: translateY(-3px); }
+                  60% { transform: translateY(-7px); }
+                  80% { transform: translateY(-2px); }
+                }
+                .explore-button {
+                  animation: gradient-shift 4s ease infinite, bounce-subtle 3s ease-in-out infinite;
+                }
+                .explore-button:hover {
+                  animation: gradient-shift 2s ease infinite, none;
+                  transform: scale(1.1) translateY(0) !important;
+                }
+              `}</style>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              <Globe className="w-6 h-6 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="relative z-10">Explore Interactive Kriskograms</span>
+            </Link>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Features</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold mb-2">Dynamic Animation</h3>
-                <p className="text-sm text-gray-600">Smooth temporal transitions showing migration patterns over time</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold mb-2">Rich Data</h3>
-                <p className="text-sm text-gray-600">GEXF format support with economic, geographic, and migration attributes</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-                  </svg>
-                </div>
-                <h3 className="font-semibold mb-2">Interactive</h3>
-                <p className="text-sm text-gray-600">Hover, click, and explore migration patterns with tooltips and highlighting</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center">
+          {/* Datasets Section */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800">About the Datasets</h2>
             <p className="text-gray-600 mb-4">
-              Built with React, D3.js, and TanStack Router
+              This project sources data from various public datasets including US State-to-State Migration (2021), 
+              Sample Migration (GEXF), and Swiss Relocations (2016). Learn more about these datasets, their sources, 
+              and download them for use with Kriskogram.
             </p>
-            <div className="flex justify-center space-x-4">
-              <a
-                href="https://reactjs.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                React
-              </a>
-              <a
-                href="https://d3js.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange-600 hover:underline"
-              >
-                D3.js
-              </a>
-              <a
-                href="https://tanstack.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-600 hover:underline"
-              >
-                TanStack
-              </a>
+            <Link
+              to="/datasets"
+              className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Browse & Download Datasets
+            </Link>
+          </div>
+
+          {/* Demo Prototypes */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">Demo Prototypes</h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 font-bold text-xl">1</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold mb-2 text-gray-800">Simple Demo</h3>
+                    <p className="text-gray-600 mb-4">
+                      A basic Kriskogram showing migration flows between cities with interactive features.
+                    </p>
+                    <Link
+                      to="/kriskogram-simple"
+                      className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      View Simple Demo
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-xl">2</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold mb-2 text-gray-800">Full Demo</h3>
+                    <p className="text-gray-600 mb-4">
+                      Complete demo with GEXF data loading, temporal animation, and rich migration data.
+                    </p>
+                    <Link
+                      to="/kriskogram"
+                      className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      View Full Demo
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <span className="text-purple-600 font-bold text-xl">3</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold mb-2 text-gray-800">State Migration Demo</h3>
+                    <p className="text-gray-600 mb-4">
+                      Real U.S. Census Bureau data showing migration flows between all 50 states. 
+                      Explore over 2,500 migration patterns with interactive filtering and visual analysis.
+                    </p>
+                    <Link
+                      to="/state-migration"
+                      className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      View State Migration Data
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* About Section */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Info className="w-6 h-6 text-gray-600" />
+              <h2 className="text-2xl font-bold text-gray-800">About</h2>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Learn more about Kriskogram, its features, architecture, and how to use it.
+            </p>
+            <Link
+              to="/about"
+              className="inline-block bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Learn More
+            </Link>
           </div>
         </div>
       </div>
