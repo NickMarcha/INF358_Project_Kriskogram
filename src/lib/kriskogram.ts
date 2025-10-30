@@ -43,6 +43,10 @@ export interface KriskogramConfig {
   container?: string; // CSS selector, defaults to "body"
   title?: string; // Title to display, defaults to "Migration Flow Visualization"
   lens?: { enabled: boolean; x: number; y: number; radius: number };
+  legend?:
+    | { type: 'direction'; labels?: { above: string; below: string }; colors?: { above: string; below: string } }
+    | { type: 'weight'; color: string }
+    | { type: 'categorical'; title?: string; entries: Array<{ label: string; color: string }>; interNote?: string };
 }
 
 // -------------------- Implementation --------------------
@@ -383,6 +387,9 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("fill", "#333")
     .text(title);
 
+  // Initial legend render
+  renderLegend();
+
   // Corner direction indicators (clockwise quarter-arc arrows)
   const arrowColor = "#6b7280"; // Tailwind gray-500
   const arrowStroke = 1.5;
@@ -420,6 +427,76 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("stroke", arrowColor)
     .attr("stroke-width", arrowStroke)
     .attr("marker-end", "url(#corner-arrow)");
+
+  // ---- Legend (fixed, not zoomed) ----
+  function renderLegend() {
+    svg.selectAll('.kris-legend').remove();
+    if (!config.legend) return;
+
+    const lg = svg.append('g').attr('class', 'kris-legend');
+    const padding = 8;
+    const x0 = margin.left;
+    const y0 = margin.top + 10;
+    let w = 0;
+    let h = 0;
+
+    if ((config.legend as any).type === 'direction') {
+      const { labels, colors } = (config.legend as any);
+      const above = labels?.above ?? 'Above (→)';
+      const below = labels?.below ?? 'Below (←)';
+      // Default colors aligned with current arc coloring
+      const cAbove = colors?.above ?? '#d62728';
+      const cBelow = colors?.below ?? '#1f77b4';
+      const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
+      const row = (y: number, label: string, color: string) => {
+        group.append('line').attr('x1', 0).attr('y1', y).attr('x2', 28).attr('y2', y).attr('stroke', color).attr('stroke-width', 3);
+        group.append('text').attr('x', 36).attr('y', y + 4).attr('fill', '#333').attr('font-size', 11).text(label);
+      };
+      row(0, above, cAbove);
+      row(18, below, cBelow);
+      w = 36 + Math.max(above.length, below.length) * 6.5;
+      h = 18 + 18;
+    } else if ((config.legend as any).type === 'weight') {
+      const color = (config.legend as any).color as string;
+      const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
+      const gradId = `lg-grad-${Math.random().toString(36).slice(2)}`;
+      const defs2 = svg.append('defs');
+      const grad = defs2.append('linearGradient').attr('id', gradId);
+      grad.append('stop').attr('offset', '0%').attr('stop-color', `hsla(200, 70%, 80%, 1)`);
+      grad.append('stop').attr('offset', '100%').attr('stop-color', `hsla(200, 70%, 30%, 1)`);
+      group.append('rect').attr('x', 0).attr('y', 0).attr('width', 120).attr('height', 10).attr('fill', `url(#${gradId})`).attr('stroke', '#ccc');
+      group.append('text').attr('x', 0).attr('y', 24).attr('fill', '#333').attr('font-size', 11).text('Lower');
+      group.append('text').attr('x', 120).attr('y', 24).attr('text-anchor', 'end').attr('fill', '#333').attr('font-size', 11).text('Higher');
+      w = 120;
+      h = 30;
+    } else if ((config.legend as any).type === 'categorical') {
+      const { entries, title, interNote } = (config.legend as any);
+      const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
+      if (title) group.append('text').attr('x', 0).attr('y', 0).attr('fill', '#333').attr('font-size', 12).attr('font-weight', 600).text(title);
+      let y = title ? 16 : 0;
+      entries.slice(0, 10).forEach((e: any) => {
+        group.append('rect').attr('x', 0).attr('y', y).attr('width', 16).attr('height', 8).attr('fill', e.color).attr('stroke', '#ccc');
+        group.append('text').attr('x', 22).attr('y', y + 8).attr('fill', '#333').attr('font-size', 11).text(String(e.label));
+        y += 14;
+      });
+      if (interNote) {
+        group.append('text').attr('x', 0).attr('y', y + 10).attr('fill', '#666').attr('font-size', 10).text(interNote);
+        y += 18;
+      }
+      w = 160;
+      h = y;
+    }
+
+    // Background
+    lg.insert('rect', ':first-child')
+      .attr('x', x0)
+      .attr('y', y0)
+      .attr('width', w + padding * 2)
+      .attr('height', h + padding * 2)
+      .attr('fill', 'white')
+      .attr('stroke', '#e5e7eb')
+      .attr('rx', 6);
+  }
 
   return {
     svg,
@@ -586,6 +663,9 @@ export function createKriskogram(config: KriskogramConfig) {
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
         .attr("opacity", arcOpacity);
+
+      // Re-render legend when data/props change
+      renderLegend();
     }
   };
 }

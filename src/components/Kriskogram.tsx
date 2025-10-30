@@ -17,6 +17,7 @@ export interface KriskogramProps {
   lens?: { enabled: boolean; x: number; y: number; radius: number };
   onMouseMoveInCanvas?: (pt: { x: number; y: number }) => void;
   onWheelInCanvas?: (deltaY: number) => void;
+  legend?: KriskogramConfig['legend'];
 }
 
 export interface KriskogramRef {
@@ -25,7 +26,7 @@ export interface KriskogramRef {
 }
 
 export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
-  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, title, className, style, lens, onMouseMoveInCanvas, onWheelInCanvas }, ref) => {
+  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, title, className, style, lens, onMouseMoveInCanvas, onWheelInCanvas, legend }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const kriskogramRef = useRef<ReturnType<typeof createKriskogram> | null>(null);
 
@@ -58,6 +59,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         title,
         container: containerRef.current as any,
         lens,
+        legend,
       });
 
       kriskogramRef.current = kriskogram;
@@ -73,7 +75,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         }
         kriskogramRef.current = null;
       };
-    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title, lens?.enabled, lens?.x, lens?.y, lens?.radius]);
+    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title, lens?.enabled, lens?.x, lens?.y, lens?.radius, legend]);
 
     // Update data when props change
     useEffect(() => {

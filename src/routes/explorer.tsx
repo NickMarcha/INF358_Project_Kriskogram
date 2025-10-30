@@ -243,8 +243,16 @@ function ExplorerPage() {
   const [arcOpacity, setArcOpacity] = useState(0.85)
   // Edge styling controls (inverted: independent width and color selectors)
   const [edgeWidthMode, setEdgeWidthMode] = useState<'fixed' | 'weight'>('weight')
-  const [edgeColorMode, setEdgeColorMode] = useState<'direction' | 'weight' | 'attribute'>('direction')
-  const [edgeColorAttribute, setEdgeColorAttribute] = useState<string | null>(null)
+  // Edge color (advanced: separate hue and intensity sources)
+  const [edgeColorAdvanced, setEdgeColorAdvanced] = useState<boolean>(false)
+  const [edgeColorHue, setEdgeColorHue] = useState<'direction' | 'region' | 'division' | 'attribute' | 'single'>('direction')
+  const [edgeColorHueAttribute, setEdgeColorHueAttribute] = useState<string | null>(null)
+  const [edgeColorIntensity, setEdgeColorIntensity] = useState<'constant' | 'weight' | 'attribute'>('weight')
+  const [edgeColorIntensityAttribute, setEdgeColorIntensityAttribute] = useState<string | null>(null)
+  const [edgeColorIntensityConst, setEdgeColorIntensityConst] = useState<number>(0.6)
+  const [edgeColorInterGrayscale, setEdgeColorInterGrayscale] = useState<boolean>(true)
+  // Intra/Inter filters
+  const [intraFilter, setIntraFilter] = useState<'none' | 'region' | 'division' | 'interRegion' | 'interDivision'>('none')
   const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
   const [nodeColorMode, setNodeColorMode] = useState<'single' | 'attribute' | 'outgoing' | 'incoming'>('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
@@ -370,6 +378,36 @@ function ExplorerPage() {
       edgeTypeInfo?.property || '',
       edgeTypeFilter
     )
+
+    // Intra-only filter by region/division
+    if (intraFilter !== 'none') {
+      const idToNode = new Map<string, any>((currentSnapshot.nodes as any[]).map((n: any) => [n.id, n]))
+      if (intraFilter === 'region') {
+        edgesToFilter = edgesToFilter.filter((e: any) => {
+          const s = idToNode.get(e.source)
+          const t = idToNode.get(e.target)
+          return s && t && s.region && t.region && s.region === t.region
+        })
+      } else if (intraFilter === 'division') {
+        edgesToFilter = edgesToFilter.filter((e: any) => {
+          const s = idToNode.get(e.source)
+          const t = idToNode.get(e.target)
+          return s && t && s.division && t.division && s.division === t.division
+        })
+      } else if (intraFilter === 'interRegion') {
+        edgesToFilter = edgesToFilter.filter((e: any) => {
+          const s = idToNode.get(e.source)
+          const t = idToNode.get(e.target)
+          return s && t && s.region && t.region && s.region !== t.region
+        })
+      } else if (intraFilter === 'interDivision') {
+        edgesToFilter = edgesToFilter.filter((e: any) => {
+          const s = idToNode.get(e.source)
+          const t = idToNode.get(e.target)
+          return s && t && s.division && t.division && s.division !== t.division
+        })
+      }
+    }
     
     // Then filter by value thresholds and limit
     const filteredEdges = edgesToFilter
@@ -405,7 +443,7 @@ function ExplorerPage() {
     }))
     
     return { nodes: nodesWithDynamicAttrs, edges: filteredEdges }
-  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges, edgeTypeFilter, edgeTypeInfo])
+  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges, edgeTypeFilter, edgeTypeInfo, intraFilter])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -431,6 +469,14 @@ function ExplorerPage() {
   const effectiveMinEdgeValue = useMemo(() => {
     if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
     return Math.min(...filteredData.edges.map((e: any) => e.value))
+  }, [filteredData])
+
+  // Metadata presence for conditional UI (region/division coloring)
+  const hasRegionData = useMemo(() => {
+    return filteredData.nodes.some((n: any) => n && n.region)
+  }, [filteredData])
+  const hasDivisionData = useMemo(() => {
+    return filteredData.nodes.some((n: any) => n && n.division)
   }, [filteredData])
 
   const effectiveMaxEdgeValue = useMemo(() => {
@@ -653,40 +699,130 @@ function ExplorerPage() {
                                   return baseEdgeWidth
                                 },
                                 
-                                // Edge color
+                                // Edge color (supports advanced hue/intensity sources)
                                 edgeColor: (e: any, isAbove: boolean) => {
-                                  const normalized = (e.value - minEdgeWeight) / edgeWeightRange
-                                  if (edgeColorMode === 'direction') {
-                                    return isAbove ? '#1f77b4' : '#d62728'
+                                  const weightNorm = (e.value - minEdgeWeight) / edgeWeightRange
+
+                                  // Helper: categorical palette
+                                  const palette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+
+                                  // Advanced off: keep legacy simple modes via mapping to hue/intensity
+                                  if (!edgeColorAdvanced) {
+                                    if (edgeColorHue === 'direction') {
+                                      return isAbove ? '#1f77b4' : '#d62728'
+                                    }
                                   }
-                                  if (edgeColorMode === 'weight') {
-                                    const hue = 200
-                                    const saturation = 70
-                                    const lightness = 75 - (normalized * 50)
-                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+
+                                  // Compute hue color
+                                  let hueColor = '#2563eb'
+                                  if (edgeColorHue === 'direction') {
+                                    hueColor = isAbove ? '#1f77b4' : '#d62728'
+                                  } else if (edgeColorHue === 'region') {
+                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
+                                    const regions = Array.from(new Set(filteredData.nodes.map((n: any) => n.region).filter(Boolean)))
+                                    const map = new Map(regions.map((r, idx) => [r, palette[idx % palette.length]]))
+                                    hueColor = (src && src.region) ? (map.get(src.region) || '#2563eb') : '#2563eb'
+                                  } else if (edgeColorHue === 'division') {
+                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
+                                    const divs = Array.from(new Set(filteredData.nodes.map((n: any) => n.division).filter(Boolean)))
+                                    const map = new Map(divs.map((d, idx) => [d, palette[idx % palette.length]]))
+                                    hueColor = (src && src.division) ? (map.get(src.division) || '#2563eb') : '#2563eb'
+                                  } else if (edgeColorHue === 'attribute' && edgeColorHueAttribute) {
+                                    const val = (e as any)[edgeColorHueAttribute]
+                                    if (val != null) {
+                                      if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorHueAttribute)) {
+                                        const allVals = filteredData.edges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => typeof v === 'number') as number[]
+                                        const minVal = Math.min(...allVals)
+                                        const maxVal = Math.max(...allVals)
+                                        const range = maxVal - minVal || 1
+                                        const n = (Number(val) - minVal) / range
+                                        const hue = 120 - (n * 120)
+                                        hueColor = `hsl(${hue}, 70%, 50%)`
+                                      } else {
+                                        const uniq = Array.from(new Set(filteredData.edges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => v != null)))
+                                        const map = new Map(uniq.map((v, idx) => [v, palette[idx % palette.length]]))
+                                        hueColor = map.get(val) || '#2563eb'
+                                      }
+                                    }
+                                  } else if (edgeColorHue === 'single') {
+                                    hueColor = '#2563eb'
                                   }
-                                  if (edgeColorMode === 'attribute' && edgeColorAttribute) {
-                                    const propValue = (e as any)[edgeColorAttribute]
-                                    if (propValue === undefined || propValue === null) return '#999'
-                                    if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorAttribute)) {
-                                      const allVals = filteredData.edges.map((ed: any) => ed[edgeColorAttribute]).filter((v: any) => typeof v === 'number') as number[]
-                                      if (allVals.length === 0) return '#2563eb'
+
+                                  // Compute intensity [0..1]
+                                  let intensity = 0.6
+                                  if (edgeColorIntensity === 'weight') {
+                                    intensity = Math.max(0, Math.min(1, weightNorm))
+                                  } else if (edgeColorIntensity === 'attribute' && edgeColorIntensityAttribute) {
+                                    const val = (e as any)[edgeColorIntensityAttribute]
+                                    if (val != null && dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorIntensityAttribute)) {
+                                      const allVals = filteredData.edges.map((ed: any) => ed[edgeColorIntensityAttribute]).filter((v: any) => typeof v === 'number') as number[]
                                       const minVal = Math.min(...allVals)
                                       const maxVal = Math.max(...allVals)
                                       const range = maxVal - minVal || 1
-                                      const n = (Number(propValue) - minVal) / range
-                                      const hue = 120 - (n * 120)
-                                      return `hsl(${hue}, 70%, 50%)`
-                                    } else {
-                                      const uniqueValues = Array.from(new Set(filteredData.edges.map((ed: any) => ed[edgeColorAttribute]).filter((v: any) => v != null)))
-                                      const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-                                      const map = new Map(uniqueValues.map((v, idx) => [v, colors[idx % colors.length]]))
-                                      return map.get(propValue) || '#2563eb'
+                                      intensity = Math.max(0, Math.min(1, (Number(val) - minVal) / range))
+                                    }
+                                  } else if (edgeColorIntensity === 'constant') {
+                                    intensity = Math.max(0, Math.min(1, edgeColorIntensityConst))
+                                  }
+
+                                  // If inter-edges grayscale requested for region/division hue
+                                  if (edgeColorInterGrayscale && (edgeColorHue === 'region' || edgeColorHue === 'division')) {
+                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
+                                    const tgt = filteredData.nodes.find((n: any) => n.id === e.target)
+                                    const same = edgeColorHue === 'region' ? (src?.region && src.region === tgt?.region) : (src?.division && src.division === tgt?.division)
+                                    if (!same) {
+                                      const light = 80 - (intensity * 50)
+                                      return `hsl(0, 0%, ${light}%)`
                                     }
                                   }
-                                  return isAbove ? '#1f77b4' : '#d62728'
+
+                                  // Apply intensity to hue color by adjusting lightness via HSL without external deps
+                                  const light = 80 - (intensity * 55)
+                                  // Direction hue
+                                  if (edgeColorHue === 'direction') {
+                                    const h = isAbove ? 0 : 200
+                                    return `hsl(${h}, 70%, ${Math.round(light)}%)`
+                                  }
+                                  // Single hue
+                                  if (edgeColorHue === 'single') {
+                                    return `hsl(210, 70%, ${Math.round(light)}%)`
+                                  }
+                                  // Region/Division hue keep categorical color (unless grayscale handled earlier)
+                                  if (edgeColorHue === 'region' || edgeColorHue === 'division') {
+                                    return hueColor
+                                  }
+                                  // Attribute hue using computed HSL
+                                  return hueColor
                                 },
                               }
+                            })()}
+                            legend={(() => {
+                              // Build legend from current color settings
+                              if (!edgeColorAdvanced) {
+                                if (edgeColorHue === 'direction') {
+                                  return { type: 'direction' as const };
+                                }
+                                if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
+                                  return { type: 'weight' as const, color: '#1f77b4' };
+                                }
+                              } else {
+                                if (edgeColorHue === 'region' && hasRegionData) {
+                                  const regions = Array.from(new Set(filteredData.nodes.map((n: any) => n.region).filter(Boolean))) as string[]
+                                  const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                                  const entries = regions.slice(0, 10).map((r, i) => ({ label: r, color: colors[i % colors.length] }))
+                                  return { type: 'categorical' as const, title: 'Regions', entries, interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined }
+                                }
+                                if (edgeColorHue === 'division' && hasDivisionData) {
+                                  const divs = Array.from(new Set(filteredData.nodes.map((n: any) => n.division).filter(Boolean))) as string[]
+                                  const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                                  const entries = divs.slice(0, 10).map((d, i) => ({ label: d, color: colors[i % colors.length] }))
+                                  return { type: 'categorical' as const, title: 'Divisions', entries, interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined }
+                                }
+                                if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
+                                  return { type: 'weight' as const, color: '#1f77b4' }
+                                }
+                              }
+                              return undefined
                             })()}
                             lens={{ enabled: interactionMode === 'lens', x: lensPos.x, y: lensPos.y, radius: lensRadius }}
                             onMouseMoveInCanvas={(pt) => {
@@ -945,6 +1081,43 @@ function ExplorerPage() {
                       </div>
                     )}
 
+                    {/* Intra/Inter edge scope filter */}
+                    {(hasRegionData || hasDivisionData) && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">Edge Scope</label>
+                        <div className="flex items-center gap-3 text-xs">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="edgeScope" value="none" className="w-3.5 h-3.5" checked={intraFilter === 'none'} onChange={() => setIntraFilter('none')} />
+                            <span>All</span>
+                          </label>
+                          {hasRegionData && (
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="edgeScope" value="region" className="w-3.5 h-3.5" checked={intraFilter === 'region'} onChange={() => setIntraFilter('region')} />
+                              <span>Intra Region</span>
+                            </label>
+                          )}
+                          {hasDivisionData && (
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="edgeScope" value="division" className="w-3.5 h-3.5" checked={intraFilter === 'division'} onChange={() => setIntraFilter('division')} />
+                              <span>Intra Division</span>
+                            </label>
+                          )}
+                          {hasRegionData && (
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="edgeScope" value="interRegion" className="w-3.5 h-3.5" checked={intraFilter === 'interRegion'} onChange={() => setIntraFilter('interRegion')} />
+                              <span>Inter Region</span>
+                            </label>
+                          )}
+                          {hasDivisionData && (
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="edgeScope" value="interDivision" className="w-3.5 h-3.5" checked={intraFilter === 'interDivision'} onChange={() => setIntraFilter('interDivision')} />
+                              <span>Inter Division</span>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Filtering Controls */}
                     {currentSnapshot && stats && (
                       <div className="space-y-4">
@@ -1153,57 +1326,119 @@ function ExplorerPage() {
 
                     {/* Edge Color */}
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Edge Color</label>
-                      <div className="flex flex-col gap-1.5 text-xs">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeColorMode"
-                            value="direction"
-                            checked={edgeColorMode === 'direction'}
-                            onChange={() => setEdgeColorMode('direction')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Direction (Above/Below)</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeColorMode"
-                            value="weight"
-                            checked={edgeColorMode === 'weight'}
-                            onChange={() => setEdgeColorMode('weight')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Weight Intensity</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeColorMode"
-                            value="attribute"
-                            checked={edgeColorMode === 'attribute'}
-                            onChange={() => setEdgeColorMode('attribute')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Attribute</span>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-gray-700">Edge Color</label>
+                        <label className="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer">
+                          <input type="checkbox" className="w-3.5 h-3.5" checked={edgeColorAdvanced} onChange={(e) => setEdgeColorAdvanced(e.target.checked)} />
+                          Advanced
                         </label>
                       </div>
-                      {edgeColorMode === 'attribute' && dataset?.metadata && (
-                        <div className="mt-2 space-y-1">
-                          <label className="text-xs text-gray-600">Attribute</label>
-                          <select
-                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            value={edgeColorAttribute || ''}
-                            onChange={(e) => setEdgeColorAttribute(e.target.value || null)}
-                          >
-                            <option value="">Select attribute…</option>
-                            {[...dataset.metadata.hasNumericProperties.edges, ...dataset.metadata.hasCategoricalProperties.edges]
-                              .filter((v, i, a) => a.indexOf(v) === i)
-                              .map((prop) => (
-                                <option key={prop} value={prop}>{prop}</option>
-                              ))}
-                          </select>
+                      {!edgeColorAdvanced && (
+                        <div className="flex flex-col gap-1.5 text-xs">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="edgeColorHueSimple"
+                              value="direction"
+                              checked={edgeColorHue === 'direction'}
+                              onChange={() => setEdgeColorHue('direction')}
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>By Direction (Above/Below)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="edgeColorHueSimple"
+                              value="weight"
+                              checked={edgeColorIntensity === 'weight' && edgeColorHue === 'single'}
+                              onChange={() => { setEdgeColorHue('single'); setEdgeColorIntensity('weight') }}
+                              className="w-3.5 h-3.5"
+                            />
+                            <span>By Weight Intensity</span>
+                          </label>
+                        </div>
+                      )}
+                      {edgeColorAdvanced && (
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-700">Hue Source</label>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeHue" value="direction" className="w-3.5 h-3.5" checked={edgeColorHue === 'direction'} onChange={() => setEdgeColorHue('direction')} />
+                                <span>Direction</span>
+                              </label>
+                              {hasRegionData && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input type="radio" name="edgeHue" value="region" className="w-3.5 h-3.5" checked={edgeColorHue === 'region'} onChange={() => setEdgeColorHue('region')} />
+                                  <span>Region</span>
+                                </label>
+                              )}
+                              {hasDivisionData && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input type="radio" name="edgeHue" value="division" className="w-3.5 h-3.5" checked={edgeColorHue === 'division'} onChange={() => setEdgeColorHue('division')} />
+                                  <span>Division</span>
+                                </label>
+                              )}
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeHue" value="attribute" className="w-3.5 h-3.5" checked={edgeColorHue === 'attribute'} onChange={() => setEdgeColorHue('attribute')} />
+                                <span>Attribute</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeHue" value="single" className="w-3.5 h-3.5" checked={edgeColorHue === 'single'} onChange={() => setEdgeColorHue('single')} />
+                                <span>Single</span>
+                              </label>
+                            </div>
+                            {edgeColorHue === 'attribute' && dataset?.metadata && (
+                              <div className="mt-2">
+                                <label className="text-xs text-gray-600">Hue Attribute</label>
+                                <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorHueAttribute || ''} onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}>
+                                  <option value="">Select attribute…</option>
+                                  {[...dataset.metadata.hasNumericProperties.edges, ...dataset.metadata.hasCategoricalProperties.edges]
+                                    .filter((v, i, a) => a.indexOf(v) === i)
+                                    .map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
+                                </select>
+                              </div>
+                            )}
+                            {(edgeColorHue === 'region' || edgeColorHue === 'division') && (
+                              <label className="flex items-center gap-2 mt-2 text-[11px] text-gray-600 cursor-pointer">
+                                <input type="checkbox" className="w-3.5 h-3.5" checked={edgeColorInterGrayscale} onChange={(e) => setEdgeColorInterGrayscale(e.target.checked)} />
+                                Inter edges grayscale by intensity
+                              </label>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-gray-700">Intensity Source</label>
+                            <div className="flex items-center gap-3 text-xs">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeIntensity" value="weight" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'weight'} onChange={() => setEdgeColorIntensity('weight')} />
+                                <span>Weight</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeIntensity" value="constant" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'constant'} onChange={() => setEdgeColorIntensity('constant')} />
+                                <span>Constant</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="edgeIntensity" value="attribute" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'attribute'} onChange={() => setEdgeColorIntensity('attribute')} />
+                                <span>Attribute</span>
+                              </label>
+                            </div>
+                            {edgeColorIntensity === 'constant' && (
+                              <div className="mt-2">
+                                <label className="text-xs text-gray-600">Constant Intensity: {(edgeColorIntensityConst*100).toFixed(0)}%</label>
+                                <input type="range" min={0} max={1} step={0.01} value={edgeColorIntensityConst} onChange={(e) => setEdgeColorIntensityConst(parseFloat(e.target.value))} className="w-full" />
+                              </div>
+                            )}
+                            {edgeColorIntensity === 'attribute' && dataset?.metadata && (
+                              <div className="mt-2">
+                                <label className="text-xs text-gray-600">Intensity Attribute</label>
+                                <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorIntensityAttribute || ''} onChange={(e) => setEdgeColorIntensityAttribute(e.target.value || null)}>
+                                  <option value="">Select attribute…</option>
+                                  {dataset.metadata.hasNumericProperties.edges.map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1463,4 +1698,5 @@ async function preloadDefaults(): Promise<string | undefined> {
 
   return csvId
 }
+
 

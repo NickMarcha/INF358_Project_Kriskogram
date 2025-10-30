@@ -8,31 +8,31 @@ import { routeTree } from './routeTree.gen'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
-// Register Service Worker for PWA offline support
+// Service Worker: enable only in production to avoid dev cache/HMR conflicts
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    const baseUrl = import.meta.env.BASE_URL || '/'
-    const swUrl = `${baseUrl}sw.js`
-    
-    navigator.serviceWorker
-      .register(swUrl)
-      .then((registration) => {
-        console.log('[Service Worker] Registered successfully:', registration.scope)
-        
-        // Check for updates every hour
-        setInterval(() => {
-          registration.update()
-        }, 3600000)
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      const baseUrl = import.meta.env.BASE_URL || '/'
+      const swUrl = `${baseUrl}sw.js`
+      navigator.serviceWorker
+        .register(swUrl)
+        .then((registration) => {
+          console.log('[Service Worker] Registered successfully:', registration.scope)
+          setInterval(() => registration.update(), 3600000)
+        })
+        .catch((error) => {
+          console.error('[Service Worker] Registration failed:', error)
+        })
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload()
       })
-      .catch((error) => {
-        console.error('[Service Worker] Registration failed:', error)
-      })
-    
-    // Listen for updates
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload()
     })
-  })
+  } else {
+    // Dev: actively unregister any existing service workers to prevent stale caches & invalid hook errors
+    navigator.serviceWorker.getRegistrations?.().then((regs) => {
+      regs.forEach((r) => r.unregister())
+    }).catch(() => {})
+  }
 }
 
 // Handle 404 redirect from GitHub Pages
