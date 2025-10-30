@@ -911,6 +911,9 @@ function ExplorerPage() {
                         }}
                         className="w-full"
                       />
+                      <p className="text-xs text-gray-600 italic">
+                        After filtering by thresholds and edge type, edges are sorted by value (highest first) and the top {maxEdges} edges are displayed.
+                      </p>
                     </div>
                   </div>
                 )}
