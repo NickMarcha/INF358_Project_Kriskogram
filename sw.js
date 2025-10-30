@@ -1,7 +1,7 @@
 // Service Worker for Kriskogram PWA
 // This enables offline functionality and app installation
 
-const CACHE_NAME = 'kriskogram-v1'
+const CACHE_NAME = 'kriskogram-v2'
 
 // Get base path from the service worker's location
 function getBasePath() {
@@ -94,73 +94,60 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return
-  }
+  // Only handle same-origin GET requests
+  if (event.request.method !== 'GET') return
+  if (!event.request.url.startsWith(self.location.origin)) return
 
-  // Skip cross-origin requests (external APIs)
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return
-  }
+  const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document'
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Return cached version if available
-      if (cachedResponse) {
-        return cachedResponse
-      }
-
-      // Otherwise fetch from network
-      return fetch(event.request.clone(), { redirect: 'follow' })
-        .then((response) => {
-          // Don't cache redirects, errors, or invalid responses
-          // Only cache successful (200) responses that aren't redirects
-          if (!response || response.status !== 200 || response.redirected || response.type !== 'basic') {
-            // Return the response even if we don't cache it (could be a redirect which is valid)
-            return response
+  // Network-first for navigations (HTML)
+  if (isNavigation) {
+    event.respondWith(
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request, { redirect: 'follow', cache: 'no-store' })
+          // Cache successful HTML for offline use
+          if (networkResponse && networkResponse.ok && !networkResponse.redirected) {
+            const cache = await caches.open(CACHE_NAME)
+            cache.put(event.request, networkResponse.clone())
           }
+          return networkResponse
+        } catch (_) {
+          // Fallback to cached index.html or cached navigation
+          const indexUrl = BASE_PATH + 'index.html'
+          const fullUrl = new URL(indexUrl, self.location.origin).toString()
+          const cached =
+            (await caches.match(event.request)) ||
+            (await caches.match(fullUrl)) ||
+            (await caches.match(indexUrl))
+          if (cached) return cached
+          return new Response(
+            `<!DOCTYPE html><html><head><title>Offline</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><h1>You are offline</h1><p>Please check your internet connection.</p><script>setTimeout(() => window.location.reload(), 2000)</script></body></html>`,
+            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+          )
+        }
+      })()
+    )
+    return
+  }
 
-          // Clone the response for caching
-          const responseToCache = response.clone()
-
-          // Cache the fetched response
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache)
-          })
-
+  // Stale-while-revalidate for other same-origin GET requests
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(CACHE_NAME)
+      const cached = await cache.match(event.request)
+      const fetchPromise = fetch(event.request, { redirect: 'follow' })
+        .then((response) => {
+          if (response && response.ok && !response.redirected && response.type === 'basic') {
+            cache.put(event.request, response.clone())
+          }
           return response
         })
-        .catch(() => {
-          // If offline and not in cache, return offline page if it's a navigation request
-          if (event.request.mode === 'navigate') {
-            // Try multiple cache key formats for index.html
-            const indexUrl = BASE_PATH + 'index.html'
-            const fullUrl = new URL(indexUrl, self.location.origin).toString()
-            
-            // Try to find index.html in cache using different key formats
-            return caches.match(fullUrl)
-              .then(cached => cached || caches.match(indexUrl))
-              .then(cached => cached || caches.match(event.request.url.replace(self.location.origin, '')))
-              .then(cached => {
-                if (cached) return cached
-                // If still not found, return a simple HTML response
-                return new Response(
-                  `<!DOCTYPE html><html><head><title>Offline</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><h1>You are offline</h1><p>Please check your internet connection.</p><script>setTimeout(() => window.location.reload(), 2000)</script></body></html>`,
-                  {
-                    status: 503,
-                    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-                  }
-                )
-              })
-          }
-          // For other requests, let them fail gracefully
-          return new Response('Network error', {
-            status: 408,
-            headers: { 'Content-Type': 'text/plain' },
-          })
-        })
-    })
+        .catch(() => undefined)
+
+      // Serve cached immediately if present; otherwise wait for network
+      return cached || (await fetchPromise) || new Response('Network error', { status: 408, headers: { 'Content-Type': 'text/plain' } })
+    })()
   )
 })
 
