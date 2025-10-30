@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useNavigate, useSearch, stripSearchParams, useLocation } from '@tanstack/react-router'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import Kriskogram from '../components/Kriskogram'
@@ -18,6 +19,47 @@ import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } f
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
+
+// Collapsible Section Component
+function CollapsibleSection({ 
+  title, 
+  subtitle,
+  children, 
+  defaultOpen = false 
+}: { 
+  title: string
+  subtitle?: string
+  children: React.ReactNode | string | number | undefined
+  defaultOpen?: boolean 
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  
+  return (
+    <div className="border border-gray-200 rounded-md">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div className="flex-1">
+          <div className="font-semibold text-sm">{title}</div>
+          {subtitle && (
+            <div className="text-xs text-gray-600 mt-0.5">{subtitle}</div>
+          )}
+        </div>
+        {isOpen ? (
+          <ChevronUp className="w-4 h-4 text-gray-600 flex-shrink-0" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" />
+        )}
+      </button>
+      {isOpen && (
+        <div className="p-3 pt-0 border-t border-gray-200">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const viewTypeSchema = z.enum(['kriskogram', 'table', 'sankey', 'chord'])
 
@@ -697,18 +739,16 @@ function ExplorerPage() {
               onToggle={() => setRightSidebarCollapsed(!rightSidebarCollapsed)}
               onResize={setRightSidebarWidth}
               title="Visualization Settings"
-            >
-              <div className="space-y-4">
-                {/* View Type Selector */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Visualization Type</label>
-                  <div className="flex gap-2 flex-wrap">
+              bottomContent={
+                <div className="p-3">
+                  <label className="text-xs font-medium text-gray-600 block mb-2">Visualization Type</label>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
                         setViewType('kriskogram')
                         updateSearchParams({ view: 'kriskogram' })
                       }}
-                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      className={`px-3 py-2.5 rounded text-sm font-medium transition-colors ${
                         viewType === 'kriskogram'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -721,7 +761,7 @@ function ExplorerPage() {
                         setViewType('table')
                         updateSearchParams({ view: 'table' })
                       }}
-                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      className={`px-3 py-2.5 rounded text-sm font-medium transition-colors ${
                         viewType === 'table'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -734,7 +774,7 @@ function ExplorerPage() {
                         setViewType('sankey')
                         updateSearchParams({ view: 'sankey' })
                       }}
-                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      className={`px-3 py-2.5 rounded text-sm font-medium transition-colors ${
                         viewType === 'sankey'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -747,7 +787,7 @@ function ExplorerPage() {
                         setViewType('chord')
                         updateSearchParams({ view: 'chord' })
                       }}
-                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                      className={`px-3 py-2.5 rounded text-sm font-medium transition-colors ${
                         viewType === 'chord'
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -757,80 +797,85 @@ function ExplorerPage() {
                     </button>
                   </div>
                 </div>
+              }
+            >
+              <div className="space-y-4">
+                {/* Dataset Info - At Top */}
+                <CollapsibleSection
+                  title={dataset.name}
+                  defaultOpen={true}
+                  subtitle={`${dataset.type.toUpperCase()} · ${dataset.timeRange.start}${dataset.timeRange.end !== dataset.timeRange.start ? `–${dataset.timeRange.end}` : ''}`}
+                >
+                  {dataset.notes && (
+                    <div className="text-xs text-gray-600 mt-2 whitespace-pre-wrap">
+                      {dataset.notes}
+                    </div>
+                  )}
+                  {!dataset.notes && (
+                    <div className="text-xs text-gray-500 italic mt-2">No description available</div>
+                  )}
+                </CollapsibleSection>
 
-                {/* Statistics */}
+                {/* Statistics - Shortened */}
                 {stats && (
                   <div className="p-3 bg-gray-50 rounded grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <div className="text-xs text-gray-600">Total Nodes</div>
-                      <div className="text-lg font-bold">{stats.totalNodes}</div>
+                      <div className="text-xs text-gray-600">Nodes</div>
+                      <div className="text-lg font-bold">{stats.visibleNodes}/{stats.totalNodes}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-600">Total Edges</div>
-                      <div className="text-lg font-bold">{stats.totalEdges.toLocaleString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-600">Visible Nodes</div>
-                      <div className="text-lg font-bold">{stats.visibleNodes}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-600">Visible Edges</div>
-                      <div className="text-lg font-bold">{stats.visibleEdges}</div>
+                      <div className="text-xs text-gray-600">Edges</div>
+                      <div className="text-lg font-bold">{stats.visibleEdges.toLocaleString()}/{stats.totalEdges.toLocaleString()}</div>
                     </div>
                   </div>
                 )}
 
-                {/* Dataset Info */}
-                <div className="p-3 bg-gray-50 rounded space-y-2">
-                  <div>
-                    <div className="font-semibold text-sm">{dataset.name}</div>
-                    <div className="text-xs text-gray-600">{dataset.type.toUpperCase()} · {dataset.timeRange.start}{dataset.timeRange.end !== dataset.timeRange.start ? `–${dataset.timeRange.end}` : ''}</div>
-                  </div>
-                </div>
-
-                {/* Year Slider */}
-                {hasTime && currentYear !== undefined && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Year: {currentYear}</label>
-                    <input
-                      type="range"
-                      min={dataset.timeRange.start}
-                      max={dataset.timeRange.end}
-                      value={currentYear}
-                      onChange={(e) => handleYearChange(parseInt(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-
-                {/* Edge Type Filter */}
-                {edgeTypeInfo && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Edge Type ({edgeTypeInfo.property})
-                    </label>
-                    <select
-                      value={edgeTypeFilter || 'all'}
-                      onChange={(e) => {
-                        const newValue = e.target.value === 'all' ? null : e.target.value
-                        setEdgeTypeFilter(newValue)
-                        updateSearchParams({ edgeType: newValue })
-                      }}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All Types</option>
-                      {edgeTypeInfo.values.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* Filtering Controls */}
-                {currentSnapshot && stats && (
+                {/* General Settings - Collapsible */}
+                <CollapsibleSection title="General Settings" defaultOpen={true}>
                   <div className="space-y-4">
+                    {/* Year Slider */}
+                    {hasTime && currentYear !== undefined && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Year: {currentYear}</label>
+                        <input
+                          type="range"
+                          min={dataset.timeRange.start}
+                          max={dataset.timeRange.end}
+                          value={currentYear}
+                          onChange={(e) => handleYearChange(parseInt(e.target.value))}
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+
+                    {/* Edge Type Filter */}
+                    {edgeTypeInfo && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Edge Type ({edgeTypeInfo.property})
+                        </label>
+                        <select
+                          value={edgeTypeFilter || 'all'}
+                          onChange={(e) => {
+                            const newValue = e.target.value === 'all' ? null : e.target.value
+                            setEdgeTypeFilter(newValue)
+                            updateSearchParams({ edgeType: newValue })
+                          }}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="all">All Types</option>
+                          {edgeTypeInfo.values.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Filtering Controls */}
+                    {currentSnapshot && stats && (
+                      <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-sm font-medium">
@@ -915,16 +960,18 @@ function ExplorerPage() {
                         After filtering by thresholds and edge type, edges are sorted by value (highest first) and the top {maxEdges} edges are displayed.
                       </p>
                     </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </CollapsibleSection>
 
                 {/* Kriskogram Visualization Controls */}
-                {viewType === 'kriskogram' && dataset?.metadata && (
-                  <div className="space-y-4 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-800">Kriskogram Settings</h4>
-                    
-                    {/* Node Ordering */}
-                    <div className="space-y-2">
+                {viewType === 'kriskogram' && (
+                  <CollapsibleSection title="Kriskogram Settings" defaultOpen={true}>
+                    {dataset?.metadata ? (
+                      <div className="space-y-4">
+                        {/* Node Ordering */}
+                        <div className="space-y-2">
                       <label className="text-xs font-medium text-gray-700">Node Ordering</label>
                       <div className="flex flex-col gap-1.5">
                         <label className="flex items-center gap-2 cursor-pointer text-xs">
@@ -1155,9 +1202,34 @@ function ExplorerPage() {
                             </option>
                           ))}
                         </select>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 italic">No dataset metadata available</div>
+                    )}
+                  </CollapsibleSection>
+                )}
+
+                {/* Table Visualization Controls */}
+                {viewType === 'table' && (
+                  <CollapsibleSection title="Table Settings" defaultOpen={false}>
+                    <div className="text-xs text-gray-500 italic">Settings to be added</div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Sankey Visualization Controls */}
+                {viewType === 'sankey' && (
+                  <CollapsibleSection title="Sankey Settings" defaultOpen={false}>
+                    <div className="text-xs text-gray-500 italic">Settings to be added</div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Chord Visualization Controls */}
+                {viewType === 'chord' && (
+                  <CollapsibleSection title="Chord Settings" defaultOpen={false}>
+                    <div className="text-xs text-gray-500 italic">Settings to be added</div>
+                  </CollapsibleSection>
                 )}
               </div>
             </SettingsPanel>
@@ -1186,7 +1258,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const ds: StoredDataset = {
       id: csvId,
       name: 'US State-to-State Migration (2021)',
-      notes: 'Census 2021 state-to-state migration estimates (single snapshot)',
+      notes: 'Real U.S. Census Bureau data showing migration flows between all 50 states from the American Community Survey 1-Year Estimates.',
       type: 'csv',
       timeRange: { start: 2021, end: 2021 },
       snapshots: [snapshot],
@@ -1204,7 +1276,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const ds: StoredDataset = {
       id: gexfId,
       name: 'Sample Migration (GEXF)',
-      notes: 'Sample network with time slices parsed from GEXF',
+      notes: 'AI-generated sample network dataset in GEXF format demonstrating temporal migration patterns with multiple time slices. This example dataset includes economic, geographic, and migration type attributes for demonstration purposes.',
       type: 'gexf',
       timeRange: graph.timeRange,
       snapshots: snaps as any,
@@ -1241,7 +1313,7 @@ async function preloadDefaults(): Promise<string | undefined> {
     const ds: StoredDataset = {
       id: swissId,
       name: 'Swiss Relocations (2016)',
-      notes: 'Relocations between Swiss cantons in 2016 (two-file CSV format)',
+      notes: 'Relocations between Swiss cantons in 2016. This dataset contains 521,510 trips and uses a two-file CSV format with separate files for locations (cantons) and flows (relocations). Created by Ilya Boyandin.',
       type: 'csv-two-file',
       timeRange: { start: 2016, end: 2016 },
       snapshots: [snapshot],
