@@ -242,6 +242,7 @@ function ExplorerPage() {
   const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
   const [arcOpacity, setArcOpacity] = useState(0.85)
   const [edgeWeightEncoding, setEdgeWeightEncoding] = useState<'color' | 'opacity' | 'width'>('width')
+  const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
   const [nodeColorMode, setNodeColorMode] = useState<'single' | 'attribute' | 'outgoing' | 'incoming'>('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [nodeSizeMode, setNodeSizeMode] = useState<'fixed' | 'attribute' | 'outgoing' | 'incoming'>('fixed')
@@ -631,8 +632,8 @@ function ExplorerPage() {
                                     const normalized = (e.value - minEdgeWeight) / edgeWeightRange
                                     return 0.5 + (normalized * 15) // 0.5 to 15.5
                                   }
-                                  // If using color or opacity, use a base width
-                                  return Math.sqrt(e.value) / 10
+                                  // For color or opacity encodings, keep width constant for visual consistency
+                                  return baseEdgeWidth
                                 },
                                 
                                 // Edge color
@@ -1068,6 +1069,20 @@ function ExplorerPage() {
                           <span>Opacity</span>
                         </label>
                       </div>
+                      {edgeWeightEncoding !== 'width' && (
+                        <div className="mt-2">
+                          <label className="text-xs font-medium text-gray-700">Base Edge Width: {baseEdgeWidth.toFixed(1)}px</label>
+                          <input
+                            type="range"
+                            min={0.5}
+                            max={8}
+                            step={0.1}
+                            value={baseEdgeWidth}
+                            onChange={(e) => setBaseEdgeWidth(parseFloat(e.target.value))}
+                            className="w-full"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {/* Node Color */}
