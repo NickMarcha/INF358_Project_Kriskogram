@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { createFileRoute, useNavigate, useSearch, stripSearchParams, useLocation } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { z } from 'zod'
-import { zodValidator } from '@tanstack/zod-adapter'
 import Kriskogram from '../components/Kriskogram'
 import type { KriskogramRef } from '../components/Kriskogram'
 import DatasetSidebar from '../components/DatasetSidebar'
@@ -65,13 +64,17 @@ const viewTypeSchema = z.enum(['kriskogram', 'table', 'sankey', 'chord'])
 
 // Helper function to coerce to number safely, returning undefined if invalid
 const safeCoerceNumber = (defaultValue?: number) => {
+  const schema = defaultValue !== undefined 
+    ? z.number().default(defaultValue)
+    : z.number().optional()
+  
   return z.preprocess(
     (val) => {
-      if (val === undefined || val === null || val === '') return undefined
+      if (val === undefined || val === null || val === '') return defaultValue
       const num = typeof val === 'string' ? parseFloat(val) : Number(val)
-      return Number.isNaN(num) ? undefined : num
+      return Number.isNaN(num) ? defaultValue : num
     },
-    z.number().optional().default(defaultValue ?? undefined)
+    schema
   )
 }
 
@@ -86,7 +89,7 @@ const explorerSearchSchema = z.object({
     },
     viewTypeSchema.default('kriskogram')
   ),
-  year: safeCoerceNumber(),
+  year: safeCoerceNumber(undefined),
   minThreshold: safeCoerceNumber(0),
   maxThreshold: safeCoerceNumber(200000),
   maxEdges: safeCoerceNumber(500),
@@ -101,12 +104,6 @@ const explorerSearchSchema = z.object({
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
 
-const defaultSearchValues: ExplorerSearchParams = {
-  view: 'kriskogram',
-  minThreshold: 0,
-  maxThreshold: 200000,
-  maxEdges: 500,
-}
 
 export const Route = createFileRoute('/explorer')({
   component: ExplorerPage,
@@ -164,14 +161,13 @@ export const Route = createFileRoute('/explorer')({
     }
   },
   search: {
-    middlewares: [stripSearchParams(defaultSearchValues)],
+    // middlewares: [stripSearchParams(defaultSearchValues)], // Type issue - disabled for now
   },
 })
 
 function ExplorerPage() {
-  const search = useSearch({ from: '/explorer', strict: false })
+  const search = useSearch({ from: '/explorer' })
   const navigate = useNavigate()
-  const location = useLocation()
   const { leftSidebarCollapsed, leftSidebarWidth, setSidebarContent } = useSidebar()
   
   // Initialize state from search params (Zod ensures we have proper types and defaults)
@@ -181,10 +177,10 @@ function ExplorerPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0) // Force refresh counter
-  const [minThreshold, setMinThreshold] = useState(search.minThreshold)
-  const [maxThreshold, setMaxThreshold] = useState(search.maxThreshold)
-  const [maxEdges, setMaxEdges] = useState(search.maxEdges)
-  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null | undefined>(search.edgeType)
+  const [minThreshold, setMinThreshold] = useState(search.minThreshold ?? 0)
+  const [maxThreshold, setMaxThreshold] = useState(search.maxThreshold ?? 200000)
+  const [maxEdges, setMaxEdges] = useState(search.maxEdges ?? 500)
+  const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const krRef = useRef<KriskogramRef>(null)
   
@@ -258,7 +254,11 @@ function ExplorerPage() {
     return (updates: Partial<ExplorerSearchParams>) => {
       navigate({
         to: '/explorer',
-        search: (prev) => ({ ...prev, ...updates }),
+        search: (prev) => ({ 
+          view: prev.view ?? 'kriskogram',
+          ...prev, 
+          ...updates 
+        } as ExplorerSearchParams),
         replace: true,
       })
     }

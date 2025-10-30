@@ -22,5 +22,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    rollupOptions: {
+      // Ensure service worker is copied to output
+      input: {
+        main: resolve(__dirname, 'index.html'),
+      },
+    },
   },
+  // Public directory files are copied to dist root
+  publicDir: 'public',
 })

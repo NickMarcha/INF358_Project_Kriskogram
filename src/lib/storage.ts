@@ -22,7 +22,7 @@ export type StoredDataset = {
   name: string
   filename?: string  // Original filename from import
   notes?: string     // User-provided notes/description
-  type: 'csv' | 'gexf' | 'manual'
+  type: 'csv' | 'gexf' | 'manual' | 'csv-two-file'
   timeRange: { start: number; end: number }
   snapshots: StoredSnapshot[]
   metadata?: DatasetMetadata // Detected properties for dynamic UI

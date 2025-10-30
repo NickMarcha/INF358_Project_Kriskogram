@@ -70,10 +70,11 @@ export function toSankeyFormat(
   const nodeMap = new Map<string, number>()
   const sankeyNodes: SankeyNode[] = nodes.map((node, index) => {
     nodeMap.set(node.id, index)
+    const { id, ...nodeRest } = node
     return {
-      id: node.id,
+      id,
       name: node.label || node.id,
-      ...node,
+      ...nodeRest,
     }
   })
 

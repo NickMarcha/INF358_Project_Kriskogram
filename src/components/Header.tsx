@@ -17,7 +17,18 @@ export default function Header() {
         </div>
 
         <div className="px-2 font-bold">
-          <Link to="/explorer">Explorer</Link>
+          <Link 
+            to="/explorer" 
+            search={{
+              view: 'kriskogram' as const,
+              year: undefined as number | undefined,
+              minThreshold: 0,
+              maxThreshold: 200000,
+              maxEdges: 500,
+            }}
+          >
+            Explorer
+          </Link>
         </div>
 
         <div className="px-2 font-bold">

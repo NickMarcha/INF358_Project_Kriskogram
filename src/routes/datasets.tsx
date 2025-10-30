@@ -205,6 +205,13 @@ function DatasetsPage() {
               After downloading a dataset, you can import it into Kriskogram using the{' '}
               <Link
                 to="/explorer"
+                search={{
+                  view: 'kriskogram' as const,
+                  year: undefined as number | undefined,
+                  minThreshold: 0,
+                  maxThreshold: 200000,
+                  maxEdges: 500,
+                }}
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 Explorer page
@@ -235,6 +242,13 @@ function DatasetsPage() {
         <div className="max-w-6xl mx-auto mt-8 text-center">
           <Link
             to="/explorer"
+            search={{
+              view: 'kriskogram' as const,
+              year: undefined as number | undefined,
+              minThreshold: 0,
+              maxThreshold: 200000,
+              maxEdges: 500,
+            }}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Explorer

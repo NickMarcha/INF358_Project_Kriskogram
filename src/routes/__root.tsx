@@ -23,7 +23,7 @@ function RootComponent() {
 }
 
 function RootLayout() {
-  const { leftSidebarCollapsed, setLeftSidebarCollapsed, leftSidebarWidth, setLeftSidebarWidth, sidebarContent } = useSidebar()
+  const { leftSidebarCollapsed, setLeftSidebarCollapsed, setLeftSidebarWidth, sidebarContent } = useSidebar()
 
   return (
     <div className="flex min-h-screen bg-gray-50">

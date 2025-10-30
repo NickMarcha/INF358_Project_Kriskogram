@@ -8,6 +8,33 @@ import { routeTree } from './routeTree.gen'
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
 
+// Register Service Worker for PWA offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const baseUrl = import.meta.env.BASE_URL || '/'
+    const swUrl = `${baseUrl}sw.js`
+    
+    navigator.serviceWorker
+      .register(swUrl)
+      .then((registration) => {
+        console.log('[Service Worker] Registered successfully:', registration.scope)
+        
+        // Check for updates every hour
+        setInterval(() => {
+          registration.update()
+        }, 3600000)
+      })
+      .catch((error) => {
+        console.error('[Service Worker] Registration failed:', error)
+      })
+    
+    // Listen for updates
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload()
+    })
+  })
+}
+
 // Handle 404 redirect from GitHub Pages
 (function() {
   const redirect = sessionStorage.redirect;
