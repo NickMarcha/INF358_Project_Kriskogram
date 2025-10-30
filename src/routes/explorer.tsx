@@ -241,7 +241,10 @@ function ExplorerPage() {
   // Kriskogram visualization controls (only used when viewType === 'kriskogram')
   const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
   const [arcOpacity, setArcOpacity] = useState(0.85)
-  const [edgeWeightEncoding, setEdgeWeightEncoding] = useState<'color' | 'opacity' | 'width'>('width')
+  // Edge styling controls (inverted: independent width and color selectors)
+  const [edgeWidthMode, setEdgeWidthMode] = useState<'fixed' | 'weight'>('weight')
+  const [edgeColorMode, setEdgeColorMode] = useState<'direction' | 'weight' | 'attribute'>('direction')
+  const [edgeColorAttribute, setEdgeColorAttribute] = useState<string | null>(null)
   const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
   const [nodeColorMode, setNodeColorMode] = useState<'single' | 'attribute' | 'outgoing' | 'incoming'>('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
@@ -643,34 +646,45 @@ function ExplorerPage() {
                                 
                                 // Edge width
                                 edgeWidth: (e: any) => {
-                                  if (edgeWeightEncoding === 'width') {
+                                  if (edgeWidthMode === 'weight') {
                                     const normalized = (e.value - minEdgeWeight) / edgeWeightRange
                                     return 0.5 + (normalized * 15) // 0.5 to 15.5
                                   }
-                                  // For color or opacity encodings, keep width constant for visual consistency
                                   return baseEdgeWidth
                                 },
                                 
                                 // Edge color
                                 edgeColor: (e: any, isAbove: boolean) => {
                                   const normalized = (e.value - minEdgeWeight) / edgeWeightRange
-                                  
-                                  if (edgeWeightEncoding === 'color') {
-                                    // Color intensity based on weight
-                                    const hue = 200 // Light blue
-                                    const saturation = 70
-                                    const lightness = 75 - (normalized * 50) // 75% (light) to 25% (dark)
-                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
-                                  } else if (edgeWeightEncoding === 'opacity') {
-                                    // Base color with opacity variation - opacity will be applied via stroke-opacity in SVG
-                                    // Return RGBA with varying alpha based on weight
-                                    const alpha = 0.3 + (normalized * 0.7) // 0.3 to 1.0
-                                    const baseColor = isAbove ? [31, 119, 180] : [214, 39, 40] // rgb values
-                                    return `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${alpha})`
-                                  } else {
-                                    // Width encoding - use base colors
+                                  if (edgeColorMode === 'direction') {
                                     return isAbove ? '#1f77b4' : '#d62728'
                                   }
+                                  if (edgeColorMode === 'weight') {
+                                    const hue = 200
+                                    const saturation = 70
+                                    const lightness = 75 - (normalized * 50)
+                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                                  }
+                                  if (edgeColorMode === 'attribute' && edgeColorAttribute) {
+                                    const propValue = (e as any)[edgeColorAttribute]
+                                    if (propValue === undefined || propValue === null) return '#999'
+                                    if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorAttribute)) {
+                                      const allVals = filteredData.edges.map((ed: any) => ed[edgeColorAttribute]).filter((v: any) => typeof v === 'number') as number[]
+                                      if (allVals.length === 0) return '#2563eb'
+                                      const minVal = Math.min(...allVals)
+                                      const maxVal = Math.max(...allVals)
+                                      const range = maxVal - minVal || 1
+                                      const n = (Number(propValue) - minVal) / range
+                                      const hue = 120 - (n * 120)
+                                      return `hsl(${hue}, 70%, 50%)`
+                                    } else {
+                                      const uniqueValues = Array.from(new Set(filteredData.edges.map((ed: any) => ed[edgeColorAttribute]).filter((v: any) => v != null)))
+                                      const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                                      const map = new Map(uniqueValues.map((v, idx) => [v, colors[idx % colors.length]]))
+                                      return map.get(propValue) || '#2563eb'
+                                    }
+                                  }
+                                  return isAbove ? '#1f77b4' : '#d62728'
                                 },
                               }
                             })()}
@@ -1094,45 +1108,34 @@ function ExplorerPage() {
                       />
                     </div>
 
-                    {/* Edge Weight Encoding */}
+                    {/* Edge Width */}
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Edge Weight</label>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                      <label className="text-xs font-medium text-gray-700">Edge Width</label>
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="edgeWeight"
-                            value="width"
-                            checked={edgeWeightEncoding === 'width'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'width')}
+                            name="edgeWidthMode"
+                            value="weight"
+                            checked={edgeWidthMode === 'weight'}
+                            onChange={() => setEdgeWidthMode('weight')}
                             className="w-3.5 h-3.5"
                           />
-                          <span>Width</span>
+                          <span>By Weight</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="radio"
-                            name="edgeWeight"
-                            value="color"
-                            checked={edgeWeightEncoding === 'color'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'color')}
+                            name="edgeWidthMode"
+                            value="fixed"
+                            checked={edgeWidthMode === 'fixed'}
+                            onChange={() => setEdgeWidthMode('fixed')}
                             className="w-3.5 h-3.5"
                           />
-                          <span>Color Intensity</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="edgeWeight"
-                            value="opacity"
-                            checked={edgeWeightEncoding === 'opacity'}
-                            onChange={(e) => setEdgeWeightEncoding(e.target.value as 'opacity')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Opacity</span>
+                          <span>Fixed</span>
                         </label>
                       </div>
-                      {edgeWeightEncoding !== 'width' && (
+                      {edgeWidthMode === 'fixed' && (
                         <div className="mt-2">
                           <label className="text-xs font-medium text-gray-700">Base Edge Width: {baseEdgeWidth.toFixed(1)}px</label>
                           <input
@@ -1144,6 +1147,63 @@ function ExplorerPage() {
                             onChange={(e) => setBaseEdgeWidth(parseFloat(e.target.value))}
                             className="w-full"
                           />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Edge Color */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Edge Color</label>
+                      <div className="flex flex-col gap-1.5 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeColorMode"
+                            value="direction"
+                            checked={edgeColorMode === 'direction'}
+                            onChange={() => setEdgeColorMode('direction')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>By Direction (Above/Below)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeColorMode"
+                            value="weight"
+                            checked={edgeColorMode === 'weight'}
+                            onChange={() => setEdgeColorMode('weight')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>By Weight Intensity</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="edgeColorMode"
+                            value="attribute"
+                            checked={edgeColorMode === 'attribute'}
+                            onChange={() => setEdgeColorMode('attribute')}
+                            className="w-3.5 h-3.5"
+                          />
+                          <span>By Attribute</span>
+                        </label>
+                      </div>
+                      {edgeColorMode === 'attribute' && dataset?.metadata && (
+                        <div className="mt-2 space-y-1">
+                          <label className="text-xs text-gray-600">Attribute</label>
+                          <select
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={edgeColorAttribute || ''}
+                            onChange={(e) => setEdgeColorAttribute(e.target.value || null)}
+                          >
+                            <option value="">Select attribute…</option>
+                            {[...dataset.metadata.hasNumericProperties.edges, ...dataset.metadata.hasCategoricalProperties.edges]
+                              .filter((v, i, a) => a.indexOf(v) === i)
+                              .map((prop) => (
+                                <option key={prop} value={prop}>{prop}</option>
+                              ))}
+                          </select>
                         </div>
                       )}
                     </div>

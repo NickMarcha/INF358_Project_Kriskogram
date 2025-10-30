@@ -104,6 +104,21 @@ export function createKriskogram(config: KriskogramConfig) {
     .style("font-family", "sans-serif")
     .style("background", "#fafafa");
   
+  // Arrowhead marker for corner direction indicators
+  const defs = svg.append("defs");
+  defs
+    .append("marker")
+    .attr("id", "corner-arrow")
+    .attr("viewBox", "0 0 12 12")
+    .attr("refX", 10)
+    .attr("refY", 6)
+    .attr("markerWidth", 10)
+    .attr("markerHeight", 10)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M 0 0 L 12 6 L 0 12 z")
+    .attr("fill", "#6b7280");
+
   // Create a container group for zoom/pan
   const zoomGroup = svg.append("g").attr("class", "zoom-group");
 
@@ -367,6 +382,44 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("font-weight", "bold")
     .attr("fill", "#333")
     .text(title);
+
+  // Corner direction indicators (clockwise quarter-arc arrows)
+  const arrowColor = "#6b7280"; // Tailwind gray-500
+  const arrowStroke = 1.5;
+  // Scale arrow size with chart size; slightly longer and less curvy
+  const base = Math.min(width, height);
+  const s = Math.max(14, Math.min(72, base * 0.06)); // segment length from edges
+  const r = s * 1.6; // larger radius => less curvy
+  const o = s * 1.1; // extend a bit further than s
+
+  // Top-left: arc from (left, top+o) to (left+o, top)
+  svg.append("path")
+    .attr("d", `M ${margin.left} ${margin.top + o} A ${r} ${r} 0 0 1 ${margin.left + o} ${margin.top}`)
+    .attr("fill", "none")
+    .attr("stroke", arrowColor)
+    .attr("stroke-width", arrowStroke)
+    .attr("marker-end", "url(#corner-arrow)");
+  // Top-right: arc from (right-o, top) to (right, top+o)
+  svg.append("path")
+    .attr("d", `M ${width - margin.right - o} ${margin.top} A ${r} ${r} 0 0 1 ${width - margin.right} ${margin.top + o}`)
+    .attr("fill", "none")
+    .attr("stroke", arrowColor)
+    .attr("stroke-width", arrowStroke)
+    .attr("marker-end", "url(#corner-arrow)");
+  // Bottom-right: arc from (right, bottom-o) to (right-o, bottom)
+  svg.append("path")
+    .attr("d", `M ${width - margin.right} ${height - margin.bottom - o} A ${r} ${r} 0 0 1 ${width - margin.right - o} ${height - margin.bottom}`)
+    .attr("fill", "none")
+    .attr("stroke", arrowColor)
+    .attr("stroke-width", arrowStroke)
+    .attr("marker-end", "url(#corner-arrow)");
+  // Bottom-left: arc from (left+o, bottom) to (left, bottom-o)
+  svg.append("path")
+    .attr("d", `M ${margin.left + o} ${height - margin.bottom} A ${r} ${r} 0 0 1 ${margin.left} ${height - margin.bottom - o}`)
+    .attr("fill", "none")
+    .attr("stroke", arrowColor)
+    .attr("stroke-width", arrowStroke)
+    .attr("marker-end", "url(#corner-arrow)");
 
   return {
     svg,
