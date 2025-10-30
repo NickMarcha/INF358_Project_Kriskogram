@@ -187,14 +187,14 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("d", (d) => {
       const x1 = xScale(d.source)!;
       const x2 = xScale(d.target)!;
-      const isAbove = x1 < x2; // rightward = above, leftward = below
+      const isAbove = x1 > x2; // flip: rightward = below, leftward = above
       return arcPath(x1, x2, isAbove);
     })
     .attr("fill", "none")
     .attr("stroke", (d) => {
       const x1 = xScale(d.source)!;
       const x2 = xScale(d.target)!;
-      const isAbove = x1 < x2;
+      const isAbove = x1 > x2;
       return getEdgeColor(d, isAbove);
     })
     .attr("stroke-width", (d) => getEdgeWidth(d))
@@ -495,13 +495,13 @@ export function createKriskogram(config: KriskogramConfig) {
         .attr("d", (d) => {
           const x1 = xScale(d.source)!;
           const x2 = xScale(d.target)!;
-          const isAbove = x1 < x2;
+          const isAbove = x1 > x2;
           return arcPath(x1, x2, isAbove);
         })
         .attr("stroke", (d) => {
           const x1 = xScale(d.source)!;
           const x2 = xScale(d.target)!;
-          const isAbove = x1 < x2;
+          const isAbove = x1 > x2;
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
