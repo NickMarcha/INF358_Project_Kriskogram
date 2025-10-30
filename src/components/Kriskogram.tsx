@@ -11,6 +11,7 @@ export interface KriskogramProps {
   height?: number;
   margin?: { top: number; right: number; bottom: number; left: number };
   arcOpacity?: number;
+  title?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -21,7 +22,7 @@ export interface KriskogramRef {
 }
 
 export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
-  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, className, style }, ref) => {
+  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, title, className, style }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const kriskogramRef = useRef<ReturnType<typeof createKriskogram> | null>(null);
 
@@ -51,6 +52,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         height,
         margin,
         arcOpacity,
+        title,
         container: containerRef.current as any,
       });
 
@@ -67,7 +69,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         }
         kriskogramRef.current = null;
       };
-    }, [nodes, edges, accessors, width, height, margin, arcOpacity]);
+    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title]);
 
     // Update data when props change
     useEffect(() => {
@@ -81,8 +83,8 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         ref={containerRef}
         className={className}
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
+          width: '100%',
+          height: '100%',
           ...style,
         }}
       />

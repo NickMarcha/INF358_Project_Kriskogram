@@ -41,6 +41,7 @@ export interface KriskogramConfig {
   margin?: { top: number; right: number; bottom: number; left: number };
   arcOpacity?: number; // Arc transparency (0-1), defaults to 0.85
   container?: string; // CSS selector, defaults to "body"
+  title?: string; // Title to display, defaults to "Migration Flow Visualization"
 }
 
 // -------------------- Implementation --------------------
@@ -55,6 +56,7 @@ export function createKriskogram(config: KriskogramConfig) {
     margin = { top: 40, right: 40, bottom: 40, left: 40 },
     arcOpacity = 0.85,
     container = "body",
+    title = "Migration Flow Visualization",
   } = config;
 
   // Clear existing content and remove any orphaned tooltips
@@ -94,9 +96,15 @@ export function createKriskogram(config: KriskogramConfig) {
   const svg = d3
     .select(container)
     .append("svg")
+    .attr("width", "100%")
+    .attr("height", "100%")
     .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMidYMid meet")
     .style("font-family", "sans-serif")
     .style("background", "#fafafa");
+  
+  // Create a container group for zoom/pan
+  const zoomGroup = svg.append("g").attr("class", "zoom-group");
 
   const baselineY = height / 2;
 
@@ -107,8 +115,44 @@ export function createKriskogram(config: KriskogramConfig) {
     .range([margin.left, width - margin.right])
     .padding(0.5);
 
+  // ---- Zoom and Pan ----
+  const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+    .scaleExtent([0.1, 4])
+    .on("zoom", function(event) {
+      zoomGroup.attr("transform", event.transform.toString());
+    });
+
+  svg.call(zoomBehavior);
+
+  // Create reset button
+  const resetButton = svg.append("g")
+    .attr("class", "reset-button")
+    .style("cursor", "pointer")
+    .attr("transform", `translate(${width - 120}, 10)`)
+    .on("click", function() {
+      svg.transition()
+        .duration(750)
+        .call(zoomBehavior.transform, d3.zoomIdentity);
+    });
+
+  resetButton.append("rect")
+    .attr("width", 110)
+    .attr("height", 30)
+    .attr("rx", 4)
+    .attr("fill", "white")
+    .attr("stroke", "#ccc")
+    .attr("stroke-width", 1);
+
+  resetButton.append("text")
+    .attr("x", 55)
+    .attr("y", 20)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "12px")
+    .attr("fill", "#333")
+    .text("Reset View");
+
   // ---- Baseline ----
-  svg
+  zoomGroup
     .append("line")
     .attr("x1", margin.left)
     .attr("x2", width - margin.right)
@@ -132,7 +176,7 @@ export function createKriskogram(config: KriskogramConfig) {
     return `M${x1},${baselineY} A${dx / 2},${arcHeight} 0 0,${sweep} ${x2},${baselineY}`;
   }
 
-  const edgeGroup = svg.append("g").attr("class", "edges");
+  const edgeGroup = zoomGroup.append("g").attr("class", "edges");
 
   edgeGroup
     .selectAll("path.arc")
@@ -229,7 +273,7 @@ export function createKriskogram(config: KriskogramConfig) {
   // - y value: INCREASE to move DOWN, DECREASE to move UP
   // - x value: INCREASE to move RIGHT, DECREASE to move LEFT
   // - Current: y = r + 10, x = r + 5 (balanced position)
-  const nodeGroup = svg.append("g").attr("class", "nodes");
+  const nodeGroup = zoomGroup.append("g").attr("class", "nodes");
 
   nodeGroup
     .selectAll("g.node")
@@ -297,7 +341,7 @@ export function createKriskogram(config: KriskogramConfig) {
         .text(getNodeLabel(d));
     });
 
-  // Add title
+  // Add title (not affected by zoom)
   svg.append("text")
     .attr("x", width / 2)
     .attr("y", margin.top / 2)
@@ -305,7 +349,7 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("font-size", "16px")
     .attr("font-weight", "bold")
     .attr("fill", "#333")
-    .text("Migration Flow Visualization");
+    .text(title);
 
   return {
     svg,

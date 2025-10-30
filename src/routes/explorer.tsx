@@ -441,14 +441,15 @@ function ExplorerPage() {
         </div>
       }
     >
-      <div className="flex flex-1">
+      <div className="flex flex-1 h-full overflow-hidden">
         {/* Center Content - Visualization */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden h-full">
           {loading && <div className="p-4 bg-yellow-50 text-yellow-800">Loading…</div>}
           {error && <div className="p-4 bg-red-50 text-red-600">{error}</div>}
 
             {dataset ? (
-              <div className="flex-1 overflow-auto bg-white p-4">
+              <div className="flex-1 flex flex-col overflow-hidden bg-white">
+                <div className={`flex-1 overflow-hidden ${viewType === 'table' ? '' : 'p-4'}`}>
                 {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
                     <>
                       {viewType === 'kriskogram' && (
@@ -460,15 +461,17 @@ function ExplorerPage() {
                             </div>
                           }
                         >
-                          <Kriskogram
-                            ref={krRef}
-                            nodes={filteredData.nodes}
-                            edges={filteredData.edges}
-                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
-                            height={Math.max(600, windowSize.height - 80)}
-                            margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
-                            arcOpacity={arcOpacity}
-                            accessors={(() => {
+                          <div className="w-full h-full">
+                            <Kriskogram
+                              ref={krRef}
+                              nodes={filteredData.nodes}
+                              edges={filteredData.edges}
+                              width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
+                              height={Math.max(600, windowSize.height - 80)}
+                              margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
+                              arcOpacity={arcOpacity}
+                              title={dataset.name}
+                              accessors={(() => {
                               // Compute edge weight min/max for scaling
                               const edgeWeights = filteredData.edges.map((e: any) => e.value)
                               const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
@@ -614,6 +617,7 @@ function ExplorerPage() {
                               }
                             })()}
                           />
+                          </div>
                         </ErrorBoundary>
                       )}
                       {viewType === 'table' && (
@@ -625,7 +629,9 @@ function ExplorerPage() {
                             </div>
                           }
                         >
-                          <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                          <div className="h-full w-full flex flex-col min-h-0">
+                            <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                          </div>
                         </ErrorBoundary>
                       )}
                       {viewType === 'sankey' && (
@@ -637,12 +643,14 @@ function ExplorerPage() {
                             </div>
                           }
                         >
-                          <SankeyView 
-                            nodes={filteredData.nodes} 
-                            edges={filteredData.edges} 
-                            width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
-                            height={Math.max(600, windowSize.height - 80)}
-                          />
+                          <div className="h-full min-h-0">
+                            <SankeyView 
+                              nodes={filteredData.nodes} 
+                              edges={filteredData.edges} 
+                              width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
+                              height={Math.max(600, windowSize.height - 80)}
+                            />
+                          </div>
                         </ErrorBoundary>
                       )}
                       {viewType === 'chord' && (
@@ -670,6 +678,7 @@ function ExplorerPage() {
                   ) : (
                     <div className="text-gray-500 py-8 text-center">No snapshot to display</div>
                   )}
+                </div>
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center text-gray-500">

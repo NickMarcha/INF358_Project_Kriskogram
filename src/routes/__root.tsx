@@ -37,7 +37,7 @@ function RootLayout() {
       </Sidebar>
 
       {/* Main Content Area */}
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ height: '100vh', maxHeight: '100vh' }}>
         <Outlet />
       </div>
 

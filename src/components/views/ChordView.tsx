@@ -45,11 +45,49 @@ export default function ChordView({
     const chordData = toChordFormat(nodes, edges)
     
     const svg = d3.select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height)
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
 
     const outerRadius = Math.min(width, height) * 0.5 - 40
     const innerRadius = outerRadius - 20
+
+    // Create zoom and pan behavior
+    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on('zoom', function(event) {
+        zoomGroup.attr('transform', event.transform.toString())
+      })
+
+    svg.call(zoomBehavior)
+
+    // Create reset button
+    const resetButton = svg.append('g')
+      .attr('class', 'reset-button')
+      .style('cursor', 'pointer')
+      .attr('transform', `translate(${width - 120}, 10)`)
+      .on('click', function() {
+        svg.transition()
+          .duration(750)
+          .call(zoomBehavior.transform, d3.zoomIdentity)
+      })
+
+    resetButton.append('rect')
+      .attr('width', 110)
+      .attr('height', 30)
+      .attr('rx', 4)
+      .attr('fill', 'white')
+      .attr('stroke', '#ccc')
+      .attr('stroke-width', 1)
+
+    resetButton.append('text')
+      .attr('x', 55)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '12px')
+      .attr('fill', '#333')
+      .text('Reset View')
 
     // Create chord layout
     const chord = d3.chord()
@@ -63,8 +101,11 @@ export default function ChordView({
     // Color scale
     const color = d3.scaleOrdinal(d3.schemeCategory10)
 
+    // Create group for zoom/pan
+    const zoomGroup = svg.append('g').attr('class', 'zoom-group')
+
     // Create group for chord diagram
-    const g = svg.append('g')
+    const g = zoomGroup.append('g')
       .attr('transform', `translate(${width / 2}, ${height / 2})`)
 
     // Add group arcs (outer arcs)
@@ -156,7 +197,7 @@ export default function ChordView({
   }, [nodes, edges, width, height])
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <svg ref={svgRef} className="border border-gray-200 rounded bg-white" />
     </div>
   )

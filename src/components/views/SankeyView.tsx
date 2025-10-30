@@ -105,35 +105,60 @@ export default function SankeyView({
     // Sort nodes by total flow (outgoing + incoming) descending
     activeNodes.sort((a, b) => (b.outgoing + b.incoming) - (a.outgoing + a.incoming))
 
-    const svg = d3.select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height)
-      .style('font', '12px sans-serif')
-
     const leftX = 50
     const rightX = width - 50
     const margin = 20
-    const availableHeight = height - 2 * margin
     const nodeWidth = 15
     const nodeGap = 2
+    const minNodeHeight = 5
 
     // Calculate total flow for scaling
     const totalOutgoing = activeNodes.reduce((sum, n) => sum + n.outgoing, 0)
     const totalIncoming = activeNodes.reduce((sum, n) => sum + n.incoming, 0)
 
+    // First pass: calculate height needed based on proportional scaling
+    const baseAvailableHeight = Math.max(height - 2 * margin, 400)
+    
+    // Calculate actual height needed for left nodes
+    let leftHeightNeeded = margin
+    activeNodes.forEach((node) => {
+      const nodeHeight = totalOutgoing > 0 
+        ? Math.max(minNodeHeight, (node.outgoing / totalOutgoing) * baseAvailableHeight)
+        : Math.max(minNodeHeight, baseAvailableHeight / activeNodes.length)
+      leftHeightNeeded += nodeHeight + nodeGap
+    })
+
+    // Calculate actual height needed for right nodes
+    let rightHeightNeeded = margin
+    activeNodes.forEach((node) => {
+      const nodeHeight = totalIncoming > 0 
+        ? Math.max(minNodeHeight, (node.incoming / totalIncoming) * baseAvailableHeight)
+        : Math.max(minNodeHeight, baseAvailableHeight / activeNodes.length)
+      rightHeightNeeded += nodeHeight + nodeGap
+    })
+
+    // Use the maximum height needed, with minimum constraint
+    const actualHeight = Math.max(height, Math.max(leftHeightNeeded, rightHeightNeeded) + 100) // Add padding for labels
+    const availableHeight = actualHeight - 2 * margin
+
+    const svg = d3.select(svgRef.current)
+      .attr('width', width)
+      .attr('height', actualHeight)
+      .style('font', '12px sans-serif')
+
     // Position left column nodes (outgoing totals)
     let currentY = margin
     const leftNodesData = activeNodes.map((node, index) => {
-      const height = totalOutgoing > 0 
-        ? (node.outgoing / totalOutgoing) * availableHeight 
-        : availableHeight / activeNodes.length
+      const nodeHeight = totalOutgoing > 0 
+        ? Math.max(minNodeHeight, (node.outgoing / totalOutgoing) * availableHeight)
+        : Math.max(minNodeHeight, availableHeight / activeNodes.length)
       const y = currentY
-      currentY += height + nodeGap
+      currentY += nodeHeight + nodeGap
       return {
         node,
         x: leftX,
         y,
-        height: Math.max(5, height - nodeGap),
+        height: Math.max(minNodeHeight, nodeHeight - nodeGap),
         side: 'left' as const,
         index,
       }
@@ -142,16 +167,16 @@ export default function SankeyView({
     // Position right column nodes (incoming totals)
     currentY = margin
     const rightNodesData = activeNodes.map((node, index) => {
-      const height = totalIncoming > 0 
-        ? (node.incoming / totalIncoming) * availableHeight 
-        : availableHeight / activeNodes.length
+      const nodeHeight = totalIncoming > 0 
+        ? Math.max(minNodeHeight, (node.incoming / totalIncoming) * availableHeight)
+        : Math.max(minNodeHeight, availableHeight / activeNodes.length)
       const y = currentY
-      currentY += height + nodeGap
+      currentY += nodeHeight + nodeGap
       return {
         node,
         x: rightX,
         y,
-        height: Math.max(5, height - nodeGap),
+        height: Math.max(minNodeHeight, nodeHeight - nodeGap),
         side: 'right' as const,
         index,
       }
@@ -416,7 +441,7 @@ export default function SankeyView({
     // Add labels for columns
     svg.append('text')
       .attr('x', leftX + nodeWidth / 2)
-      .attr('y', height - 10)
+      .attr('y', actualHeight - 10)
       .attr('text-anchor', 'middle')
       .attr('font-size', '12px')
       .attr('font-weight', 'bold')
@@ -425,7 +450,7 @@ export default function SankeyView({
 
     svg.append('text')
       .attr('x', rightX - nodeWidth / 2)
-      .attr('y', height - 10)
+      .attr('y', actualHeight - 10)
       .attr('text-anchor', 'middle')
       .attr('font-size', '12px')
       .attr('font-weight', 'bold')
@@ -443,10 +468,9 @@ export default function SankeyView({
   }, [nodes, edges, width, height, selectedNodeId, selectedSide])
 
   return (
-    <div className="w-full space-y-4">
-      <svg ref={svgRef} className="border border-gray-200 rounded bg-white" />
-      <div className="text-center text-xs text-gray-500 mt-2">
-        Design inspired by{' '}
+    <div className="w-full h-full flex flex-col min-h-0">
+      <div className="text-center text-xs text-gray-500 mb-2 flex-shrink-0">
+        Interaction design inspired by{' '}
         <a
           href="https://peoplemov.in/#f_AF"
           target="_blank"
@@ -455,6 +479,9 @@ export default function SankeyView({
         >
           peoplemov.in by Carlo Zapponi
         </a>
+      </div>
+      <div className="flex-1 overflow-auto min-h-0">
+        <svg ref={svgRef} className="border border-gray-200 rounded bg-white" />
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table'
@@ -209,6 +210,12 @@ export default function TableView({
     columns: nodeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 25,
+      },
+    },
   })
 
   const edgeTable = useReactTable({
@@ -216,15 +223,21 @@ export default function TableView({
     columns: edgeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 25,
+      },
+    },
   })
 
   const activeTable = activeTab === 'nodes' ? nodeTable : edgeTable
   const activeData = activeTab === 'nodes' ? (editable ? editedNodes : nodes) : (editable ? editedEdges : edges)
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full w-full flex flex-col" style={{ height: '100%', maxHeight: '100%' }}>
       {/* Tab buttons */}
-      <div className="flex border-b mb-4">
+      <div className="flex border-b mb-4 flex-shrink-0">
         <button
           onClick={() => setActiveTab('nodes')}
           className={`px-4 py-2 font-medium text-sm transition-colors ${
@@ -247,58 +260,117 @@ export default function TableView({
         </button>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 border-b sticky top-0">
-            {activeTable.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-4 py-2 text-left font-semibold text-gray-700"
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        {...{
-                          className: header.column.getCanSort()
-                            ? 'cursor-pointer select-none hover:text-blue-600'
-                            : '',
-                          onClick: header.column.getToggleSortingHandler(),
-                        }}
-                      >
-                        {flexRender(
-                          header.column.columnDef.header as any,
-                          header.getContext() as any
-                        )}
-                        {{
-                          asc: ' ↑',
-                          desc: ' ↓',
-                        }[header.column.getIsSorted() as string] ?? null}
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
+      {/* Table container with fixed header and scrollable body */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="overflow-auto flex-1 min-h-0">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 border-b sticky top-0 z-10">
+              {activeTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-2 text-left font-semibold text-gray-700 bg-gray-50"
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          {...{
+                            className: header.column.getCanSort()
+                              ? 'cursor-pointer select-none hover:text-blue-600'
+                              : '',
+                            onClick: header.column.getToggleSortingHandler(),
+                          }}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header as any,
+                            header.getContext() as any
+                          )}
+                          {{
+                            asc: ' ↑',
+                            desc: ' ↓',
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {activeTable.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="hover:bg-gray-50">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-2">
+                      {flexRender(cell.column.columnDef.cell as any, cell.getContext() as any)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {activeTable.getRowModel().rows.length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              No {activeTab} to display
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-700">Show</span>
+          <select
+            value={activeTable.getState().pagination.pageSize}
+            onChange={(e) => {
+              activeTable.setPageSize(Number(e.target.value))
+            }}
+            className="border border-gray-300 rounded px-2 py-1 text-sm"
+          >
+            {[10, 25, 50, 100].map((pageSize) => (
+              <option key={pageSize} value={pageSize}>
+                {pageSize}
+              </option>
             ))}
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {activeTable.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="hover:bg-gray-50">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-2">
-                    {flexRender(cell.column.columnDef.cell as any, cell.getContext() as any)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {activeData.length === 0 && (
-          <div className="text-center text-gray-500 py-8">
-            No {activeTab} to display
+          </select>
+          <span className="text-sm text-gray-700">entries</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-700">
+            Page {activeTable.getState().pagination.pageIndex + 1} of{' '}
+            {activeTable.getPageCount()}
+          </span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => activeTable.setPageIndex(0)}
+              disabled={!activeTable.getCanPreviousPage()}
+              className="px-2 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              {'<<'}
+            </button>
+            <button
+              onClick={() => activeTable.previousPage()}
+              disabled={!activeTable.getCanPreviousPage()}
+              className="px-2 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              {'<'}
+            </button>
+            <button
+              onClick={() => activeTable.nextPage()}
+              disabled={!activeTable.getCanNextPage()}
+              className="px-2 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              {'>'}
+            </button>
+            <button
+              onClick={() => activeTable.setPageIndex(activeTable.getPageCount() - 1)}
+              disabled={!activeTable.getCanNextPage()}
+              className="px-2 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              {'>>'}
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
