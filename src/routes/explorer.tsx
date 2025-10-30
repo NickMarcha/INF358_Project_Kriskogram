@@ -421,6 +421,17 @@ function ExplorerPage() {
     }
   }, [currentSnapshot, filteredData])
 
+  // Effective minimum value after applying thresholds and maxEdges (top-N)
+  const effectiveMinEdgeValue = useMemo(() => {
+    if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
+    return Math.min(...filteredData.edges.map((e: any) => e.value))
+  }, [filteredData])
+
+  const effectiveMaxEdgeValue = useMemo(() => {
+    if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
+    return Math.max(...filteredData.edges.map((e: any) => e.value))
+  }, [filteredData])
+
   // Update visualization when filtered data changes (only for kriskogram view)
   useEffect(() => {
     if (viewType === 'kriskogram' && filteredData.nodes.length > 0 && filteredData.edges.length > 0 && krRef.current) {
@@ -879,8 +890,11 @@ function ExplorerPage() {
                       <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">
-                          Min: {minThreshold.toLocaleString()}
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <span>Min: {minThreshold.toLocaleString()}</span>
+                          {effectiveMinEdgeValue !== undefined && effectiveMinEdgeValue > minThreshold && (
+                            <span className="text-xs text-gray-400">(actual {effectiveMinEdgeValue.toLocaleString()})</span>
+                          )}
                         </label>
                         {(() => {
                           const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
@@ -921,8 +935,11 @@ function ExplorerPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        Max: {maxThreshold.toLocaleString()}
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <span>Max: {maxThreshold.toLocaleString()}</span>
+                        {effectiveMaxEdgeValue !== undefined && effectiveMaxEdgeValue < maxThreshold && (
+                          <span className="text-xs text-gray-400">(actual {effectiveMaxEdgeValue.toLocaleString()})</span>
+                        )}
                       </label>
                       <input
                         type="range"
