@@ -21,8 +21,8 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/INF358_Project_Kriskogram/index.html",
+  "scope": "/INF358_Project_Kriskogram/",
   "display": "standalone",
   "theme_color": "#3b82f6",
   "background_color": "#ffffff",

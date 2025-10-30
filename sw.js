@@ -34,20 +34,31 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching static assets')
-      // Add base index path
-      const urlsToCache = [BASE_PATH, ...STATIC_ASSETS.map(asset => BASE_PATH + asset)]
+      // Cache index.html and other assets (skip just the base path which might redirect)
+      const urlsToCache = [
+        BASE_PATH + 'index.html',
+        ...STATIC_ASSETS.map(asset => BASE_PATH + asset)
+      ]
       
       return Promise.all(
         urlsToCache.map((url) =>
-          fetch(url).catch((err) => {
-            console.warn(`[Service Worker] Failed to cache ${url}:`, err)
-            return null // Don't fail entire cache operation
-          })
+          fetch(url, { redirect: 'follow' })
+            .then((response) => {
+              // Only cache successful responses (not redirects)
+              if (response.ok && response.type === 'basic') {
+                return { url, response }
+              }
+              return null
+            })
+            .catch((err) => {
+              console.warn(`[Service Worker] Failed to cache ${url}:`, err)
+              return null // Don't fail entire cache operation
+            })
         )
-      ).then((responses) => {
-        responses.forEach((response, index) => {
-          if (response && response.ok) {
-            cache.put(urlsToCache[index], response)
+      ).then((results) => {
+        results.forEach((result) => {
+          if (result && result.response) {
+            cache.put(result.url, result.response.clone())
           }
         })
       })
@@ -89,21 +100,21 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: false }).then((cachedResponse) => {
       // Return cached version if available
       if (cachedResponse) {
         return cachedResponse
       }
 
       // Otherwise fetch from network
-      return fetch(event.request)
+      return fetch(event.request, { redirect: 'follow' })
         .then((response) => {
-          // Don't cache if not a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
+          // Don't cache redirects or invalid responses
+          if (!response || response.status !== 200 || response.redirected || response.type !== 'basic') {
             return response
           }
 
-          // Clone the response
+          // Clone the response for caching
           const responseToCache = response.clone()
 
           // Cache the fetched response
@@ -116,8 +127,22 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // If offline and not in cache, return offline page if it's a navigation request
           if (event.request.mode === 'navigate') {
-            const indexUrl = new URL(BASE_PATH + 'index.html', self.location.origin)
-            return caches.match(indexUrl) || caches.match(BASE_PATH + 'index.html')
+            // Try multiple cache key formats
+            const indexUrl = BASE_PATH + 'index.html'
+            const fullUrl = new URL(indexUrl, self.location.origin).toString()
+            
+            // Try to find index.html in cache using different key formats
+            return caches.match(fullUrl)
+              .then(cached => cached || caches.match(indexUrl))
+              .then(cached => cached || caches.match(BASE_PATH + 'index.html'))
+              .then(cached => {
+                if (cached) return cached
+                // If still not found, return error
+                return new Response('Offline - Content not cached', {
+                  status: 503,
+                  headers: { 'Content-Type': 'text/plain' },
+                })
+              })
           }
           // For other requests, let them fail gracefully
           return new Response('Network error', {
