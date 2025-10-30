@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gexf xmlns="http://www.gexf.net/1.2draft" version="1.2">
+  <meta lastmodifieddate="2024-01-15">
+    <creator>Kriskogram Sample Data Generator</creator>
+    <description>Sample migration data for testing Kriskogram visualization</description>
+    <keywords>migration, network, geospatial, kriskogram</keywords>
+  </meta>
+  <graph mode="dynamic" defaultedgetype="directed">
+    <attributes class="node">
+      <attribute id="0" title="region" type="string"/>
+      <attribute id="1" title="population" type="integer"/>
+      <attribute id="2" title="latitude" type="double"/>
+      <attribute id="3" title="longitude" type="double"/>
+      <attribute id="4" title="economic_index" type="double"/>
+    </attributes>
+    <attributes class="edge">
+      <attribute id="0" title="migration_type" type="string"/>
+      <attribute id="1" title="distance_km" type="double"/>
+      <attribute id="2" title="economic_factor" type="double"/>
+    </attributes>
+    <nodes>
+      <node id="NYC" label="New York City">
+        <attvalues>
+          <attvalue for="0" value="Northeast"/>
+          <attvalue for="1" value="8336817"/>
+          <attvalue for="2" value="40.7128"/>
+          <attvalue for="3" value="-74.0060"/>
+          <attvalue for="4" value="0.95"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="LA" label="Los Angeles">
+        <attvalues>
+          <attvalue for="0" value="West Coast"/>
+          <attvalue for="1" value="3971883"/>
+          <attvalue for="2" value="34.0522"/>
+          <attvalue for="3" value="-118.2437"/>
+          <attvalue for="4" value="0.88"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="CHI" label="Chicago">
+        <attvalues>
+          <attvalue for="0" value="Midwest"/>
+          <attvalue for="1" value="2746388"/>
+          <attvalue for="2" value="41.8781"/>
+          <attvalue for="3" value="-87.6298"/>
+          <attvalue for="4" value="0.82"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="HOU" label="Houston">
+        <attvalues>
+          <attvalue for="0" value="South"/>
+          <attvalue for="1" value="2320268"/>
+          <attvalue for="2" value="29.7604"/>
+          <attvalue for="3" value="-95.3698"/>
+          <attvalue for="4" value="0.78"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="PHX" label="Phoenix">
+        <attvalues>
+          <attvalue for="0" value="Southwest"/>
+          <attvalue for="1" value="1608139"/>
+          <attvalue for="2" value="33.4484"/>
+          <attvalue for="3" value="-112.0740"/>
+          <attvalue for="4" value="0.75"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="PHI" label="Philadelphia">
+        <attvalues>
+          <attvalue for="0" value="Northeast"/>
+          <attvalue for="1" value="1584064"/>
+          <attvalue for="2" value="39.9526"/>
+          <attvalue for="3" value="-75.1652"/>
+          <attvalue for="4" value="0.80"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="SA" label="San Antonio">
+        <attvalues>
+          <attvalue for="0" value="South"/>
+          <attvalue for="1" value="1547253"/>
+          <attvalue for="2" value="29.4241"/>
+          <attvalue for="3" value="-98.4936"/>
+          <attvalue for="4" value="0.72"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="SD" label="San Diego">
+        <attvalues>
+          <attvalue for="0" value="West Coast"/>
+          <attvalue for="1" value="1423851"/>
+          <attvalue for="2" value="32.7157"/>
+          <attvalue for="3" value="-117.1611"/>
+          <attvalue for="4" value="0.85"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="DAL" label="Dallas">
+        <attvalues>
+          <attvalue for="0" value="South"/>
+          <attvalue for="1" value="1343573"/>
+          <attvalue for="2" value="32.7767"/>
+          <attvalue for="3" value="-96.7970"/>
+          <attvalue for="4" value="0.83"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+      <node id="SJ" label="San Jose">
+        <attvalues>
+          <attvalue for="0" value="West Coast"/>
+          <attvalue for="1" value="1035317"/>
+          <attvalue for="2" value="37.3382"/>
+          <attvalue for="3" value="-121.8863"/>
+          <attvalue for="4" value="0.92"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2024"/>
+        </spells>
+      </node>
+    </nodes>
+    <edges>
+      <!-- 2020 Migration Flows -->
+      <edge id="NYC-LA-2020" source="NYC" target="LA" weight="12500">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="LA-NYC-2020" source="LA" target="NYC" weight="8900">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.12"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="CHI-NYC-2020" source="CHI" target="NYC" weight="15200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="1266.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="HOU-DAL-2020" source="HOU" target="DAL" weight="18700">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.08"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="PHX-LA-2020" source="PHX" target="LA" weight="11200">
+        <attvalues>
+          <attvalue for="0" value="lifestyle"/>
+          <attvalue for="1" value="373.0"/>
+          <attvalue for="2" value="0.10"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="PHI-NYC-2020" source="PHI" target="NYC" weight="9800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="95.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="SA-HOU-2020" source="SA" target="HOU" weight="13400">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="197.0"/>
+          <attvalue for="2" value="0.06"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="SD-LA-2020" source="SD" target="LA" weight="7600">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="120.0"/>
+          <attvalue for="2" value="0.03"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="DAL-HOU-2020" source="DAL" target="HOU" weight="12300">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.05"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+      <edge id="SJ-LA-2020" source="SJ" target="LA" weight="8900">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="340.0"/>
+          <attvalue for="2" value="0.07"/>
+        </attvalues>
+        <spells>
+          <spell start="2020" end="2020"/>
+        </spells>
+      </edge>
+
+      <!-- 2021 Migration Flows -->
+      <edge id="NYC-LA-2021" source="NYC" target="LA" weight="14200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="LA-NYC-2021" source="LA" target="NYC" weight="10200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="CHI-NYC-2021" source="CHI" target="NYC" weight="16800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="1266.0"/>
+          <attvalue for="2" value="0.22"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="HOU-DAL-2021" source="HOU" target="DAL" weight="20100">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.12"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="PHX-LA-2021" source="PHX" target="LA" weight="12800">
+        <attvalues>
+          <attvalue for="0" value="lifestyle"/>
+          <attvalue for="1" value="373.0"/>
+          <attvalue for="2" value="0.13"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="PHI-NYC-2021" source="PHI" target="NYC" weight="11200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="95.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="SA-HOU-2021" source="SA" target="HOU" weight="15200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="197.0"/>
+          <attvalue for="2" value="0.09"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="SD-LA-2021" source="SD" target="LA" weight="8900">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="120.0"/>
+          <attvalue for="2" value="0.05"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="DAL-HOU-2021" source="DAL" target="HOU" weight="14100">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.08"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+      <edge id="SJ-LA-2021" source="SJ" target="LA" weight="10200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="340.0"/>
+          <attvalue for="2" value="0.10"/>
+        </attvalues>
+        <spells>
+          <spell start="2021" end="2021"/>
+        </spells>
+      </edge>
+
+      <!-- 2022 Migration Flows -->
+      <edge id="NYC-LA-2022" source="NYC" target="LA" weight="15800">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.20"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="LA-NYC-2022" source="LA" target="NYC" weight="11800">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="CHI-NYC-2022" source="CHI" target="NYC" weight="18500">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="1266.0"/>
+          <attvalue for="2" value="0.25"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="HOU-DAL-2022" source="HOU" target="DAL" weight="22400">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="PHX-LA-2022" source="PHX" target="LA" weight="14500">
+        <attvalues>
+          <attvalue for="0" value="lifestyle"/>
+          <attvalue for="1" value="373.0"/>
+          <attvalue for="2" value="0.16"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="PHI-NYC-2022" source="PHI" target="NYC" weight="12800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="95.0"/>
+          <attvalue for="2" value="0.22"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="SA-HOU-2022" source="SA" target="HOU" weight="17100">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="197.0"/>
+          <attvalue for="2" value="0.12"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="SD-LA-2022" source="SD" target="LA" weight="10200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="120.0"/>
+          <attvalue for="2" value="0.08"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="DAL-HOU-2022" source="DAL" target="HOU" weight="15800">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.10"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+      <edge id="SJ-LA-2022" source="SJ" target="LA" weight="11500">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="340.0"/>
+          <attvalue for="2" value="0.13"/>
+        </attvalues>
+        <spells>
+          <spell start="2022" end="2022"/>
+        </spells>
+      </edge>
+
+      <!-- 2023 Migration Flows -->
+      <edge id="NYC-LA-2023" source="NYC" target="LA" weight="17200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.22"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="LA-NYC-2023" source="LA" target="NYC" weight="13200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.20"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="CHI-NYC-2023" source="CHI" target="NYC" weight="20100">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="1266.0"/>
+          <attvalue for="2" value="0.28"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="HOU-DAL-2023" source="HOU" target="DAL" weight="24800">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="PHX-LA-2023" source="PHX" target="LA" weight="16200">
+        <attvalues>
+          <attvalue for="0" value="lifestyle"/>
+          <attvalue for="1" value="373.0"/>
+          <attvalue for="2" value="0.19"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="PHI-NYC-2023" source="PHI" target="NYC" weight="14500">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="95.0"/>
+          <attvalue for="2" value="0.25"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="SA-HOU-2023" source="SA" target="HOU" weight="18900">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="197.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="SD-LA-2023" source="SD" target="LA" weight="11500">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="120.0"/>
+          <attvalue for="2" value="0.10"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="DAL-HOU-2023" source="DAL" target="HOU" weight="17200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.12"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+      <edge id="SJ-LA-2023" source="SJ" target="LA" weight="12800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="340.0"/>
+          <attvalue for="2" value="0.16"/>
+        </attvalues>
+        <spells>
+          <spell start="2023" end="2023"/>
+        </spells>
+      </edge>
+
+      <!-- 2024 Migration Flows -->
+      <edge id="NYC-LA-2024" source="NYC" target="LA" weight="18600">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.25"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="LA-NYC-2024" source="LA" target="NYC" weight="14200">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="3944.0"/>
+          <attvalue for="2" value="0.22"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="CHI-NYC-2024" source="CHI" target="NYC" weight="21800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="1266.0"/>
+          <attvalue for="2" value="0.30"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="HOU-DAL-2024" source="HOU" target="DAL" weight="27100">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.20"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="PHX-LA-2024" source="PHX" target="LA" weight="17800">
+        <attvalues>
+          <attvalue for="0" value="lifestyle"/>
+          <attvalue for="1" value="373.0"/>
+          <attvalue for="2" value="0.22"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="PHI-NYC-2024" source="PHI" target="NYC" weight="16200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="95.0"/>
+          <attvalue for="2" value="0.28"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="SA-HOU-2024" source="SA" target="HOU" weight="20800">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="197.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="SD-LA-2024" source="SD" target="LA" weight="12800">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="120.0"/>
+          <attvalue for="2" value="0.12"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="DAL-HOU-2024" source="DAL" target="HOU" weight="18900">
+        <attvalues>
+          <attvalue for="0" value="economic"/>
+          <attvalue for="1" value="239.0"/>
+          <attvalue for="2" value="0.15"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+      <edge id="SJ-LA-2024" source="SJ" target="LA" weight="14200">
+        <attvalues>
+          <attvalue for="0" value="career"/>
+          <attvalue for="1" value="340.0"/>
+          <attvalue for="2" value="0.18"/>
+        </attvalues>
+        <spells>
+          <spell start="2024" end="2024"/>
+        </spells>
+      </edge>
+    </edges>
+  </graph>
+</gexf>
