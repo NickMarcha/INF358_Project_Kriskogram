@@ -42,6 +42,7 @@ export interface KriskogramConfig {
   arcOpacity?: number; // Arc transparency (0-1), defaults to 0.85
   container?: string; // CSS selector, defaults to "body"
   title?: string; // Title to display, defaults to "Migration Flow Visualization"
+  lens?: { enabled: boolean; x: number; y: number; radius: number };
 }
 
 // -------------------- Implementation --------------------
@@ -164,7 +165,23 @@ export function createKriskogram(config: KriskogramConfig) {
   // ---- Arcs (edges) ----
   function arcPath(x1: number, x2: number, isAbove: boolean) {
     const dx = Math.abs(x2 - x1);
-    const arcHeight = dx / 2;
+    let arcHeight = dx / 2;
+
+    // EdgeLens: amplify arc height if lens is enabled and intersects this span
+    if (config.lens && config.lens.enabled) {
+      const midX = (x1 + x2) / 2;
+      const lens = config.lens;
+      const withinX = (midX >= Math.min(x1, x2) && midX <= Math.max(x1, x2));
+      const dy = Math.abs(baselineY - lens.y);
+      const withinY = dy <= lens.radius;
+      if (withinX && withinY) {
+        // Increase curvature based on proximity to lens center in X
+        const dxCenter = Math.abs(lens.x - midX);
+        const influence = Math.max(0, 1 - dxCenter / (lens.radius + 1e-6));
+        const factor = 1 + 1.5 * influence; // up to 2.5x
+        arcHeight *= factor;
+      }
+    }
 
     let sweep: number;
     if (x1 < x2) {
@@ -353,6 +370,16 @@ export function createKriskogram(config: KriskogramConfig) {
 
   return {
     svg,
+    setLens: (lens: { enabled: boolean; x: number; y: number; radius: number }) => {
+      (config as any).lens = lens;
+      // Recompute paths with new lens
+      edgeGroup.selectAll("path.arc").attr("d", (d: any) => {
+        const x1 = xScale(d.source)!;
+        const x2 = xScale(d.target)!;
+        const isAbove = x1 > x2;
+        return arcPath(x1, x2, isAbove);
+      });
+    },
     updateData: (newNodes: Node[], newEdges: Edge[]) => {
       // Remove any existing tooltips before updating
       d3.selectAll(".kriskogram-tooltip").remove();

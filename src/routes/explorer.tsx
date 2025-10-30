@@ -247,6 +247,9 @@ function ExplorerPage() {
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [nodeSizeMode, setNodeSizeMode] = useState<'fixed' | 'attribute' | 'outgoing' | 'incoming'>('fixed')
   const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
+  const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>('pan')
+  const [lensRadius, setLensRadius] = useState(80)
+  const [lensPos, setLensPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   
   // Function to update search params when state changes
   // Uses functional update pattern - TanStack Router will merge with current search params
@@ -497,11 +500,12 @@ function ExplorerPage() {
     >
       <div className="flex flex-1 h-full overflow-hidden">
         {/* Center Content - Visualization */}
-        <main className="flex-1 flex flex-col overflow-hidden h-full">
+        <main className="flex-1 flex flex-col overflow-hidden h-full relative">
           {loading && <div className="p-4 bg-yellow-50 text-yellow-800">Loading…</div>}
           {error && <div className="p-4 bg-red-50 text-red-600">{error}</div>}
 
             {dataset ? (
+              <>
               <div className="flex-1 flex flex-col overflow-hidden bg-white">
                 <div className={`flex-1 overflow-hidden ${viewType === 'table' ? '' : 'p-4'}`}>
                 {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
@@ -670,6 +674,15 @@ function ExplorerPage() {
                                 },
                               }
                             })()}
+                            lens={{ enabled: interactionMode === 'lens', x: lensPos.x, y: lensPos.y, radius: lensRadius }}
+                            onMouseMoveInCanvas={(pt) => {
+                              if (interactionMode === 'lens') setLensPos(pt)
+                            }}
+                            onWheelInCanvas={(deltaY) => {
+                              if (interactionMode === 'lens') {
+                                setLensRadius((r) => Math.max(20, Math.min(300, r + (deltaY > 0 ? -10 : 10))))
+                              }
+                            }}
                           />
                           </div>
                         </ErrorBoundary>
@@ -734,6 +747,39 @@ function ExplorerPage() {
                   )}
                 </div>
               </div>
+              {viewType === 'kriskogram' && (
+                <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-2 rounded shadow border border-gray-200">
+                  <label className="text-xs font-medium text-gray-700">Mode:</label>
+                  <button
+                    type="button"
+                    onClick={() => setInteractionMode("pan")}
+                    className={[
+                      'text-xs px-2 py-1 rounded border',
+                      interactionMode === 'pan'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300',
+                    ].join(' ')}
+                  >
+                    Pan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInteractionMode("lens")}
+                    className={[
+                      'text-xs px-2 py-1 rounded border',
+                      interactionMode === 'lens'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300',
+                    ].join(' ')}
+                  >
+                    Edge Lens
+                  </button>
+                  {interactionMode === 'lens' && (
+                    <span className="text-[10px] text-gray-600">Wheel: radius ({lensRadius}px)</span>
+                  )}
+                </div>
+              )}
+              </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-gray-500">
                 <div className="text-center">

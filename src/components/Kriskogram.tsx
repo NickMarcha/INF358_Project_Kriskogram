@@ -14,6 +14,9 @@ export interface KriskogramProps {
   title?: string;
   className?: string;
   style?: React.CSSProperties;
+  lens?: { enabled: boolean; x: number; y: number; radius: number };
+  onMouseMoveInCanvas?: (pt: { x: number; y: number }) => void;
+  onWheelInCanvas?: (deltaY: number) => void;
 }
 
 export interface KriskogramRef {
@@ -22,7 +25,7 @@ export interface KriskogramRef {
 }
 
 export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
-  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, title, className, style }, ref) => {
+  ({ nodes, edges, accessors, width = 800, height = 400, margin, arcOpacity = 0.85, title, className, style, lens, onMouseMoveInCanvas, onWheelInCanvas }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const kriskogramRef = useRef<ReturnType<typeof createKriskogram> | null>(null);
 
@@ -54,6 +57,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         arcOpacity,
         title,
         container: containerRef.current as any,
+        lens,
       });
 
       kriskogramRef.current = kriskogram;
@@ -69,7 +73,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         }
         kriskogramRef.current = null;
       };
-    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title]);
+    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title, lens?.enabled, lens?.x, lens?.y, lens?.radius]);
 
     // Update data when props change
     useEffect(() => {
@@ -86,6 +90,14 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
           width: '100%',
           height: '100%',
           ...style,
+        }}
+        onMouseMove={(e) => {
+          if (!containerRef.current || !onMouseMoveInCanvas) return;
+          const rect = containerRef.current.getBoundingClientRect();
+          onMouseMoveInCanvas({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        }}
+        onWheel={(e) => {
+          if (onWheelInCanvas) onWheelInCanvas(e.deltaY);
         }}
       />
     );
