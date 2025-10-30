@@ -33,6 +33,7 @@
     "d3-chord": "^3.0.1",
     "d3-sankey": "^0.12.3",
     "lucide-react": "^0.476.0",
+    "mermaid": "^11.12.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2",

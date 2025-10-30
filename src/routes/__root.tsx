@@ -2,6 +2,7 @@ import { Outlet, createRootRoute, redirect, useLocation } from '@tanstack/react-
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanstackDevtools } from '@tanstack/react-devtools'
 import { SidebarProvider, useSidebar } from '../contexts/SidebarContext'
+import PatternsPanel from '../components/PatternsPanel'
 import Sidebar from '../components/Sidebar'
 
 export const Route = createRootRoute({
@@ -48,6 +49,8 @@ function RootLayout() {
             <Outlet />
           </div>
         )}
+        {/* Site-wide Patterns Drawer */}
+        <PatternsPanel />
       </div>
 
       <TanstackDevtools
