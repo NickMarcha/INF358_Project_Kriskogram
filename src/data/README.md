@@ -1,6 +1,25 @@
 # GEXF Data and Parser
 
-This directory contains sample GEXF (Graph Exchange XML Format) data and utilities for working with network data in the Kriskogram visualization.
+This directory contains the canonical datasets used by the Kriskogram demo experiences, including source migration tables and utilities for working with network data.
+
+## State-to-State Migration Tables
+
+- Raw Excel workbooks live in `StateToStateMigrationUSXLS/`.
+- Normalised CSV exports live in `StateToStateMigrationUSCSV/` and follow the naming convention `<original-name>_<period>.csv` (for example `state_to_state_migrations_table_2009_2009.csv`).
+- Convert (or reconvert) the entire dataset with:
+
+  ```bash
+  npm run convert:migration-data
+  ```
+
+  The script leverages the [`xlsx`](https://www.npmjs.com/package/xlsx) parser to transform every workbook into a consistent, tidy CSV format ready for import.
+- Each CSV uses the column layout  
+  `period,source_id,source_label,destination_id,destination_label,estimate,moe`.
+  Values are row-based (one origin/destination pair per row) and include MOE when available.
+- Only the worksheet titled `Table` (or the first table-like sheet) is processed. Helper sheets (lookup tools, inputs, etc.) are ignored automatically.
+- You can safely regenerate the CSVs at any time—the converter wipes and rebuilds the contents of `StateToStateMigrationUSCSV/`, and also refreshes the default demo dataset `State_to_State_Migrations_Table_2021.csv`.
+
+These exports are intended to be the canonical assets for default imports, downloads, and future batch-import workflows. The CSV parser automatically recognises the tidy format, so you can import any of these files directly through the UI.
 
 ## Files
 

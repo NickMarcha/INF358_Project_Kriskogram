@@ -16,6 +16,17 @@ import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { parseTwoFileCSV } from '../lib/csv-two-file-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
+import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
+const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSING_YEARS.reduce(
+  (acc, year) => {
+    acc[year] =
+      year === 2020
+        ? 'ACS 1-year state-to-state migration flows for 2020 were not released by the Census Bureau due to pandemic-related data quality concerns.'
+        : 'State-to-state migration data is unavailable for this year in the ACS 1-year series.';
+    return acc;
+  },
+  {} as Record<number, string>,
+);
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
@@ -893,7 +904,20 @@ function ExplorerPage() {
                       No data meets the current threshold range ({minThreshold.toLocaleString()} - {maxThreshold.toLocaleString()}). Try adjusting the filters.
                     </div>
                   ) : (
-                    <div className="text-gray-500 py-8 text-center">No snapshot to display</div>
+                    <div className="px-6 py-8 text-center text-gray-600 space-y-3">
+                      {typeof currentYear === 'number' && YEAR_PLACEHOLDER_MESSAGES[currentYear] ? (
+                        <>
+                          <p className="text-lg font-semibold text-gray-700">
+                            No state-to-state migration snapshot for {currentYear}
+                          </p>
+                          <p className="text-sm leading-relaxed">
+                            {YEAR_PLACEHOLDER_MESSAGES[currentYear]}
+                          </p>
+                        </>
+                      ) : (
+                        <p>No snapshot to display.</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1613,14 +1637,67 @@ function ExplorerPage() {
 }
 
 async function preloadDefaults(): Promise<string | undefined> {
-  // Preload three defaults if missing: CSV 2021, sample GEXF, and Swiss Relocations
+  // Preload defaults if missing: multi-year CSV series, single-year CSV 2021, sample GEXF, and Swiss Relocations
+  const multiId = 'csv-usa-multi'
   const csvId = 'csv-2021'
   const gexfId = 'gexf-sample'
   const swissId = 'swiss-2016'
 
+  const existingMulti = await getDataset(multiId)
+  let multiAvailable = !!existingMulti
   const existingCsv = await getDataset(csvId)
   const existingGexf = await getDataset(gexfId)
   const existingSwiss = await getDataset(swissId)
+
+  if (!existingMulti) {
+    const snapshots: KriskogramSnapshot[] = []
+
+    for (const entry of STATE_MIGRATION_CSV_FILES) {
+      try {
+        const csvUrl = new URL(`../data/StateToStateMigrationUSCSV/${entry.filename}`, import.meta.url)
+        const csvText = await loadCSVFromUrl(csvUrl.toString())
+        const parsed = parseStateMigrationCSV(csvText)
+        const snapshot: KriskogramSnapshot = {
+          timestamp: entry.year,
+          nodes: parsed.nodes as any[],
+          edges: parsed.edges as any[],
+        }
+        snapshots.push(snapshot)
+      } catch (error) {
+        console.warn(`⚠️ Failed to load snapshot for ${entry.filename}:`, error)
+      }
+    }
+
+    if (snapshots.length > 0) {
+      snapshots.sort((a, b) => {
+        const ta = typeof a.timestamp === 'string' ? Number.parseInt(a.timestamp, 10) : a.timestamp
+        const tb = typeof b.timestamp === 'string' ? Number.parseInt(b.timestamp, 10) : b.timestamp
+        return ta - tb
+      })
+
+      const firstSnapshot = snapshots[0]
+      const lastSnapshot = snapshots[snapshots.length - 1]
+      const metadata = detectDatasetProperties(firstSnapshot)
+
+      const ds: StoredDataset = {
+        id: multiId,
+        name: 'US State-to-State Migration (2005-2023)',
+        notes:
+          'Tidy CSV exports converted from the U.S. Census Bureau ACS 1-year state-to-state migration flow tables. ACS 1-year migration flows for 2020 were not released, so that year is omitted. The 2022 release includes revised Connecticut flows per Census errata guidance.',
+        type: 'csv',
+        timeRange: {
+          start: typeof firstSnapshot.timestamp === 'string' ? Number.parseInt(firstSnapshot.timestamp, 10) : firstSnapshot.timestamp,
+          end: typeof lastSnapshot.timestamp === 'string' ? Number.parseInt(lastSnapshot.timestamp, 10) : lastSnapshot.timestamp,
+        },
+        snapshots,
+        metadata,
+        createdAt: Date.now(),
+      }
+
+      await saveDataset(ds)
+      multiAvailable = true
+    }
+  }
 
   if (!existingCsv) {
     const csvUrl = new URL('../data/State_to_State_Migrations_Table_2021.csv', import.meta.url)
@@ -1696,7 +1773,12 @@ async function preloadDefaults(): Promise<string | undefined> {
     await saveDataset(ds)
   }
 
-  return csvId
+  if (!multiAvailable) {
+    // If multi dataset failed to load, fall back to single-year
+    return existingCsv ? csvId : undefined
+  }
+
+  return multiId
 }
 
 

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
 
 export const Route = createFileRoute('/datasets')({
   component: DatasetsPage,
@@ -23,6 +24,33 @@ interface Dataset {
 
 const datasets: Dataset[] = [
   {
+    title: 'US State-to-State Migration (ACS 1-Year Series)',
+    description: [
+      'Tidy CSV exports converted from the U.S. Census Bureau state-to-state migration flow tables. Each file contains row-based estimates and margins of error for a given ACS 1-year release between 2005 and 2023.',
+      STATE_MIGRATION_MISSING_YEARS.length
+        ? `Note: ${STATE_MIGRATION_MISSING_YEARS.join(', ')} ${STATE_MIGRATION_MISSING_YEARS.length === 1 ? 'is' : 'are'} unavailable because the Census Bureau did not release ACS 1-year migration flows for that year.`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join(' '),
+    source: 'U.S. Census Bureau, American Community Survey 1-Year Estimates',
+    dataLinks: [
+      {
+        label: 'State-to-State Migration Flows (census.gov)',
+        url: 'https://www.census.gov/data/tables/time-series/demo/geographic-mobility/state-to-state-migration.html',
+      },
+    ],
+    files: STATE_MIGRATION_CSV_FILES.map((file) => ({
+      name: file.title,
+      description:
+        file.description ??
+        'Row-based migration flows with 90% margins of error (estimate & MOE columns).',
+      filename: file.filename,
+      url: `/data/StateToStateMigrationUSCSV/${file.filename}`,
+      format: 'CSV',
+    })),
+  },
+  {
     title: 'US State-to-State Migration (2021)',
     description: 'Real U.S. Census Bureau data showing migration flows between all 50 states from the American Community Survey 1-Year Estimates.',
     year: 2021,
@@ -36,7 +64,7 @@ const datasets: Dataset[] = [
     files: [
       {
         name: 'State-to-State Migrations Table',
-        description: 'Single CSV file containing migration estimates between U.S. states with margin of error data.',
+        description: 'Single tidy CSV containing row-based migration estimates (one origin/destination pair per row) with margin-of-error values.',
         filename: 'State_to_State_Migrations_Table_2021.csv',
         url: '/data/State_to_State_Migrations_Table_2021.csv',
         format: 'CSV',

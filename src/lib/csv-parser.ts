@@ -118,16 +118,27 @@ export interface MigrationData {
  */
 export function parseStateMigrationCSV(csvContent: string): MigrationData {
   const lines = csvContent.trim().split('\n');
-  
-  if (lines.length < 4) {
-    throw new Error('Invalid CSV format: needs at least 4 lines (3 headers + data)');
+
+  if (lines.length < 2) {
+    throw new Error('Invalid CSV format: not enough data');
   }
 
-  // Parse header line 2 to get destination state names
+  const header = parseCSVLine(lines[0]).map((cell) => cell.toLowerCase());
+  if (header.includes('source_id') && header.includes('destination_id')) {
+    return parseTidyMigrationCSV(lines);
+  }
+
+  return parseLegacyMigrationCSV(lines);
+}
+
+function parseLegacyMigrationCSV(lines: string[]): MigrationData {
+  if (lines.length < 4) {
+    throw new Error('Invalid legacy CSV format: needs at least 4 lines (3 headers + data)');
+  }
+
   const headerLine2 = lines[1];
   const stateHeaders = parseCSVLine(headerLine2);
-  
-  // Extract destination state names (skip first few columns which are metadata)
+
   const destinationStates: string[] = [];
   for (let i = 7; i < stateHeaders.length; i += 2) {
     const stateName = stateHeaders[i].trim();
@@ -140,15 +151,12 @@ export function parseStateMigrationCSV(csvContent: string): MigrationData {
   const edges: MigrationEdge[] = [];
   const nodeIds = new Set<string>();
 
-  // Parse data rows (starting from line 4, index 3)
   for (let i = 3; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    const sourceState = values[0].trim();
-    
-    // Skip non-state rows
+    const sourceState = values[0]?.trim();
+
     if (!sourceState || sourceState === 'Puerto Rico') continue;
-    
-    // Add source node
+
     const sourceId = normalizeStateName(sourceState);
     if (!nodeIds.has(sourceId)) {
       nodeIds.add(sourceId);
@@ -157,30 +165,24 @@ export function parseStateMigrationCSV(csvContent: string): MigrationData {
         id: sourceId,
         label: sourceState,
         region: regionInfo?.region,
-        division: regionInfo?.division
+        division: regionInfo?.division,
       });
     }
 
-    // Parse migration data - starts at column 7 (after metadata columns)
     let destIndex = 0;
     for (let col = 9; col < values.length && destIndex < destinationStates.length; col += 2) {
       const destState = destinationStates[destIndex];
-      if (!destState) {
-        destIndex++;
-        continue;
-      }
+      destIndex++;
+      if (!destState) continue;
 
       const destId = normalizeStateName(destState);
       const estimateStr = values[col]?.trim();
       const moeStr = values[col + 1]?.trim();
 
-      // Skip if source and destination are the same (N/A in original data)
       if (sourceId === destId) {
-        destIndex++;
         continue;
       }
 
-      // Add destination node if not already added
       if (!nodeIds.has(destId)) {
         nodeIds.add(destId);
         const regionInfo = STATE_REGIONS[destState];
@@ -188,39 +190,111 @@ export function parseStateMigrationCSV(csvContent: string): MigrationData {
           id: destId,
           label: destState,
           region: regionInfo?.region,
-          division: regionInfo?.division
+          division: regionInfo?.division,
         });
       }
 
-      // Parse estimate value
-      if (estimateStr && estimateStr !== 'N/A' && estimateStr !== '0') {
-        const estimate = parseNumberWithCommas(estimateStr);
-        if (estimate > 0) {
-          const edge: MigrationEdge = {
-            source: sourceId,
-            target: destId,
-            value: estimate
-          };
+      const estimate = parseNumberWithCommas(estimateStr);
+      if (estimate <= 0) continue;
 
-          // Add MOE if available
-          if (moeStr && moeStr !== '+/- 0') {
-            const moe = parseNumberWithCommas(moeStr.replace('+/- ', '').replace('+/-', ''));
-            if (moe > 0) {
-              edge.moe = moe;
-            }
-          }
+      const edge: MigrationEdge = {
+        source: sourceId,
+        target: destId,
+        value: estimate,
+      };
 
-          edges.push(edge);
-        }
+      const moe = parseNumberWithCommas(moeStr?.replace('+/-', ''));
+      if (moe > 0) {
+        edge.moe = moe;
       }
 
-      destIndex++;
+      edges.push(edge);
     }
   }
 
-  // Sort nodes alphabetically
   nodes.sort((a, b) => a.label.localeCompare(b.label));
+  return { nodes, edges };
+}
 
+function parseTidyMigrationCSV(lines: string[]): MigrationData {
+  const header = parseCSVLine(lines[0]).map((cell) => cell.trim().toLowerCase());
+
+  const idxSourceId = header.indexOf('source_id');
+  const idxSourceLabel = header.indexOf('source_label');
+  const idxDestinationId = header.indexOf('destination_id');
+  const idxDestinationLabel = header.indexOf('destination_label');
+  const idxEstimate = header.indexOf('estimate');
+  const idxMoe = header.indexOf('moe');
+
+  if (
+    idxSourceLabel === -1 ||
+    idxDestinationLabel === -1 ||
+    idxEstimate === -1
+  ) {
+    throw new Error('Invalid tidy CSV: missing required headers');
+  }
+
+  const nodes: MigrationNode[] = [];
+  const edges: MigrationEdge[] = [];
+  const nodeIds = new Set<string>();
+
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex++) {
+    const row = parseCSVLine(lines[lineIndex]);
+    if (!row.length) continue;
+
+    const sourceLabel = row[idxSourceLabel]?.trim();
+    const destinationLabel = row[idxDestinationLabel]?.trim();
+    if (!sourceLabel || !destinationLabel) continue;
+
+    const sourceId = idxSourceId >= 0 && row[idxSourceId]
+      ? row[idxSourceId].trim()
+      : normalizeStateName(sourceLabel);
+    const destinationId = idxDestinationId >= 0 && row[idxDestinationId]
+      ? row[idxDestinationId].trim()
+      : normalizeStateName(destinationLabel);
+
+    const estimate = parseNumberWithCommas(row[idxEstimate]);
+    if (!Number.isFinite(estimate) || estimate <= 0) continue;
+
+    if (!nodeIds.has(sourceId)) {
+      nodeIds.add(sourceId);
+      const regionInfo = STATE_REGIONS[sourceLabel];
+      nodes.push({
+        id: sourceId,
+        label: sourceLabel,
+        region: regionInfo?.region,
+        division: regionInfo?.division,
+      });
+    }
+
+    if (!nodeIds.has(destinationId)) {
+      nodeIds.add(destinationId);
+      const regionInfo = STATE_REGIONS[destinationLabel];
+      nodes.push({
+        id: destinationId,
+        label: destinationLabel,
+        region: regionInfo?.region,
+        division: regionInfo?.division,
+      });
+    }
+
+    const edge: MigrationEdge = {
+      source: sourceId,
+      target: destinationId,
+      value: estimate,
+    };
+
+    if (idxMoe !== -1) {
+      const moe = parseNumberWithCommas(row[idxMoe]);
+      if (Number.isFinite(moe) && moe > 0) {
+        edge.moe = moe;
+      }
+    }
+
+    edges.push(edge);
+  }
+
+  nodes.sort((a, b) => a.label.localeCompare(b.label));
   return { nodes, edges };
 }
 
@@ -253,6 +327,7 @@ function parseCSVLine(line: string): string[] {
  * Parse numbers that may contain commas and quotes
  */
 function parseNumberWithCommas(str: string): number {
+  if (!str) return 0;
   const cleaned = str.replace(/[",]/g, '');
   const num = Number.parseFloat(cleaned);
   return Number.isNaN(num) ? 0 : num;
