@@ -17,6 +17,9 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+  },
   // GitHub Pages configuration - must match repository name
   base: process.env.NODE_ENV === 'production' ? '/INF358_Project_Kriskogram/' : '/',
   build: {

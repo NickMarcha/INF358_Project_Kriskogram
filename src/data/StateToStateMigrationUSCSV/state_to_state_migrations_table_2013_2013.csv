@@ -1,57 +1,4 @@
 period,source_id,source_label,destination_id,destination_label,estimate,moe
-2013,UNITED_STATES1,"United States1",ALABAMA,"Alabama",97219,6480
-2013,UNITED_STATES1,"United States1",ALASKA,"Alaska",99931,9018
-2013,UNITED_STATES1,"United States1",ARIZONA,"Arizona",183178,10138
-2013,UNITED_STATES1,"United States1",ARKANSAS,"Arkansas",76963,7366
-2013,UNITED_STATES1,"United States1",CALIFORNIA,"California",581679,20638
-2013,UNITED_STATES1,"United States1",COLORADO,"Colorado",166348,9656
-2013,UNITED_STATES1,"United States1",CONNECTICUT,"Connecticut",91600,7900
-2013,UNITED_STATES1,"United States1",DELAWARE,"Delaware",24771,3563
-2013,UNITED_STATES1,"United States1",DISTRICT_OF_COLUMBIA,"District of Columbia",57087,4816
-2013,UNITED_STATES1,"United States1",FLORIDA,"Florida",423995,16587
-2013,UNITED_STATES1,"United States1",GEORGIA,"Georgia",270146,14222
-2013,UNITED_STATES1,"United States1",HAWAII,"Hawaii",60437,6639
-2013,UNITED_STATES1,"United States1",IDAHO,"Idaho",63788,6755
-2013,UNITED_STATES1,"United States1",ILLINOIS,"Illinois",304644,12194
-2013,UNITED_STATES1,"United States1",INDIANA,"Indiana",135472,9568
-2013,UNITED_STATES1,"United States1",IOWA,"Iowa",77470,6772
-2013,UNITED_STATES1,"United States1",KANSAS,"Kansas",93983,6748
-2013,UNITED_STATES1,"United States1",KENTUCKY,"Kentucky",98713,6469
-2013,UNITED_STATES1,"United States1",LOUISIANA,"Louisiana",99711,9837
-2013,UNITED_STATES1,"United States1",MAINE,"Maine",28840,3359
-2013,UNITED_STATES1,"United States1",MARYLAND,"Maryland",183316,10832
-2013,UNITED_STATES1,"United States1",MASSACHUSETTS,"Massachusetts",155524,8476
-2013,UNITED_STATES1,"United States1",MICHIGAN,"Michigan",166996,10033
-2013,UNITED_STATES1,"United States1",MINNESOTA,"Minnesota",119221,7696
-2013,UNITED_STATES1,"United States1",MISSISSIPPI,"Mississippi",72430,7310
-2013,UNITED_STATES1,"United States1",MISSOURI,"Missouri",138612,8539
-2013,UNITED_STATES1,"United States1",MONTANA,"Montana",31590,3927
-2013,UNITED_STATES1,"United States1",NEBRASKA,"Nebraska",47755,4407
-2013,UNITED_STATES1,"United States1",NEVADA,"Nevada",100922,8543
-2013,UNITED_STATES1,"United States1",NEW_HAMPSHIRE,"New Hampshire",46086,4872
-2013,UNITED_STATES1,"United States1",NEW_JERSEY,"New Jersey",202319,9001
-2013,UNITED_STATES1,"United States1",NEW_MEXICO,"New Mexico",75597,8508
-2013,UNITED_STATES1,"United States1",NEW_YORK,"New York",401440,15263
-2013,UNITED_STATES1,"United States1",NORTH_CAROLINA,"North Carolina",247090,13216
-2013,UNITED_STATES1,"United States1",NORTH_DAKOTA,"North Dakota",29808,3825
-2013,UNITED_STATES1,"United States1",OHIO,"Ohio",201515,10235
-2013,UNITED_STATES1,"United States1",OKLAHOMA,"Oklahoma",100561,9173
-2013,UNITED_STATES1,"United States1",OREGON,"Oregon",111680,8564
-2013,UNITED_STATES1,"United States1",PENNSYLVANIA,"Pennsylvania",247295,10934
-2013,UNITED_STATES1,"United States1",RHODE_ISLAND,"Rhode Island",36119,3823
-2013,UNITED_STATES1,"United States1",SOUTH_CAROLINA,"South Carolina",128726,9644
-2013,UNITED_STATES1,"United States1",SOUTH_DAKOTA,"South Dakota",29118,4515
-2013,UNITED_STATES1,"United States1",TENNESSEE,"Tennessee",159497,9420
-2013,UNITED_STATES1,"United States1",TEXAS,"Texas",409977,18230
-2013,UNITED_STATES1,"United States1",UTAH,"Utah",91943,8829
-2013,UNITED_STATES1,"United States1",VERMONT,"Vermont",21773,3992
-2013,UNITED_STATES1,"United States1",VIRGINIA,"Virginia",236420,9669
-2013,UNITED_STATES1,"United States1",WASHINGTON,"Washington",191053,10178
-2013,UNITED_STATES1,"United States1",WEST_VIRGINIA,"West Virginia",48627,4779
-2013,UNITED_STATES1,"United States1",WISCONSIN,"Wisconsin",110198,8147
-2013,UNITED_STATES1,"United States1",WYOMING,"Wyoming",28150,4294
-2013,UNITED_STATES1,"United States1",PUERTO_RICO,"Puerto Rico",73846,9838
-2013,UNITED_STATES1,"United States1",FOREIGN_COUNTRY,"Foreign Country",1810985,33055
 2013,ALABAMA,"Alabama",ALASKA,"Alaska",1026,819
 2013,ALABAMA,"Alabama",ARIZONA,"Arizona",1077,701
 2013,ALABAMA,"Alabama",ARKANSAS,"Arkansas",1108,614
@@ -100,8 +47,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,ALABAMA,"Alabama",WEST_VIRGINIA,"West Virginia",109,186
 2013,ALABAMA,"Alabama",WISCONSIN,"Wisconsin",296,233
 2013,ALABAMA,"Alabama",WYOMING,"Wyoming",282,272
-2013,ALABAMA,"Alabama",PUERTO_RICO,"Puerto Rico",312,330
-2013,ALABAMA,"Alabama",FOREIGN_COUNTRY,"Foreign Country",14460,3423
 2013,ALASKA,"Alaska",ALABAMA,"Alabama",572,589
 2013,ALASKA,"Alaska",ARIZONA,"Arizona",733,446
 2013,ALASKA,"Alaska",ARKANSAS,"Arkansas",403,329
@@ -147,8 +92,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,ALASKA,"Alaska",WASHINGTON,"Washington",2984,1199
 2013,ALASKA,"Alaska",WEST_VIRGINIA,"West Virginia",257,252
 2013,ALASKA,"Alaska",WISCONSIN,"Wisconsin",216,241
-2013,ALASKA,"Alaska",PUERTO_RICO,"Puerto Rico",184,202
-2013,ALASKA,"Alaska",FOREIGN_COUNTRY,"Foreign Country",6872,1748
 2013,ARIZONA,"Arizona",ALABAMA,"Alabama",2140,1423
 2013,ARIZONA,"Arizona",ALASKA,"Alaska",4418,1665
 2013,ARIZONA,"Arizona",ARKANSAS,"Arkansas",310,260
@@ -199,8 +142,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,ARIZONA,"Arizona",WEST_VIRGINIA,"West Virginia",188,224
 2013,ARIZONA,"Arizona",WISCONSIN,"Wisconsin",5694,1918
 2013,ARIZONA,"Arizona",WYOMING,"Wyoming",1838,909
-2013,ARIZONA,"Arizona",PUERTO_RICO,"Puerto Rico",376,194
-2013,ARIZONA,"Arizona",FOREIGN_COUNTRY,"Foreign Country",43949,4314
 2013,ARKANSAS,"Arkansas",ALASKA,"Alaska",1193,869
 2013,ARKANSAS,"Arkansas",ARIZONA,"Arizona",661,561
 2013,ARKANSAS,"Arkansas",CALIFORNIA,"California",4925,1930
@@ -244,8 +185,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,ARKANSAS,"Arkansas",WASHINGTON,"Washington",520,421
 2013,ARKANSAS,"Arkansas",WEST_VIRGINIA,"West Virginia",150,194
 2013,ARKANSAS,"Arkansas",WISCONSIN,"Wisconsin",331,274
-2013,ARKANSAS,"Arkansas",PUERTO_RICO,"Puerto Rico",8,30
-2013,ARKANSAS,"Arkansas",FOREIGN_COUNTRY,"Foreign Country",9182,2361
 2013,CALIFORNIA,"California",ALABAMA,"Alabama",2958,1545
 2013,CALIFORNIA,"California",ALASKA,"Alaska",8457,2353
 2013,CALIFORNIA,"California",ARIZONA,"Arizona",36567,4824
@@ -296,8 +235,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,CALIFORNIA,"California",WEST_VIRGINIA,"West Virginia",967,626
 2013,CALIFORNIA,"California",WISCONSIN,"Wisconsin",4704,1494
 2013,CALIFORNIA,"California",WYOMING,"Wyoming",1030,722
-2013,CALIFORNIA,"California",PUERTO_RICO,"Puerto Rico",3179,2894
-2013,CALIFORNIA,"California",FOREIGN_COUNTRY,"Foreign Country",286623,13590
 2013,COLORADO,"Colorado",ALABAMA,"Alabama",2926,1122
 2013,COLORADO,"Colorado",ALASKA,"Alaska",1606,759
 2013,COLORADO,"Colorado",ARIZONA,"Arizona",8798,2202
@@ -348,8 +285,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,COLORADO,"Colorado",WEST_VIRGINIA,"West Virginia",246,257
 2013,COLORADO,"Colorado",WISCONSIN,"Wisconsin",2623,1163
 2013,COLORADO,"Colorado",WYOMING,"Wyoming",4307,1254
-2013,COLORADO,"Colorado",PUERTO_RICO,"Puerto Rico",686,603
-2013,COLORADO,"Colorado",FOREIGN_COUNTRY,"Foreign Country",33113,4211
 2013,CONNECTICUT,"Connecticut",ALABAMA,"Alabama",337,353
 2013,CONNECTICUT,"Connecticut",ALASKA,"Alaska",1688,1368
 2013,CONNECTICUT,"Connecticut",ARIZONA,"Arizona",1791,1306
@@ -394,8 +329,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,CONNECTICUT,"Connecticut",WEST_VIRGINIA,"West Virginia",183,258
 2013,CONNECTICUT,"Connecticut",WISCONSIN,"Wisconsin",435,361
 2013,CONNECTICUT,"Connecticut",WYOMING,"Wyoming",132,220
-2013,CONNECTICUT,"Connecticut",PUERTO_RICO,"Puerto Rico",2761,1418
-2013,CONNECTICUT,"Connecticut",FOREIGN_COUNTRY,"Foreign Country",18531,2644
 2013,DELAWARE,"Delaware",ALASKA,"Alaska",272,406
 2013,DELAWARE,"Delaware",CALIFORNIA,"California",810,732
 2013,DELAWARE,"Delaware",COLORADO,"Colorado",74,123
@@ -426,7 +359,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,DELAWARE,"Delaware",TEXAS,"Texas",240,224
 2013,DELAWARE,"Delaware",VIRGINIA,"Virginia",776,413
 2013,DELAWARE,"Delaware",WEST_VIRGINIA,"West Virginia",53,93
-2013,DELAWARE,"Delaware",FOREIGN_COUNTRY,"Foreign Country",4594,1249
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",ALABAMA,"Alabama",316,217
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",ALASKA,"Alaska",579,658
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",ARIZONA,"Arizona",79,130
@@ -468,8 +400,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",WEST_VIRGINIA,"West Virginia",391,245
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",WISCONSIN,"Wisconsin",5,12
 2013,DISTRICT_OF_COLUMBIA,"District of Columbia",WYOMING,"Wyoming",3,9
-2013,DISTRICT_OF_COLUMBIA,"District of Columbia",PUERTO_RICO,"Puerto Rico",62,107
-2013,DISTRICT_OF_COLUMBIA,"District of Columbia",FOREIGN_COUNTRY,"Foreign Country",11027,2087
 2013,FLORIDA,"Florida",ALABAMA,"Alabama",10281,2527
 2013,FLORIDA,"Florida",ALASKA,"Alaska",10876,3781
 2013,FLORIDA,"Florida",ARIZONA,"Arizona",7553,2339
@@ -520,8 +450,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,FLORIDA,"Florida",WEST_VIRGINIA,"West Virginia",4250,1764
 2013,FLORIDA,"Florida",WISCONSIN,"Wisconsin",7321,2277
 2013,FLORIDA,"Florida",WYOMING,"Wyoming",341,398
-2013,FLORIDA,"Florida",PUERTO_RICO,"Puerto Rico",21245,7079
-2013,FLORIDA,"Florida",FOREIGN_COUNTRY,"Foreign Country",150240,9384
 2013,GEORGIA,"Georgia",ALABAMA,"Alabama",18739,4366
 2013,GEORGIA,"Georgia",ALASKA,"Alaska",3143,1209
 2013,GEORGIA,"Georgia",ARIZONA,"Arizona",3464,1455
@@ -571,8 +499,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,GEORGIA,"Georgia",WEST_VIRGINIA,"West Virginia",645,493
 2013,GEORGIA,"Georgia",WISCONSIN,"Wisconsin",3066,1769
 2013,GEORGIA,"Georgia",WYOMING,"Wyoming",562,459
-2013,GEORGIA,"Georgia",PUERTO_RICO,"Puerto Rico",3763,1815
-2013,GEORGIA,"Georgia",FOREIGN_COUNTRY,"Foreign Country",50954,6558
 2013,HAWAII,"Hawaii",ALABAMA,"Alabama",593,471
 2013,HAWAII,"Hawaii",ALASKA,"Alaska",1615,1368
 2013,HAWAII,"Hawaii",ARIZONA,"Arizona",1153,746
@@ -618,8 +544,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,HAWAII,"Hawaii",VIRGINIA,"Virginia",1373,697
 2013,HAWAII,"Hawaii",WASHINGTON,"Washington",3225,1294
 2013,HAWAII,"Hawaii",WISCONSIN,"Wisconsin",231,211
-2013,HAWAII,"Hawaii",PUERTO_RICO,"Puerto Rico",327,418
-2013,HAWAII,"Hawaii",FOREIGN_COUNTRY,"Foreign Country",14453,2825
 2013,IDAHO,"Idaho",ALABAMA,"Alabama",72,78
 2013,IDAHO,"Idaho",ALASKA,"Alaska",2887,1826
 2013,IDAHO,"Idaho",ARIZONA,"Arizona",2915,1498
@@ -662,7 +586,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,IDAHO,"Idaho",WASHINGTON,"Washington",10059,1911
 2013,IDAHO,"Idaho",WISCONSIN,"Wisconsin",334,364
 2013,IDAHO,"Idaho",WYOMING,"Wyoming",1508,838
-2013,IDAHO,"Idaho",FOREIGN_COUNTRY,"Foreign Country",8156,1682
 2013,ILLINOIS,"Illinois",ALABAMA,"Alabama",2044,876
 2013,ILLINOIS,"Illinois",ALASKA,"Alaska",2624,1856
 2013,ILLINOIS,"Illinois",ARIZONA,"Arizona",5598,1586
@@ -712,8 +635,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,ILLINOIS,"Illinois",WEST_VIRGINIA,"West Virginia",1074,723
 2013,ILLINOIS,"Illinois",WISCONSIN,"Wisconsin",15844,2798
 2013,ILLINOIS,"Illinois",WYOMING,"Wyoming",202,269
-2013,ILLINOIS,"Illinois",PUERTO_RICO,"Puerto Rico",1005,635
-2013,ILLINOIS,"Illinois",FOREIGN_COUNTRY,"Foreign Country",67422,6071
 2013,INDIANA,"Indiana",ALABAMA,"Alabama",1235,700
 2013,INDIANA,"Indiana",ALASKA,"Alaska",649,513
 2013,INDIANA,"Indiana",ARIZONA,"Arizona",3093,1335
@@ -763,8 +684,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,INDIANA,"Indiana",WEST_VIRGINIA,"West Virginia",160,234
 2013,INDIANA,"Indiana",WISCONSIN,"Wisconsin",2490,1204
 2013,INDIANA,"Indiana",WYOMING,"Wyoming",13,22
-2013,INDIANA,"Indiana",PUERTO_RICO,"Puerto Rico",145,188
-2013,INDIANA,"Indiana",FOREIGN_COUNTRY,"Foreign Country",23618,2875
 2013,IOWA,"Iowa",ALABAMA,"Alabama",180,431
 2013,IOWA,"Iowa",ALASKA,"Alaska",1539,1276
 2013,IOWA,"Iowa",ARIZONA,"Arizona",968,683
@@ -811,7 +730,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,IOWA,"Iowa",WEST_VIRGINIA,"West Virginia",147,172
 2013,IOWA,"Iowa",WISCONSIN,"Wisconsin",5219,1371
 2013,IOWA,"Iowa",WYOMING,"Wyoming",423,503
-2013,IOWA,"Iowa",FOREIGN_COUNTRY,"Foreign Country",12526,2778
 2013,KANSAS,"Kansas",ALABAMA,"Alabama",1074,733
 2013,KANSAS,"Kansas",ALASKA,"Alaska",958,876
 2013,KANSAS,"Kansas",ARIZONA,"Arizona",1582,680
@@ -859,8 +777,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,KANSAS,"Kansas",WEST_VIRGINIA,"West Virginia",330,408
 2013,KANSAS,"Kansas",WISCONSIN,"Wisconsin",709,663
 2013,KANSAS,"Kansas",WYOMING,"Wyoming",181,300
-2013,KANSAS,"Kansas",PUERTO_RICO,"Puerto Rico",401,500
-2013,KANSAS,"Kansas",FOREIGN_COUNTRY,"Foreign Country",14768,2454
 2013,KENTUCKY,"Kentucky",ALABAMA,"Alabama",1418,717
 2013,KENTUCKY,"Kentucky",ALASKA,"Alaska",1388,915
 2013,KENTUCKY,"Kentucky",ARIZONA,"Arizona",1057,661
@@ -908,8 +824,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,KENTUCKY,"Kentucky",WEST_VIRGINIA,"West Virginia",1772,763
 2013,KENTUCKY,"Kentucky",WISCONSIN,"Wisconsin",1237,729
 2013,KENTUCKY,"Kentucky",WYOMING,"Wyoming",231,387
-2013,KENTUCKY,"Kentucky",PUERTO_RICO,"Puerto Rico",887,840
-2013,KENTUCKY,"Kentucky",FOREIGN_COUNTRY,"Foreign Country",17076,2639
 2013,LOUISIANA,"Louisiana",ALABAMA,"Alabama",2683,1094
 2013,LOUISIANA,"Louisiana",ALASKA,"Alaska",1369,796
 2013,LOUISIANA,"Louisiana",ARIZONA,"Arizona",231,243
@@ -956,8 +870,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,LOUISIANA,"Louisiana",WASHINGTON,"Washington",2162,1085
 2013,LOUISIANA,"Louisiana",WEST_VIRGINIA,"West Virginia",726,1115
 2013,LOUISIANA,"Louisiana",WISCONSIN,"Wisconsin",517,291
-2013,LOUISIANA,"Louisiana",PUERTO_RICO,"Puerto Rico",785,516
-2013,LOUISIANA,"Louisiana",FOREIGN_COUNTRY,"Foreign Country",15425,2808
 2013,MAINE,"Maine",ALABAMA,"Alabama",13,22
 2013,MAINE,"Maine",ALASKA,"Alaska",912,574
 2013,MAINE,"Maine",ARIZONA,"Arizona",510,488
@@ -1000,8 +912,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MAINE,"Maine",WEST_VIRGINIA,"West Virginia",155,211
 2013,MAINE,"Maine",WISCONSIN,"Wisconsin",17,30
 2013,MAINE,"Maine",WYOMING,"Wyoming",70,119
-2013,MAINE,"Maine",PUERTO_RICO,"Puerto Rico",120,199
-2013,MAINE,"Maine",FOREIGN_COUNTRY,"Foreign Country",4148,1354
 2013,MARYLAND,"Maryland",ALABAMA,"Alabama",1918,1157
 2013,MARYLAND,"Maryland",ALASKA,"Alaska",1589,1143
 2013,MARYLAND,"Maryland",ARIZONA,"Arizona",1515,1025
@@ -1050,8 +960,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MARYLAND,"Maryland",WEST_VIRGINIA,"West Virginia",4653,1982
 2013,MARYLAND,"Maryland",WISCONSIN,"Wisconsin",1379,1221
 2013,MARYLAND,"Maryland",WYOMING,"Wyoming",313,284
-2013,MARYLAND,"Maryland",PUERTO_RICO,"Puerto Rico",1057,771
-2013,MARYLAND,"Maryland",FOREIGN_COUNTRY,"Foreign Country",43152,5655
 2013,MASSACHUSETTS,"Massachusetts",ALABAMA,"Alabama",409,318
 2013,MASSACHUSETTS,"Massachusetts",ALASKA,"Alaska",1634,1023
 2013,MASSACHUSETTS,"Massachusetts",ARIZONA,"Arizona",2507,1667
@@ -1101,8 +1009,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MASSACHUSETTS,"Massachusetts",WEST_VIRGINIA,"West Virginia",222,281
 2013,MASSACHUSETTS,"Massachusetts",WISCONSIN,"Wisconsin",718,451
 2013,MASSACHUSETTS,"Massachusetts",WYOMING,"Wyoming",92,116
-2013,MASSACHUSETTS,"Massachusetts",PUERTO_RICO,"Puerto Rico",2005,873
-2013,MASSACHUSETTS,"Massachusetts",FOREIGN_COUNTRY,"Foreign Country",57320,5762
 2013,MICHIGAN,"Michigan",ALABAMA,"Alabama",2517,1136
 2013,MICHIGAN,"Michigan",ALASKA,"Alaska",4783,2017
 2013,MICHIGAN,"Michigan",ARIZONA,"Arizona",3372,1340
@@ -1153,8 +1059,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MICHIGAN,"Michigan",WEST_VIRGINIA,"West Virginia",319,295
 2013,MICHIGAN,"Michigan",WISCONSIN,"Wisconsin",5297,1189
 2013,MICHIGAN,"Michigan",WYOMING,"Wyoming",154,174
-2013,MICHIGAN,"Michigan",PUERTO_RICO,"Puerto Rico",891,891
-2013,MICHIGAN,"Michigan",FOREIGN_COUNTRY,"Foreign Country",47823,5370
 2013,MINNESOTA,"Minnesota",ALABAMA,"Alabama",493,442
 2013,MINNESOTA,"Minnesota",ALASKA,"Alaska",1564,769
 2013,MINNESOTA,"Minnesota",ARIZONA,"Arizona",3389,1349
@@ -1204,8 +1108,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MINNESOTA,"Minnesota",WEST_VIRGINIA,"West Virginia",596,581
 2013,MINNESOTA,"Minnesota",WISCONSIN,"Wisconsin",17649,2740
 2013,MINNESOTA,"Minnesota",WYOMING,"Wyoming",213,195
-2013,MINNESOTA,"Minnesota",PUERTO_RICO,"Puerto Rico",922,1011
-2013,MINNESOTA,"Minnesota",FOREIGN_COUNTRY,"Foreign Country",26223,3362
 2013,MISSISSIPPI,"Mississippi",ALABAMA,"Alabama",7077,1846
 2013,MISSISSIPPI,"Mississippi",ALASKA,"Alaska",401,388
 2013,MISSISSIPPI,"Mississippi",ARIZONA,"Arizona",1129,632
@@ -1252,8 +1154,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MISSISSIPPI,"Mississippi",WASHINGTON,"Washington",98,151
 2013,MISSISSIPPI,"Mississippi",WEST_VIRGINIA,"West Virginia",126,159
 2013,MISSISSIPPI,"Mississippi",WISCONSIN,"Wisconsin",285,226
-2013,MISSISSIPPI,"Mississippi",PUERTO_RICO,"Puerto Rico",79,119
-2013,MISSISSIPPI,"Mississippi",FOREIGN_COUNTRY,"Foreign Country",6624,1718
 2013,MISSOURI,"Missouri",ALABAMA,"Alabama",1004,761
 2013,MISSOURI,"Missouri",ALASKA,"Alaska",438,415
 2013,MISSOURI,"Missouri",ARIZONA,"Arizona",3763,1290
@@ -1302,8 +1202,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MISSOURI,"Missouri",WEST_VIRGINIA,"West Virginia",756,507
 2013,MISSOURI,"Missouri",WISCONSIN,"Wisconsin",2343,1550
 2013,MISSOURI,"Missouri",WYOMING,"Wyoming",59,100
-2013,MISSOURI,"Missouri",PUERTO_RICO,"Puerto Rico",262,406
-2013,MISSOURI,"Missouri",FOREIGN_COUNTRY,"Foreign Country",18026,2483
 2013,MONTANA,"Montana",ALABAMA,"Alabama",21,36
 2013,MONTANA,"Montana",ALASKA,"Alaska",2017,1335
 2013,MONTANA,"Montana",ARIZONA,"Arizona",914,548
@@ -1350,7 +1248,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,MONTANA,"Montana",WEST_VIRGINIA,"West Virginia",50,53
 2013,MONTANA,"Montana",WISCONSIN,"Wisconsin",875,542
 2013,MONTANA,"Montana",WYOMING,"Wyoming",987,475
-2013,MONTANA,"Montana",FOREIGN_COUNTRY,"Foreign Country",5201,1523
 2013,NEBRASKA,"Nebraska",ALABAMA,"Alabama",294,295
 2013,NEBRASKA,"Nebraska",ALASKA,"Alaska",440,321
 2013,NEBRASKA,"Nebraska",ARIZONA,"Arizona",1585,742
@@ -1398,8 +1295,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEBRASKA,"Nebraska",WEST_VIRGINIA,"West Virginia",36,60
 2013,NEBRASKA,"Nebraska",WISCONSIN,"Wisconsin",352,258
 2013,NEBRASKA,"Nebraska",WYOMING,"Wyoming",496,291
-2013,NEBRASKA,"Nebraska",PUERTO_RICO,"Puerto Rico",418,674
-2013,NEBRASKA,"Nebraska",FOREIGN_COUNTRY,"Foreign Country",8133,2139
 2013,NEVADA,"Nevada",ALABAMA,"Alabama",491,510
 2013,NEVADA,"Nevada",ALASKA,"Alaska",1466,816
 2013,NEVADA,"Nevada",ARIZONA,"Arizona",3921,1046
@@ -1447,8 +1342,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEVADA,"Nevada",WEST_VIRGINIA,"West Virginia",66,109
 2013,NEVADA,"Nevada",WISCONSIN,"Wisconsin",1703,1133
 2013,NEVADA,"Nevada",WYOMING,"Wyoming",887,651
-2013,NEVADA,"Nevada",PUERTO_RICO,"Puerto Rico",740,1232
-2013,NEVADA,"Nevada",FOREIGN_COUNTRY,"Foreign Country",15152,2621
 2013,NEW_HAMPSHIRE,"New Hampshire",ALABAMA,"Alabama",123,198
 2013,NEW_HAMPSHIRE,"New Hampshire",ALASKA,"Alaska",598,552
 2013,NEW_HAMPSHIRE,"New Hampshire",ARIZONA,"Arizona",360,312
@@ -1493,8 +1386,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEW_HAMPSHIRE,"New Hampshire",WASHINGTON,"Washington",513,436
 2013,NEW_HAMPSHIRE,"New Hampshire",WEST_VIRGINIA,"West Virginia",550,884
 2013,NEW_HAMPSHIRE,"New Hampshire",WISCONSIN,"Wisconsin",337,323
-2013,NEW_HAMPSHIRE,"New Hampshire",PUERTO_RICO,"Puerto Rico",209,289
-2013,NEW_HAMPSHIRE,"New Hampshire",FOREIGN_COUNTRY,"Foreign Country",5971,1681
 2013,NEW_JERSEY,"New Jersey",ALABAMA,"Alabama",853,551
 2013,NEW_JERSEY,"New Jersey",ALASKA,"Alaska",990,852
 2013,NEW_JERSEY,"New Jersey",ARIZONA,"Arizona",979,740
@@ -1542,8 +1433,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEW_JERSEY,"New Jersey",WASHINGTON,"Washington",801,540
 2013,NEW_JERSEY,"New Jersey",WEST_VIRGINIA,"West Virginia",461,311
 2013,NEW_JERSEY,"New Jersey",WISCONSIN,"Wisconsin",115,143
-2013,NEW_JERSEY,"New Jersey",PUERTO_RICO,"Puerto Rico",4072,1719
-2013,NEW_JERSEY,"New Jersey",FOREIGN_COUNTRY,"Foreign Country",53834,5785
 2013,NEW_MEXICO,"New Mexico",ALABAMA,"Alabama",63,87
 2013,NEW_MEXICO,"New Mexico",ALASKA,"Alaska",420,387
 2013,NEW_MEXICO,"New Mexico",ARIZONA,"Arizona",5551,1670
@@ -1592,7 +1481,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEW_MEXICO,"New Mexico",WEST_VIRGINIA,"West Virginia",198,232
 2013,NEW_MEXICO,"New Mexico",WISCONSIN,"Wisconsin",509,332
 2013,NEW_MEXICO,"New Mexico",WYOMING,"Wyoming",273,357
-2013,NEW_MEXICO,"New Mexico",FOREIGN_COUNTRY,"Foreign Country",13336,2718
 2013,NEW_YORK,"New York",ALABAMA,"Alabama",1648,769
 2013,NEW_YORK,"New York",ALASKA,"Alaska",6790,2773
 2013,NEW_YORK,"New York",ARIZONA,"Arizona",3642,1008
@@ -1642,8 +1530,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NEW_YORK,"New York",WEST_VIRGINIA,"West Virginia",725,421
 2013,NEW_YORK,"New York",WISCONSIN,"Wisconsin",1412,532
 2013,NEW_YORK,"New York",WYOMING,"Wyoming",309,332
-2013,NEW_YORK,"New York",PUERTO_RICO,"Puerto Rico",4536,1114
-2013,NEW_YORK,"New York",FOREIGN_COUNTRY,"Foreign Country",142096,8647
 2013,NORTH_CAROLINA,"North Carolina",ALABAMA,"Alabama",3268,1477
 2013,NORTH_CAROLINA,"North Carolina",ALASKA,"Alaska",4199,2237
 2013,NORTH_CAROLINA,"North Carolina",ARIZONA,"Arizona",4437,1555
@@ -1692,8 +1578,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NORTH_CAROLINA,"North Carolina",WEST_VIRGINIA,"West Virginia",3684,1684
 2013,NORTH_CAROLINA,"North Carolina",WISCONSIN,"Wisconsin",1449,749
 2013,NORTH_CAROLINA,"North Carolina",WYOMING,"Wyoming",35,56
-2013,NORTH_CAROLINA,"North Carolina",PUERTO_RICO,"Puerto Rico",1526,959
-2013,NORTH_CAROLINA,"North Carolina",FOREIGN_COUNTRY,"Foreign Country",48852,5497
 2013,NORTH_DAKOTA,"North Dakota",ALASKA,"Alaska",159,164
 2013,NORTH_DAKOTA,"North Dakota",ARIZONA,"Arizona",1312,1178
 2013,NORTH_DAKOTA,"North Dakota",CALIFORNIA,"California",2051,1187
@@ -1735,7 +1619,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,NORTH_DAKOTA,"North Dakota",WASHINGTON,"Washington",642,369
 2013,NORTH_DAKOTA,"North Dakota",WISCONSIN,"Wisconsin",464,382
 2013,NORTH_DAKOTA,"North Dakota",WYOMING,"Wyoming",857,750
-2013,NORTH_DAKOTA,"North Dakota",FOREIGN_COUNTRY,"Foreign Country",3155,1014
 2013,OHIO,"Ohio",ALABAMA,"Alabama",1318,685
 2013,OHIO,"Ohio",ALASKA,"Alaska",663,538
 2013,OHIO,"Ohio",ARIZONA,"Arizona",2793,901
@@ -1785,8 +1668,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,OHIO,"Ohio",WEST_VIRGINIA,"West Virginia",9890,2304
 2013,OHIO,"Ohio",WISCONSIN,"Wisconsin",2390,825
 2013,OHIO,"Ohio",WYOMING,"Wyoming",151,149
-2013,OHIO,"Ohio",PUERTO_RICO,"Puerto Rico",3130,1778
-2013,OHIO,"Ohio",FOREIGN_COUNTRY,"Foreign Country",43180,4828
 2013,OKLAHOMA,"Oklahoma",ALABAMA,"Alabama",1024,805
 2013,OKLAHOMA,"Oklahoma",ALASKA,"Alaska",1550,605
 2013,OKLAHOMA,"Oklahoma",ARIZONA,"Arizona",3203,1382
@@ -1836,8 +1717,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,OKLAHOMA,"Oklahoma",WEST_VIRGINIA,"West Virginia",589,551
 2013,OKLAHOMA,"Oklahoma",WISCONSIN,"Wisconsin",1125,820
 2013,OKLAHOMA,"Oklahoma",WYOMING,"Wyoming",561,396
-2013,OKLAHOMA,"Oklahoma",PUERTO_RICO,"Puerto Rico",509,437
-2013,OKLAHOMA,"Oklahoma",FOREIGN_COUNTRY,"Foreign Country",14472,2761
 2013,OREGON,"Oregon",ALABAMA,"Alabama",704,1069
 2013,OREGON,"Oregon",ALASKA,"Alaska",3439,1206
 2013,OREGON,"Oregon",ARIZONA,"Arizona",7611,2104
@@ -1886,8 +1765,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,OREGON,"Oregon",WASHINGTON,"Washington",29782,3669
 2013,OREGON,"Oregon",WISCONSIN,"Wisconsin",1064,769
 2013,OREGON,"Oregon",WYOMING,"Wyoming",1022,792
-2013,OREGON,"Oregon",PUERTO_RICO,"Puerto Rico",94,147
-2013,OREGON,"Oregon",FOREIGN_COUNTRY,"Foreign Country",17790,2663
 2013,PENNSYLVANIA,"Pennsylvania",ALABAMA,"Alabama",720,471
 2013,PENNSYLVANIA,"Pennsylvania",ALASKA,"Alaska",667,397
 2013,PENNSYLVANIA,"Pennsylvania",ARIZONA,"Arizona",2189,848
@@ -1938,8 +1815,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,PENNSYLVANIA,"Pennsylvania",WEST_VIRGINIA,"West Virginia",3524,1170
 2013,PENNSYLVANIA,"Pennsylvania",WISCONSIN,"Wisconsin",1586,711
 2013,PENNSYLVANIA,"Pennsylvania",WYOMING,"Wyoming",515,681
-2013,PENNSYLVANIA,"Pennsylvania",PUERTO_RICO,"Puerto Rico",8640,3713
-2013,PENNSYLVANIA,"Pennsylvania",FOREIGN_COUNTRY,"Foreign Country",51836,4857
 2013,RHODE_ISLAND,"Rhode Island",ALABAMA,"Alabama",279,210
 2013,RHODE_ISLAND,"Rhode Island",ALASKA,"Alaska",102,169
 2013,RHODE_ISLAND,"Rhode Island",ARIZONA,"Arizona",22,43
@@ -1975,8 +1850,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,RHODE_ISLAND,"Rhode Island",VIRGINIA,"Virginia",603,424
 2013,RHODE_ISLAND,"Rhode Island",WASHINGTON,"Washington",106,150
 2013,RHODE_ISLAND,"Rhode Island",WEST_VIRGINIA,"West Virginia",52,78
-2013,RHODE_ISLAND,"Rhode Island",PUERTO_RICO,"Puerto Rico",345,268
-2013,RHODE_ISLAND,"Rhode Island",FOREIGN_COUNTRY,"Foreign Country",7311,1824
 2013,SOUTH_CAROLINA,"South Carolina",ALABAMA,"Alabama",1715,910
 2013,SOUTH_CAROLINA,"South Carolina",ALASKA,"Alaska",1128,1042
 2013,SOUTH_CAROLINA,"South Carolina",ARIZONA,"Arizona",2054,1115
@@ -2026,8 +1899,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,SOUTH_CAROLINA,"South Carolina",WEST_VIRGINIA,"West Virginia",1347,1005
 2013,SOUTH_CAROLINA,"South Carolina",WISCONSIN,"Wisconsin",1229,983
 2013,SOUTH_CAROLINA,"South Carolina",WYOMING,"Wyoming",86,142
-2013,SOUTH_CAROLINA,"South Carolina",PUERTO_RICO,"Puerto Rico",844,397
-2013,SOUTH_CAROLINA,"South Carolina",FOREIGN_COUNTRY,"Foreign Country",15864,2916
 2013,SOUTH_DAKOTA,"South Dakota",ALABAMA,"Alabama",84,139
 2013,SOUTH_DAKOTA,"South Dakota",ALASKA,"Alaska",141,146
 2013,SOUTH_DAKOTA,"South Dakota",ARIZONA,"Arizona",1691,892
@@ -2071,7 +1942,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,SOUTH_DAKOTA,"South Dakota",WEST_VIRGINIA,"West Virginia",42,57
 2013,SOUTH_DAKOTA,"South Dakota",WISCONSIN,"Wisconsin",498,300
 2013,SOUTH_DAKOTA,"South Dakota",WYOMING,"Wyoming",981,580
-2013,SOUTH_DAKOTA,"South Dakota",FOREIGN_COUNTRY,"Foreign Country",2289,740
 2013,TENNESSEE,"Tennessee",ALABAMA,"Alabama",8500,2095
 2013,TENNESSEE,"Tennessee",ALASKA,"Alaska",2079,1357
 2013,TENNESSEE,"Tennessee",ARIZONA,"Arizona",3787,1460
@@ -2122,8 +1992,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,TENNESSEE,"Tennessee",WEST_VIRGINIA,"West Virginia",835,532
 2013,TENNESSEE,"Tennessee",WISCONSIN,"Wisconsin",2809,1575
 2013,TENNESSEE,"Tennessee",WYOMING,"Wyoming",126,193
-2013,TENNESSEE,"Tennessee",PUERTO_RICO,"Puerto Rico",405,350
-2013,TENNESSEE,"Tennessee",FOREIGN_COUNTRY,"Foreign Country",23600,3648
 2013,TEXAS,"Texas",ALABAMA,"Alabama",8404,2036
 2013,TEXAS,"Texas",ALASKA,"Alaska",7252,2436
 2013,TEXAS,"Texas",ARIZONA,"Arizona",19224,4037
@@ -2173,8 +2041,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,TEXAS,"Texas",WEST_VIRGINIA,"West Virginia",1578,1313
 2013,TEXAS,"Texas",WISCONSIN,"Wisconsin",6646,2032
 2013,TEXAS,"Texas",WYOMING,"Wyoming",4640,2083
-2013,TEXAS,"Texas",PUERTO_RICO,"Puerto Rico",3656,1365
-2013,TEXAS,"Texas",FOREIGN_COUNTRY,"Foreign Country",179930,11077
 2013,UTAH,"Utah",ALABAMA,"Alabama",574,642
 2013,UTAH,"Utah",ALASKA,"Alaska",1341,881
 2013,UTAH,"Utah",ARIZONA,"Arizona",5259,1277
@@ -2222,8 +2088,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,UTAH,"Utah",WASHINGTON,"Washington",4316,1405
 2013,UTAH,"Utah",WISCONSIN,"Wisconsin",618,391
 2013,UTAH,"Utah",WYOMING,"Wyoming",3700,1700
-2013,UTAH,"Utah",PUERTO_RICO,"Puerto Rico",424,416
-2013,UTAH,"Utah",FOREIGN_COUNTRY,"Foreign Country",17767,2286
 2013,VERMONT,"Vermont",ALABAMA,"Alabama",27,44
 2013,VERMONT,"Vermont",ARIZONA,"Arizona",138,118
 2013,VERMONT,"Vermont",ARKANSAS,"Arkansas",11,20
@@ -2268,7 +2132,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,VERMONT,"Vermont",WASHINGTON,"Washington",386,376
 2013,VERMONT,"Vermont",WISCONSIN,"Wisconsin",52,55
 2013,VERMONT,"Vermont",WYOMING,"Wyoming",68,79
-2013,VERMONT,"Vermont",FOREIGN_COUNTRY,"Foreign Country",2390,740
 2013,VIRGINIA,"Virginia",ALABAMA,"Alabama",4894,2063
 2013,VIRGINIA,"Virginia",ALASKA,"Alaska",2226,1337
 2013,VIRGINIA,"Virginia",ARIZONA,"Arizona",3518,1287
@@ -2319,8 +2182,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,VIRGINIA,"Virginia",WEST_VIRGINIA,"West Virginia",6047,1758
 2013,VIRGINIA,"Virginia",WISCONSIN,"Wisconsin",1524,782
 2013,VIRGINIA,"Virginia",WYOMING,"Wyoming",59,87
-2013,VIRGINIA,"Virginia",PUERTO_RICO,"Puerto Rico",1792,1102
-2013,VIRGINIA,"Virginia",FOREIGN_COUNTRY,"Foreign Country",58009,5255
 2013,WASHINGTON,"Washington",ALABAMA,"Alabama",686,422
 2013,WASHINGTON,"Washington",ALASKA,"Alaska",3422,1246
 2013,WASHINGTON,"Washington",ARIZONA,"Arizona",10591,2521
@@ -2370,8 +2231,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,WASHINGTON,"Washington",WEST_VIRGINIA,"West Virginia",89,117
 2013,WASHINGTON,"Washington",WISCONSIN,"Wisconsin",4190,1503
 2013,WASHINGTON,"Washington",WYOMING,"Wyoming",400,325
-2013,WASHINGTON,"Washington",PUERTO_RICO,"Puerto Rico",16,32
-2013,WASHINGTON,"Washington",FOREIGN_COUNTRY,"Foreign Country",51885,5270
 2013,WEST_VIRGINIA,"West Virginia",ALABAMA,"Alabama",196,158
 2013,WEST_VIRGINIA,"West Virginia",ALASKA,"Alaska",707,622
 2013,WEST_VIRGINIA,"West Virginia",ARIZONA,"Arizona",62,103
@@ -2412,8 +2271,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,WEST_VIRGINIA,"West Virginia",VIRGINIA,"Virginia",6045,1629
 2013,WEST_VIRGINIA,"West Virginia",WASHINGTON,"Washington",49,84
 2013,WEST_VIRGINIA,"West Virginia",WISCONSIN,"Wisconsin",110,148
-2013,WEST_VIRGINIA,"West Virginia",PUERTO_RICO,"Puerto Rico",257,365
-2013,WEST_VIRGINIA,"West Virginia",FOREIGN_COUNTRY,"Foreign Country",2685,795
 2013,WISCONSIN,"Wisconsin",ALABAMA,"Alabama",294,252
 2013,WISCONSIN,"Wisconsin",ALASKA,"Alaska",516,606
 2013,WISCONSIN,"Wisconsin",ARIZONA,"Arizona",3749,1387
@@ -2463,8 +2320,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,WISCONSIN,"Wisconsin",WASHINGTON,"Washington",1616,705
 2013,WISCONSIN,"Wisconsin",WEST_VIRGINIA,"West Virginia",389,511
 2013,WISCONSIN,"Wisconsin",WYOMING,"Wyoming",43,39
-2013,WISCONSIN,"Wisconsin",PUERTO_RICO,"Puerto Rico",678,638
-2013,WISCONSIN,"Wisconsin",FOREIGN_COUNTRY,"Foreign Country",18102,2917
 2013,WYOMING,"Wyoming",ALABAMA,"Alabama",40,79
 2013,WYOMING,"Wyoming",ALASKA,"Alaska",11,19
 2013,WYOMING,"Wyoming",ARIZONA,"Arizona",1081,679
@@ -2506,35 +2361,3 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2013,WYOMING,"Wyoming",VIRGINIA,"Virginia",15,30
 2013,WYOMING,"Wyoming",WASHINGTON,"Washington",867,639
 2013,WYOMING,"Wyoming",WISCONSIN,"Wisconsin",181,207
-2013,WYOMING,"Wyoming",PUERTO_RICO,"Puerto Rico",93,163
-2013,WYOMING,"Wyoming",FOREIGN_COUNTRY,"Foreign Country",1840,744
-2013,PUERTO_RICO,"Puerto Rico",ALABAMA,"Alabama",293,473
-2013,PUERTO_RICO,"Puerto Rico",ARIZONA,"Arizona",92,148
-2013,PUERTO_RICO,"Puerto Rico",CALIFORNIA,"California",713,598
-2013,PUERTO_RICO,"Puerto Rico",CONNECTICUT,"Connecticut",1202,867
-2013,PUERTO_RICO,"Puerto Rico",DELAWARE,"Delaware",77,121
-2013,PUERTO_RICO,"Puerto Rico",FLORIDA,"Florida",6238,1791
-2013,PUERTO_RICO,"Puerto Rico",GEORGIA,"Georgia",16,29
-2013,PUERTO_RICO,"Puerto Rico",HAWAII,"Hawaii",24,39
-2013,PUERTO_RICO,"Puerto Rico",ILLINOIS,"Illinois",117,168
-2013,PUERTO_RICO,"Puerto Rico",INDIANA,"Indiana",45,73
-2013,PUERTO_RICO,"Puerto Rico",KANSAS,"Kansas",670,676
-2013,PUERTO_RICO,"Puerto Rico",LOUISIANA,"Louisiana",162,279
-2013,PUERTO_RICO,"Puerto Rico",MARYLAND,"Maryland",142,104
-2013,PUERTO_RICO,"Puerto Rico",MASSACHUSETTS,"Massachusetts",1663,988
-2013,PUERTO_RICO,"Puerto Rico",MICHIGAN,"Michigan",87,158
-2013,PUERTO_RICO,"Puerto Rico",MINNESOTA,"Minnesota",43,54
-2013,PUERTO_RICO,"Puerto Rico",MISSISSIPPI,"Mississippi",160,261
-2013,PUERTO_RICO,"Puerto Rico",NEBRASKA,"Nebraska",234,211
-2013,PUERTO_RICO,"Puerto Rico",NEW_JERSEY,"New Jersey",1970,1175
-2013,PUERTO_RICO,"Puerto Rico",NEW_YORK,"New York",2898,1065
-2013,PUERTO_RICO,"Puerto Rico",NORTH_CAROLINA,"North Carolina",690,687
-2013,PUERTO_RICO,"Puerto Rico",OHIO,"Ohio",314,257
-2013,PUERTO_RICO,"Puerto Rico",OKLAHOMA,"Oklahoma",346,283
-2013,PUERTO_RICO,"Puerto Rico",PENNSYLVANIA,"Pennsylvania",3335,1519
-2013,PUERTO_RICO,"Puerto Rico",SOUTH_CAROLINA,"South Carolina",84,139
-2013,PUERTO_RICO,"Puerto Rico",TENNESSEE,"Tennessee",67,118
-2013,PUERTO_RICO,"Puerto Rico",TEXAS,"Texas",1193,719
-2013,PUERTO_RICO,"Puerto Rico",VIRGINIA,"Virginia",964,1109
-2013,PUERTO_RICO,"Puerto Rico",WISCONSIN,"Wisconsin",813,698
-2013,PUERTO_RICO,"Puerto Rico",FOREIGN_COUNTRY,"Foreign Country",4447,1092

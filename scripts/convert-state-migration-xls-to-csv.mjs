@@ -48,13 +48,23 @@ const CLEANUP_PATTERNS = [/^footnotes?/i, /^source:/i];
 const EXCLUDED_LABELS = new Set([
   'TOTAL',
   'UNITED STATES',
+  'UNITED STATES1',
   'UNITED STATES2',
   'US ISLAND AREA',
   'U.S. ISLAND AREA',
+  'UNITED STATES (INCL. PUERTO RICO)',
+  'UNITED STATES (EXCL. PUERTO RICO)',
+  'PUERTO RICO',
+  'FOREIGN COUNTRY',
 ]);
 
 function normalizeLabel(label) {
-  return label.trim().replace(/\s+/g, ' ').toUpperCase();
+  return label
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\s*\d+$/, '')
+    .toUpperCase();
 }
 
 function normalizeStateName(name) {
@@ -181,6 +191,8 @@ function isExcludedLabel(label) {
   if (!normalized) return true; // treat as blank
   if (EXCLUDED_LABELS.has(normalized)) return true;
   if (normalized.includes('TOTAL')) return true;
+  if (normalized.includes('UNITED STATES')) return true;
+  if (normalized.includes('US ISLAND')) return true;
   return false;
 }
 

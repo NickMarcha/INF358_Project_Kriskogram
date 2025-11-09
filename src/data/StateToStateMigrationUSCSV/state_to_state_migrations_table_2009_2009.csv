@@ -37,7 +37,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,ALABAMA,"Alabama",OKLAHOMA,"Oklahoma",1316,1099
 2009,ALABAMA,"Alabama",OREGON,"Oregon",125,133
 2009,ALABAMA,"Alabama",PENNSYLVANIA,"Pennsylvania",1015,617
-2009,ALABAMA,"Alabama",PUERTO_RICO,"Puerto Rico",583,627
 2009,ALABAMA,"Alabama",RHODE_ISLAND,"Rhode Island",448,603
 2009,ALABAMA,"Alabama",SOUTH_CAROLINA,"South Carolina",2445,971
 2009,ALABAMA,"Alabama",TENNESSEE,"Tennessee",7948,2313
@@ -87,7 +86,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,ALASKA,"Alaska",OKLAHOMA,"Oklahoma",407,427
 2009,ALASKA,"Alaska",OREGON,"Oregon",1342,766
 2009,ALASKA,"Alaska",PENNSYLVANIA,"Pennsylvania",476,303
-2009,ALASKA,"Alaska",PUERTO_RICO,"Puerto Rico",48,83
 2009,ALASKA,"Alaska",SOUTH_CAROLINA,"South Carolina",375,318
 2009,ALASKA,"Alaska",SOUTH_DAKOTA,"South Dakota",314,420
 2009,ALASKA,"Alaska",TENNESSEE,"Tennessee",1229,1223
@@ -136,7 +134,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,ARIZONA,"Arizona",OKLAHOMA,"Oklahoma",1594,637
 2009,ARIZONA,"Arizona",OREGON,"Oregon",5407,2120
 2009,ARIZONA,"Arizona",PENNSYLVANIA,"Pennsylvania",4344,1630
-2009,ARIZONA,"Arizona",PUERTO_RICO,"Puerto Rico",467,458
 2009,ARIZONA,"Arizona",RHODE_ISLAND,"Rhode Island",282,375
 2009,ARIZONA,"Arizona",SOUTH_CAROLINA,"South Carolina",914,597
 2009,ARIZONA,"Arizona",SOUTH_DAKOTA,"South Dakota",1191,845
@@ -184,7 +181,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,ARKANSAS,"Arkansas",OKLAHOMA,"Oklahoma",7538,2142
 2009,ARKANSAS,"Arkansas",OREGON,"Oregon",798,818
 2009,ARKANSAS,"Arkansas",PENNSYLVANIA,"Pennsylvania",236,281
-2009,ARKANSAS,"Arkansas",PUERTO_RICO,"Puerto Rico",304,333
 2009,ARKANSAS,"Arkansas",SOUTH_CAROLINA,"South Carolina",796,455
 2009,ARKANSAS,"Arkansas",SOUTH_DAKOTA,"South Dakota",155,223
 2009,ARKANSAS,"Arkansas",TENNESSEE,"Tennessee",7667,2901
@@ -234,7 +230,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,CALIFORNIA,"California",OKLAHOMA,"Oklahoma",2766,1004
 2009,CALIFORNIA,"California",OREGON,"Oregon",21270,3095
 2009,CALIFORNIA,"California",PENNSYLVANIA,"Pennsylvania",8111,1997
-2009,CALIFORNIA,"California",PUERTO_RICO,"Puerto Rico",1479,772
 2009,CALIFORNIA,"California",RHODE_ISLAND,"Rhode Island",1264,742
 2009,CALIFORNIA,"California",SOUTH_CAROLINA,"South Carolina",5219,1649
 2009,CALIFORNIA,"California",SOUTH_DAKOTA,"South Dakota",917,542
@@ -286,7 +281,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,COLORADO,"Colorado",OKLAHOMA,"Oklahoma",4206,2215
 2009,COLORADO,"Colorado",OREGON,"Oregon",2646,1062
 2009,COLORADO,"Colorado",PENNSYLVANIA,"Pennsylvania",2613,999
-2009,COLORADO,"Colorado",PUERTO_RICO,"Puerto Rico",213,263
 2009,COLORADO,"Colorado",RHODE_ISLAND,"Rhode Island",449,417
 2009,COLORADO,"Colorado",SOUTH_CAROLINA,"South Carolina",1919,1549
 2009,COLORADO,"Colorado",SOUTH_DAKOTA,"South Dakota",1010,631
@@ -334,7 +328,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,CONNECTICUT,"Connecticut",OKLAHOMA,"Oklahoma",125,199
 2009,CONNECTICUT,"Connecticut",OREGON,"Oregon",161,161
 2009,CONNECTICUT,"Connecticut",PENNSYLVANIA,"Pennsylvania",2799,1044
-2009,CONNECTICUT,"Connecticut",PUERTO_RICO,"Puerto Rico",5205,2183
 2009,CONNECTICUT,"Connecticut",RHODE_ISLAND,"Rhode Island",2123,1343
 2009,CONNECTICUT,"Connecticut",SOUTH_CAROLINA,"South Carolina",857,644
 2009,CONNECTICUT,"Connecticut",TENNESSEE,"Tennessee",509,445
@@ -372,7 +365,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,DELAWARE,"Delaware",OHIO,"Ohio",859,681
 2009,DELAWARE,"Delaware",OREGON,"Oregon",55,95
 2009,DELAWARE,"Delaware",PENNSYLVANIA,"Pennsylvania",9068,2425
-2009,DELAWARE,"Delaware",PUERTO_RICO,"Puerto Rico",206,220
 2009,DELAWARE,"Delaware",RHODE_ISLAND,"Rhode Island",43,74
 2009,DELAWARE,"Delaware",SOUTH_CAROLINA,"South Carolina",444,531
 2009,DELAWARE,"Delaware",SOUTH_DAKOTA,"South Dakota",59,90
@@ -415,7 +407,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",OKLAHOMA,"Oklahoma",57,94
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",OREGON,"Oregon",285,253
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",PENNSYLVANIA,"Pennsylvania",1705,704
-2009,DISTRICT_OF_COLUMBIA,"District of Columbia",PUERTO_RICO,"Puerto Rico",147,168
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",RHODE_ISLAND,"Rhode Island",68,112
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",SOUTH_CAROLINA,"South Carolina",345,386
 2009,DISTRICT_OF_COLUMBIA,"District of Columbia",SOUTH_DAKOTA,"South Dakota",58,96
@@ -467,7 +458,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,FLORIDA,"Florida",OKLAHOMA,"Oklahoma",2441,1013
 2009,FLORIDA,"Florida",OREGON,"Oregon",2869,1506
 2009,FLORIDA,"Florida",PENNSYLVANIA,"Pennsylvania",21680,4110
-2009,FLORIDA,"Florida",PUERTO_RICO,"Puerto Rico",14783,4364
 2009,FLORIDA,"Florida",RHODE_ISLAND,"Rhode Island",3471,2297
 2009,FLORIDA,"Florida",SOUTH_CAROLINA,"South Carolina",9760,3109
 2009,FLORIDA,"Florida",SOUTH_DAKOTA,"South Dakota",913,694
@@ -519,7 +509,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,GEORGIA,"Georgia",OKLAHOMA,"Oklahoma",2360,1217
 2009,GEORGIA,"Georgia",OREGON,"Oregon",3291,2126
 2009,GEORGIA,"Georgia",PENNSYLVANIA,"Pennsylvania",5786,2424
-2009,GEORGIA,"Georgia",PUERTO_RICO,"Puerto Rico",2231,1264
 2009,GEORGIA,"Georgia",RHODE_ISLAND,"Rhode Island",246,269
 2009,GEORGIA,"Georgia",SOUTH_CAROLINA,"South Carolina",13214,3228
 2009,GEORGIA,"Georgia",SOUTH_DAKOTA,"South Dakota",202,201
@@ -618,7 +607,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,IDAHO,"Idaho",OKLAHOMA,"Oklahoma",435,304
 2009,IDAHO,"Idaho",OREGON,"Oregon",3208,1560
 2009,IDAHO,"Idaho",PENNSYLVANIA,"Pennsylvania",171,167
-2009,IDAHO,"Idaho",PUERTO_RICO,"Puerto Rico",80,129
 2009,IDAHO,"Idaho",RHODE_ISLAND,"Rhode Island",65,113
 2009,IDAHO,"Idaho",SOUTH_CAROLINA,"South Carolina",12,20
 2009,IDAHO,"Idaho",SOUTH_DAKOTA,"South Dakota",263,215
@@ -668,7 +656,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,ILLINOIS,"Illinois",OKLAHOMA,"Oklahoma",1804,924
 2009,ILLINOIS,"Illinois",OREGON,"Oregon",455,376
 2009,ILLINOIS,"Illinois",PENNSYLVANIA,"Pennsylvania",4363,1592
-2009,ILLINOIS,"Illinois",PUERTO_RICO,"Puerto Rico",530,592
 2009,ILLINOIS,"Illinois",RHODE_ISLAND,"Rhode Island",717,466
 2009,ILLINOIS,"Illinois",SOUTH_CAROLINA,"South Carolina",2150,1219
 2009,ILLINOIS,"Illinois",SOUTH_DAKOTA,"South Dakota",303,264
@@ -719,7 +706,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,INDIANA,"Indiana",OKLAHOMA,"Oklahoma",629,374
 2009,INDIANA,"Indiana",OREGON,"Oregon",71,87
 2009,INDIANA,"Indiana",PENNSYLVANIA,"Pennsylvania",2389,1012
-2009,INDIANA,"Indiana",PUERTO_RICO,"Puerto Rico",196,196
 2009,INDIANA,"Indiana",RHODE_ISLAND,"Rhode Island",139,212
 2009,INDIANA,"Indiana",SOUTH_CAROLINA,"South Carolina",1378,1025
 2009,INDIANA,"Indiana",SOUTH_DAKOTA,"South Dakota",303,486
@@ -770,7 +756,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,IOWA,"Iowa",OKLAHOMA,"Oklahoma",1273,698
 2009,IOWA,"Iowa",OREGON,"Oregon",161,203
 2009,IOWA,"Iowa",PENNSYLVANIA,"Pennsylvania",642,498
-2009,IOWA,"Iowa",PUERTO_RICO,"Puerto Rico",385,507
 2009,IOWA,"Iowa",SOUTH_CAROLINA,"South Carolina",451,583
 2009,IOWA,"Iowa",SOUTH_DAKOTA,"South Dakota",3562,1885
 2009,IOWA,"Iowa",TENNESSEE,"Tennessee",320,266
@@ -818,7 +803,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,KANSAS,"Kansas",OKLAHOMA,"Oklahoma",6975,1940
 2009,KANSAS,"Kansas",OREGON,"Oregon",494,469
 2009,KANSAS,"Kansas",PENNSYLVANIA,"Pennsylvania",168,235
-2009,KANSAS,"Kansas",PUERTO_RICO,"Puerto Rico",90,149
 2009,KANSAS,"Kansas",RHODE_ISLAND,"Rhode Island",663,949
 2009,KANSAS,"Kansas",SOUTH_CAROLINA,"South Carolina",426,455
 2009,KANSAS,"Kansas",SOUTH_DAKOTA,"South Dakota",865,557
@@ -867,7 +851,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,KENTUCKY,"Kentucky",OKLAHOMA,"Oklahoma",3014,1878
 2009,KENTUCKY,"Kentucky",OREGON,"Oregon",393,368
 2009,KENTUCKY,"Kentucky",PENNSYLVANIA,"Pennsylvania",3386,1402
-2009,KENTUCKY,"Kentucky",PUERTO_RICO,"Puerto Rico",923,1056
 2009,KENTUCKY,"Kentucky",SOUTH_CAROLINA,"South Carolina",3527,1440
 2009,KENTUCKY,"Kentucky",TENNESSEE,"Tennessee",14336,3211
 2009,KENTUCKY,"Kentucky",TEXAS,"Texas",6849,2648
@@ -915,7 +898,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,LOUISIANA,"Louisiana",OKLAHOMA,"Oklahoma",2119,1060
 2009,LOUISIANA,"Louisiana",OREGON,"Oregon",285,227
 2009,LOUISIANA,"Louisiana",PENNSYLVANIA,"Pennsylvania",2225,1183
-2009,LOUISIANA,"Louisiana",PUERTO_RICO,"Puerto Rico",271,320
 2009,LOUISIANA,"Louisiana",RHODE_ISLAND,"Rhode Island",148,178
 2009,LOUISIANA,"Louisiana",SOUTH_CAROLINA,"South Carolina",929,624
 2009,LOUISIANA,"Louisiana",SOUTH_DAKOTA,"South Dakota",343,456
@@ -1004,7 +986,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,MARYLAND,"Maryland",OKLAHOMA,"Oklahoma",853,688
 2009,MARYLAND,"Maryland",OREGON,"Oregon",326,323
 2009,MARYLAND,"Maryland",PENNSYLVANIA,"Pennsylvania",14019,2317
-2009,MARYLAND,"Maryland",PUERTO_RICO,"Puerto Rico",681,552
 2009,MARYLAND,"Maryland",RHODE_ISLAND,"Rhode Island",676,757
 2009,MARYLAND,"Maryland",SOUTH_CAROLINA,"South Carolina",3310,1146
 2009,MARYLAND,"Maryland",TENNESSEE,"Tennessee",2906,1676
@@ -1052,7 +1033,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,MASSACHUSETTS,"Massachusetts",OKLAHOMA,"Oklahoma",385,443
 2009,MASSACHUSETTS,"Massachusetts",OREGON,"Oregon",667,445
 2009,MASSACHUSETTS,"Massachusetts",PENNSYLVANIA,"Pennsylvania",5264,1342
-2009,MASSACHUSETTS,"Massachusetts",PUERTO_RICO,"Puerto Rico",2941,1356
 2009,MASSACHUSETTS,"Massachusetts",RHODE_ISLAND,"Rhode Island",6316,1543
 2009,MASSACHUSETTS,"Massachusetts",SOUTH_CAROLINA,"South Carolina",566,455
 2009,MASSACHUSETTS,"Massachusetts",TENNESSEE,"Tennessee",922,632
@@ -1103,7 +1083,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,MICHIGAN,"Michigan",OKLAHOMA,"Oklahoma",821,679
 2009,MICHIGAN,"Michigan",OREGON,"Oregon",1631,1034
 2009,MICHIGAN,"Michigan",PENNSYLVANIA,"Pennsylvania",2106,812
-2009,MICHIGAN,"Michigan",PUERTO_RICO,"Puerto Rico",594,473
 2009,MICHIGAN,"Michigan",RHODE_ISLAND,"Rhode Island",177,170
 2009,MICHIGAN,"Michigan",SOUTH_CAROLINA,"South Carolina",1693,727
 2009,MICHIGAN,"Michigan",SOUTH_DAKOTA,"South Dakota",156,182
@@ -1197,7 +1176,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,MISSISSIPPI,"Mississippi",OHIO,"Ohio",1419,967
 2009,MISSISSIPPI,"Mississippi",OKLAHOMA,"Oklahoma",915,925
 2009,MISSISSIPPI,"Mississippi",PENNSYLVANIA,"Pennsylvania",565,390
-2009,MISSISSIPPI,"Mississippi",PUERTO_RICO,"Puerto Rico",103,168
 2009,MISSISSIPPI,"Mississippi",RHODE_ISLAND,"Rhode Island",190,195
 2009,MISSISSIPPI,"Mississippi",SOUTH_CAROLINA,"South Carolina",518,452
 2009,MISSISSIPPI,"Mississippi",SOUTH_DAKOTA,"South Dakota",118,146
@@ -1245,7 +1223,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,MISSOURI,"Missouri",OKLAHOMA,"Oklahoma",4283,1234
 2009,MISSOURI,"Missouri",OREGON,"Oregon",915,619
 2009,MISSOURI,"Missouri",PENNSYLVANIA,"Pennsylvania",2449,1269
-2009,MISSOURI,"Missouri",PUERTO_RICO,"Puerto Rico",66,117
 2009,MISSOURI,"Missouri",RHODE_ISLAND,"Rhode Island",189,181
 2009,MISSOURI,"Missouri",SOUTH_CAROLINA,"South Carolina",707,431
 2009,MISSOURI,"Missouri",SOUTH_DAKOTA,"South Dakota",1320,1073
@@ -1342,7 +1319,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NEBRASKA,"Nebraska",OKLAHOMA,"Oklahoma",227,196
 2009,NEBRASKA,"Nebraska",OREGON,"Oregon",138,145
 2009,NEBRASKA,"Nebraska",PENNSYLVANIA,"Pennsylvania",240,306
-2009,NEBRASKA,"Nebraska",PUERTO_RICO,"Puerto Rico",107,216
 2009,NEBRASKA,"Nebraska",SOUTH_CAROLINA,"South Carolina",821,671
 2009,NEBRASKA,"Nebraska",SOUTH_DAKOTA,"South Dakota",1191,641
 2009,NEBRASKA,"Nebraska",TENNESSEE,"Tennessee",314,339
@@ -1390,7 +1366,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NEVADA,"Nevada",OKLAHOMA,"Oklahoma",352,430
 2009,NEVADA,"Nevada",OREGON,"Oregon",3268,1425
 2009,NEVADA,"Nevada",PENNSYLVANIA,"Pennsylvania",1079,522
-2009,NEVADA,"Nevada",PUERTO_RICO,"Puerto Rico",738,864
 2009,NEVADA,"Nevada",RHODE_ISLAND,"Rhode Island",169,167
 2009,NEVADA,"Nevada",SOUTH_DAKOTA,"South Dakota",346,370
 2009,NEVADA,"Nevada",TENNESSEE,"Tennessee",292,319
@@ -1475,7 +1450,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NEW_JERSEY,"New Jersey",OKLAHOMA,"Oklahoma",277,309
 2009,NEW_JERSEY,"New Jersey",OREGON,"Oregon",199,221
 2009,NEW_JERSEY,"New Jersey",PENNSYLVANIA,"Pennsylvania",19947,3272
-2009,NEW_JERSEY,"New Jersey",PUERTO_RICO,"Puerto Rico",5506,1852
 2009,NEW_JERSEY,"New Jersey",RHODE_ISLAND,"Rhode Island",534,417
 2009,NEW_JERSEY,"New Jersey",SOUTH_CAROLINA,"South Carolina",1326,939
 2009,NEW_JERSEY,"New Jersey",TENNESSEE,"Tennessee",494,540
@@ -1525,7 +1499,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NEW_MEXICO,"New Mexico",OKLAHOMA,"Oklahoma",1180,863
 2009,NEW_MEXICO,"New Mexico",OREGON,"Oregon",1012,789
 2009,NEW_MEXICO,"New Mexico",PENNSYLVANIA,"Pennsylvania",452,383
-2009,NEW_MEXICO,"New Mexico",PUERTO_RICO,"Puerto Rico",305,340
 2009,NEW_MEXICO,"New Mexico",SOUTH_CAROLINA,"South Carolina",668,538
 2009,NEW_MEXICO,"New Mexico",TENNESSEE,"Tennessee",54,87
 2009,NEW_MEXICO,"New Mexico",TEXAS,"Texas",9796,2682
@@ -1574,7 +1547,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NEW_YORK,"New York",OKLAHOMA,"Oklahoma",1777,1220
 2009,NEW_YORK,"New York",OREGON,"Oregon",807,443
 2009,NEW_YORK,"New York",PENNSYLVANIA,"Pennsylvania",21961,3404
-2009,NEW_YORK,"New York",PUERTO_RICO,"Puerto Rico",5818,1523
 2009,NEW_YORK,"New York",RHODE_ISLAND,"Rhode Island",2620,943
 2009,NEW_YORK,"New York",SOUTH_CAROLINA,"South Carolina",3874,1146
 2009,NEW_YORK,"New York",SOUTH_DAKOTA,"South Dakota",219,268
@@ -1626,7 +1598,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,NORTH_CAROLINA,"North Carolina",OKLAHOMA,"Oklahoma",1620,862
 2009,NORTH_CAROLINA,"North Carolina",OREGON,"Oregon",1728,1260
 2009,NORTH_CAROLINA,"North Carolina",PENNSYLVANIA,"Pennsylvania",10774,2732
-2009,NORTH_CAROLINA,"North Carolina",PUERTO_RICO,"Puerto Rico",2496,1302
 2009,NORTH_CAROLINA,"North Carolina",RHODE_ISLAND,"Rhode Island",1717,1158
 2009,NORTH_CAROLINA,"North Carolina",SOUTH_CAROLINA,"South Carolina",22374,3955
 2009,NORTH_CAROLINA,"North Carolina",SOUTH_DAKOTA,"South Dakota",339,405
@@ -1720,7 +1691,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,OHIO,"Ohio",OKLAHOMA,"Oklahoma",382,302
 2009,OHIO,"Ohio",OREGON,"Oregon",990,585
 2009,OHIO,"Ohio",PENNSYLVANIA,"Pennsylvania",10965,1935
-2009,OHIO,"Ohio",PUERTO_RICO,"Puerto Rico",1936,1213
 2009,OHIO,"Ohio",RHODE_ISLAND,"Rhode Island",336,442
 2009,OHIO,"Ohio",SOUTH_CAROLINA,"South Carolina",3473,1712
 2009,OHIO,"Ohio",SOUTH_DAKOTA,"South Dakota",791,624
@@ -1819,7 +1789,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,OREGON,"Oregon",OKLAHOMA,"Oklahoma",2361,2183
 2009,OREGON,"Oregon",OREGON,"Oregon",525774,19041
 2009,OREGON,"Oregon",PENNSYLVANIA,"Pennsylvania",1471,830
-2009,OREGON,"Oregon",PUERTO_RICO,"Puerto Rico",314,387
 2009,OREGON,"Oregon",RHODE_ISLAND,"Rhode Island",55,91
 2009,OREGON,"Oregon",SOUTH_CAROLINA,"South Carolina",113,139
 2009,OREGON,"Oregon",TENNESSEE,"Tennessee",1037,713
@@ -1870,7 +1839,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,PENNSYLVANIA,"Pennsylvania",OKLAHOMA,"Oklahoma",781,591
 2009,PENNSYLVANIA,"Pennsylvania",OREGON,"Oregon",1803,524
 2009,PENNSYLVANIA,"Pennsylvania",PENNSYLVANIA,"Pennsylvania",1265229,29298
-2009,PENNSYLVANIA,"Pennsylvania",PUERTO_RICO,"Puerto Rico",3568,1407
 2009,PENNSYLVANIA,"Pennsylvania",RHODE_ISLAND,"Rhode Island",1406,856
 2009,PENNSYLVANIA,"Pennsylvania",SOUTH_CAROLINA,"South Carolina",2895,1279
 2009,PENNSYLVANIA,"Pennsylvania",SOUTH_DAKOTA,"South Dakota",638,548
@@ -1883,35 +1851,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,PENNSYLVANIA,"Pennsylvania",WEST_VIRGINIA,"West Virginia",4074,1686
 2009,PENNSYLVANIA,"Pennsylvania",WISCONSIN,"Wisconsin",2252,1215
 2009,PENNSYLVANIA,"Pennsylvania",WYOMING,"Wyoming",151,156
-2009,PUERTO_RICO,"Puerto Rico",ARIZONA,"Arizona",774,916
-2009,PUERTO_RICO,"Puerto Rico",ARKANSAS,"Arkansas",60,104
-2009,PUERTO_RICO,"Puerto Rico",CALIFORNIA,"California",668,478
-2009,PUERTO_RICO,"Puerto Rico",COLORADO,"Colorado",413,676
-2009,PUERTO_RICO,"Puerto Rico",CONNECTICUT,"Connecticut",1461,1007
-2009,PUERTO_RICO,"Puerto Rico",FLORIDA,"Florida",11603,2735
-2009,PUERTO_RICO,"Puerto Rico",GEORGIA,"Georgia",724,686
-2009,PUERTO_RICO,"Puerto Rico",ILLINOIS,"Illinois",667,600
-2009,PUERTO_RICO,"Puerto Rico",KENTUCKY,"Kentucky",56,93
-2009,PUERTO_RICO,"Puerto Rico",MAINE,"Maine",113,201
-2009,PUERTO_RICO,"Puerto Rico",MARYLAND,"Maryland",427,393
-2009,PUERTO_RICO,"Puerto Rico",MASSACHUSETTS,"Massachusetts",2182,974
-2009,PUERTO_RICO,"Puerto Rico",NEBRASKA,"Nebraska",76,125
-2009,PUERTO_RICO,"Puerto Rico",NEW_HAMPSHIRE,"New Hampshire",51,90
-2009,PUERTO_RICO,"Puerto Rico",NEW_JERSEY,"New Jersey",2356,1242
-2009,PUERTO_RICO,"Puerto Rico",NEW_MEXICO,"New Mexico",53,96
-2009,PUERTO_RICO,"Puerto Rico",NEW_YORK,"New York",3867,1474
-2009,PUERTO_RICO,"Puerto Rico",NORTH_CAROLINA,"North Carolina",452,526
-2009,PUERTO_RICO,"Puerto Rico",OHIO,"Ohio",108,122
-2009,PUERTO_RICO,"Puerto Rico",PENNSYLVANIA,"Pennsylvania",1538,1008
-2009,PUERTO_RICO,"Puerto Rico",PUERTO_RICO,"Puerto Rico",250658,12922
-2009,PUERTO_RICO,"Puerto Rico",RHODE_ISLAND,"Rhode Island",837,1390
-2009,PUERTO_RICO,"Puerto Rico",SOUTH_DAKOTA,"South Dakota",157,239
-2009,PUERTO_RICO,"Puerto Rico",TENNESSEE,"Tennessee",169,192
-2009,PUERTO_RICO,"Puerto Rico",TEXAS,"Texas",2182,1496
-2009,PUERTO_RICO,"Puerto Rico",VIRGINIA,"Virginia",697,818
-2009,PUERTO_RICO,"Puerto Rico",WASHINGTON,"Washington",226,366
-2009,PUERTO_RICO,"Puerto Rico",WISCONSIN,"Wisconsin",68,111
-2009,PUERTO_RICO,"Puerto Rico",WYOMING,"Wyoming",123,158
 2009,RHODE_ISLAND,"Rhode Island",ALASKA,"Alaska",2076,1989
 2009,RHODE_ISLAND,"Rhode Island",ARIZONA,"Arizona",446,336
 2009,RHODE_ISLAND,"Rhode Island",CALIFORNIA,"California",2045,1104
@@ -1941,7 +1880,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,RHODE_ISLAND,"Rhode Island",OHIO,"Ohio",592,688
 2009,RHODE_ISLAND,"Rhode Island",OREGON,"Oregon",56,91
 2009,RHODE_ISLAND,"Rhode Island",PENNSYLVANIA,"Pennsylvania",982,592
-2009,RHODE_ISLAND,"Rhode Island",PUERTO_RICO,"Puerto Rico",442,599
 2009,RHODE_ISLAND,"Rhode Island",RHODE_ISLAND,"Rhode Island",102297,7614
 2009,RHODE_ISLAND,"Rhode Island",SOUTH_CAROLINA,"South Carolina",611,540
 2009,RHODE_ISLAND,"Rhode Island",SOUTH_DAKOTA,"South Dakota",13,44
@@ -1990,7 +1928,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,SOUTH_CAROLINA,"South Carolina",OKLAHOMA,"Oklahoma",876,685
 2009,SOUTH_CAROLINA,"South Carolina",OREGON,"Oregon",616,563
 2009,SOUTH_CAROLINA,"South Carolina",PENNSYLVANIA,"Pennsylvania",7008,2715
-2009,SOUTH_CAROLINA,"South Carolina",PUERTO_RICO,"Puerto Rico",302,243
 2009,SOUTH_CAROLINA,"South Carolina",RHODE_ISLAND,"Rhode Island",424,331
 2009,SOUTH_CAROLINA,"South Carolina",SOUTH_CAROLINA,"South Carolina",499571,18981
 2009,SOUTH_CAROLINA,"South Carolina",SOUTH_DAKOTA,"South Dakota",183,319
@@ -2037,7 +1974,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,SOUTH_DAKOTA,"South Dakota",OKLAHOMA,"Oklahoma",518,559
 2009,SOUTH_DAKOTA,"South Dakota",OREGON,"Oregon",554,710
 2009,SOUTH_DAKOTA,"South Dakota",PENNSYLVANIA,"Pennsylvania",303,295
-2009,SOUTH_DAKOTA,"South Dakota",PUERTO_RICO,"Puerto Rico",1,6
 2009,SOUTH_DAKOTA,"South Dakota",SOUTH_CAROLINA,"South Carolina",13,23
 2009,SOUTH_DAKOTA,"South Dakota",SOUTH_DAKOTA,"South Dakota",98794,6644
 2009,SOUTH_DAKOTA,"South Dakota",TENNESSEE,"Tennessee",74,139
@@ -2085,7 +2021,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,TENNESSEE,"Tennessee",OKLAHOMA,"Oklahoma",1840,1360
 2009,TENNESSEE,"Tennessee",OREGON,"Oregon",682,523
 2009,TENNESSEE,"Tennessee",PENNSYLVANIA,"Pennsylvania",2098,1072
-2009,TENNESSEE,"Tennessee",PUERTO_RICO,"Puerto Rico",85,141
 2009,TENNESSEE,"Tennessee",RHODE_ISLAND,"Rhode Island",130,165
 2009,TENNESSEE,"Tennessee",SOUTH_CAROLINA,"South Carolina",3456,1416
 2009,TENNESSEE,"Tennessee",TENNESSEE,"Tennessee",781477,24341
@@ -2136,7 +2071,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,TEXAS,"Texas",OKLAHOMA,"Oklahoma",25784,4080
 2009,TEXAS,"Texas",OREGON,"Oregon",4375,1514
 2009,TEXAS,"Texas",PENNSYLVANIA,"Pennsylvania",9849,3945
-2009,TEXAS,"Texas",PUERTO_RICO,"Puerto Rico",4279,1932
 2009,TEXAS,"Texas",RHODE_ISLAND,"Rhode Island",1385,1003
 2009,TEXAS,"Texas",SOUTH_CAROLINA,"South Carolina",9363,3123
 2009,TEXAS,"Texas",SOUTH_DAKOTA,"South Dakota",1360,666
@@ -2187,7 +2121,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,UTAH,"Utah",OKLAHOMA,"Oklahoma",669,517
 2009,UTAH,"Utah",OREGON,"Oregon",3060,1345
 2009,UTAH,"Utah",PENNSYLVANIA,"Pennsylvania",608,523
-2009,UTAH,"Utah",PUERTO_RICO,"Puerto Rico",31,57
 2009,UTAH,"Utah",RHODE_ISLAND,"Rhode Island",106,181
 2009,UTAH,"Utah",SOUTH_CAROLINA,"South Carolina",119,189
 2009,UTAH,"Utah",SOUTH_DAKOTA,"South Dakota",71,90
@@ -2281,7 +2214,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,VIRGINIA,"Virginia",OKLAHOMA,"Oklahoma",839,493
 2009,VIRGINIA,"Virginia",OREGON,"Oregon",715,398
 2009,VIRGINIA,"Virginia",PENNSYLVANIA,"Pennsylvania",10518,2242
-2009,VIRGINIA,"Virginia",PUERTO_RICO,"Puerto Rico",2391,1186
 2009,VIRGINIA,"Virginia",RHODE_ISLAND,"Rhode Island",1243,851
 2009,VIRGINIA,"Virginia",SOUTH_CAROLINA,"South Carolina",9969,2437
 2009,VIRGINIA,"Virginia",TENNESSEE,"Tennessee",10902,3152
@@ -2332,7 +2264,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,WASHINGTON,"Washington",OKLAHOMA,"Oklahoma",1521,769
 2009,WASHINGTON,"Washington",OREGON,"Oregon",26687,4105
 2009,WASHINGTON,"Washington",PENNSYLVANIA,"Pennsylvania",1113,689
-2009,WASHINGTON,"Washington",PUERTO_RICO,"Puerto Rico",595,729
 2009,WASHINGTON,"Washington",RHODE_ISLAND,"Rhode Island",456,433
 2009,WASHINGTON,"Washington",SOUTH_CAROLINA,"South Carolina",1317,832
 2009,WASHINGTON,"Washington",SOUTH_DAKOTA,"South Dakota",515,428
@@ -2376,7 +2307,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,WEST_VIRGINIA,"West Virginia",OHIO,"Ohio",6950,1758
 2009,WEST_VIRGINIA,"West Virginia",OKLAHOMA,"Oklahoma",114,158
 2009,WEST_VIRGINIA,"West Virginia",PENNSYLVANIA,"Pennsylvania",3085,950
-2009,WEST_VIRGINIA,"West Virginia",PUERTO_RICO,"Puerto Rico",307,363
 2009,WEST_VIRGINIA,"West Virginia",SOUTH_CAROLINA,"South Carolina",1217,705
 2009,WEST_VIRGINIA,"West Virginia",SOUTH_DAKOTA,"South Dakota",153,188
 2009,WEST_VIRGINIA,"West Virginia",TENNESSEE,"Tennessee",433,420
@@ -2425,7 +2355,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2009,WISCONSIN,"Wisconsin",OKLAHOMA,"Oklahoma",230,216
 2009,WISCONSIN,"Wisconsin",OREGON,"Oregon",689,473
 2009,WISCONSIN,"Wisconsin",PENNSYLVANIA,"Pennsylvania",976,598
-2009,WISCONSIN,"Wisconsin",PUERTO_RICO,"Puerto Rico",327,344
 2009,WISCONSIN,"Wisconsin",RHODE_ISLAND,"Rhode Island",744,1012
 2009,WISCONSIN,"Wisconsin",SOUTH_CAROLINA,"South Carolina",425,383
 2009,WISCONSIN,"Wisconsin",SOUTH_DAKOTA,"South Dakota",451,511

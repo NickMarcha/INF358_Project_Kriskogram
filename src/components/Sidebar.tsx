@@ -87,12 +87,17 @@ export default function Sidebar({ isCollapsed, onToggle, onResize, children }: S
                   )
                 })}
               </select>
-              {/* Subtitle for explorer */}
-              {currentPath === '/explorer' && (
-                <p className="text-xs text-gray-500 mt-1 px-2">
-                  Load, store, and explore datasets locally
+              <div className="px-2 pt-3">
+                <p className="text-sm font-semibold text-gray-700 tracking-wide">
+                  Version {__APP_VERSION__}
                 </p>
-              )}
+                {/* Subtitle for explorer */}
+                {currentPath === '/explorer' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Load, store, and explore datasets locally
+                  </p>
+                )}
+              </div>
             </div>
           )}
           <button

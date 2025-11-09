@@ -41,8 +41,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,ALABAMA,"Alabama",WEST_VIRGINIA,"West Virginia",176,254
 2018,ALABAMA,"Alabama",WISCONSIN,"Wisconsin",996,489
 2018,ALABAMA,"Alabama",WYOMING,"Wyoming",74,122
-2018,ALABAMA,"Alabama",PUERTO_RICO,"Puerto Rico",957,731
-2018,ALABAMA,"Alabama",FOREIGN_COUNTRY,"Foreign Country",13267,2944
 2018,ALASKA,"Alaska",ALABAMA,"Alabama",518,404
 2018,ALASKA,"Alaska",ARIZONA,"Arizona",910,537
 2018,ALASKA,"Alaska",ARKANSAS,"Arkansas",722,998
@@ -89,8 +87,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,ALASKA,"Alaska",WASHINGTON,"Washington",2558,1363
 2018,ALASKA,"Alaska",WISCONSIN,"Wisconsin",340,253
 2018,ALASKA,"Alaska",WYOMING,"Wyoming",192,158
-2018,ALASKA,"Alaska",PUERTO_RICO,"Puerto Rico",344,375
-2018,ALASKA,"Alaska",FOREIGN_COUNTRY,"Foreign Country",4518,1795
 2018,ARIZONA,"Arizona",ALABAMA,"Alabama",2801,2049
 2018,ARIZONA,"Arizona",ALASKA,"Alaska",2743,1352
 2018,ARIZONA,"Arizona",ARKANSAS,"Arkansas",1487,1020
@@ -141,8 +137,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,ARIZONA,"Arizona",WEST_VIRGINIA,"West Virginia",29,50
 2018,ARIZONA,"Arizona",WISCONSIN,"Wisconsin",7788,2290
 2018,ARIZONA,"Arizona",WYOMING,"Wyoming",929,578
-2018,ARIZONA,"Arizona",PUERTO_RICO,"Puerto Rico",1289,1053
-2018,ARIZONA,"Arizona",FOREIGN_COUNTRY,"Foreign Country",37533,5516
 2018,ARKANSAS,"Arkansas",ALABAMA,"Alabama",438,343
 2018,ARKANSAS,"Arkansas",ALASKA,"Alaska",413,455
 2018,ARKANSAS,"Arkansas",ARIZONA,"Arizona",602,442
@@ -188,8 +182,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,ARKANSAS,"Arkansas",WASHINGTON,"Washington",1328,993
 2018,ARKANSAS,"Arkansas",WEST_VIRGINIA,"West Virginia",72,69
 2018,ARKANSAS,"Arkansas",WISCONSIN,"Wisconsin",130,152
-2018,ARKANSAS,"Arkansas",PUERTO_RICO,"Puerto Rico",1693,1440
-2018,ARKANSAS,"Arkansas",FOREIGN_COUNTRY,"Foreign Country",7021,1711
 2018,CALIFORNIA,"California",ALABAMA,"Alabama",4591,1570
 2018,CALIFORNIA,"California",ALASKA,"Alaska",2155,756
 2018,CALIFORNIA,"California",ARIZONA,"Arizona",33670,4112
@@ -240,8 +232,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,CALIFORNIA,"California",WEST_VIRGINIA,"West Virginia",1246,665
 2018,CALIFORNIA,"California",WISCONSIN,"Wisconsin",5364,1388
 2018,CALIFORNIA,"California",WYOMING,"Wyoming",1526,833
-2018,CALIFORNIA,"California",PUERTO_RICO,"Puerto Rico",1250,636
-2018,CALIFORNIA,"California",FOREIGN_COUNTRY,"Foreign Country",283649,13452
 2018,COLORADO,"Colorado",ALABAMA,"Alabama",3597,2038
 2018,COLORADO,"Colorado",ALASKA,"Alaska",2102,1077
 2018,COLORADO,"Colorado",ARIZONA,"Arizona",7987,1775
@@ -292,8 +282,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,COLORADO,"Colorado",WEST_VIRGINIA,"West Virginia",238,194
 2018,COLORADO,"Colorado",WISCONSIN,"Wisconsin",3100,1243
 2018,COLORADO,"Colorado",WYOMING,"Wyoming",1951,956
-2018,COLORADO,"Colorado",PUERTO_RICO,"Puerto Rico",1104,1016
-2018,COLORADO,"Colorado",FOREIGN_COUNTRY,"Foreign Country",37082,4439
 2018,CONNECTICUT,"Connecticut",ALABAMA,"Alabama",1054,783
 2018,CONNECTICUT,"Connecticut",ALASKA,"Alaska",8,18
 2018,CONNECTICUT,"Connecticut",ARIZONA,"Arizona",1204,1161
@@ -337,8 +325,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,CONNECTICUT,"Connecticut",WASHINGTON,"Washington",1062,939
 2018,CONNECTICUT,"Connecticut",WEST_VIRGINIA,"West Virginia",181,208
 2018,CONNECTICUT,"Connecticut",WISCONSIN,"Wisconsin",328,394
-2018,CONNECTICUT,"Connecticut",PUERTO_RICO,"Puerto Rico",4485,1952
-2018,CONNECTICUT,"Connecticut",FOREIGN_COUNTRY,"Foreign Country",25741,4487
 2018,DELAWARE,"Delaware",ALABAMA,"Alabama",39,60
 2018,DELAWARE,"Delaware",ARIZONA,"Arizona",115,190
 2018,DELAWARE,"Delaware",CALIFORNIA,"California",551,384
@@ -374,8 +360,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,DELAWARE,"Delaware",VERMONT,"Vermont",305,269
 2018,DELAWARE,"Delaware",VIRGINIA,"Virginia",1458,818
 2018,DELAWARE,"Delaware",WEST_VIRGINIA,"West Virginia",124,176
-2018,DELAWARE,"Delaware",PUERTO_RICO,"Puerto Rico",185,225
-2018,DELAWARE,"Delaware",FOREIGN_COUNTRY,"Foreign Country",2577,965
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",ALABAMA,"Alabama",174,225
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",ARIZONA,"Arizona",204,220
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",CALIFORNIA,"California",3803,1151
@@ -416,8 +400,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",WEST_VIRGINIA,"West Virginia",294,401
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",WISCONSIN,"Wisconsin",346,377
 2018,DISTRICT_OF_COLUMBIA,"District of Columbia",WYOMING,"Wyoming",68,113
-2018,DISTRICT_OF_COLUMBIA,"District of Columbia",PUERTO_RICO,"Puerto Rico",183,230
-2018,DISTRICT_OF_COLUMBIA,"District of Columbia",FOREIGN_COUNTRY,"Foreign Country",9256,1780
 2018,FLORIDA,"Florida",ALABAMA,"Alabama",12870,2462
 2018,FLORIDA,"Florida",ALASKA,"Alaska",1388,1336
 2018,FLORIDA,"Florida",ARIZONA,"Arizona",4542,1569
@@ -468,8 +450,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,FLORIDA,"Florida",WEST_VIRGINIA,"West Virginia",5760,2070
 2018,FLORIDA,"Florida",WISCONSIN,"Wisconsin",7573,2415
 2018,FLORIDA,"Florida",WYOMING,"Wyoming",744,736
-2018,FLORIDA,"Florida",PUERTO_RICO,"Puerto Rico",44710,7633
-2018,FLORIDA,"Florida",FOREIGN_COUNTRY,"Foreign Country",172958,9699
 2018,GEORGIA,"Georgia",ALABAMA,"Alabama",15589,3626
 2018,GEORGIA,"Georgia",ALASKA,"Alaska",917,623
 2018,GEORGIA,"Georgia",ARIZONA,"Arizona",2255,1493
@@ -520,8 +500,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,GEORGIA,"Georgia",WEST_VIRGINIA,"West Virginia",1277,1116
 2018,GEORGIA,"Georgia",WISCONSIN,"Wisconsin",2627,1818
 2018,GEORGIA,"Georgia",WYOMING,"Wyoming",1339,1677
-2018,GEORGIA,"Georgia",PUERTO_RICO,"Puerto Rico",1382,787
-2018,GEORGIA,"Georgia",FOREIGN_COUNTRY,"Foreign Country",47769,6696
 2018,HAWAII,"Hawaii",ALABAMA,"Alabama",484,655
 2018,HAWAII,"Hawaii",ALASKA,"Alaska",1509,1471
 2018,HAWAII,"Hawaii",ARIZONA,"Arizona",2167,970
@@ -566,8 +544,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,HAWAII,"Hawaii",WASHINGTON,"Washington",4351,1862
 2018,HAWAII,"Hawaii",WISCONSIN,"Wisconsin",142,218
 2018,HAWAII,"Hawaii",WYOMING,"Wyoming",178,134
-2018,HAWAII,"Hawaii",PUERTO_RICO,"Puerto Rico",68,129
-2018,HAWAII,"Hawaii",FOREIGN_COUNTRY,"Foreign Country",12936,3076
 2018,IDAHO,"Idaho",ALABAMA,"Alabama",84,138
 2018,IDAHO,"Idaho",ALASKA,"Alaska",1179,772
 2018,IDAHO,"Idaho",ARIZONA,"Arizona",3852,1475
@@ -610,8 +586,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,IDAHO,"Idaho",WEST_VIRGINIA,"West Virginia",154,264
 2018,IDAHO,"Idaho",WISCONSIN,"Wisconsin",42,70
 2018,IDAHO,"Idaho",WYOMING,"Wyoming",856,601
-2018,IDAHO,"Idaho",PUERTO_RICO,"Puerto Rico",703,945
-2018,IDAHO,"Idaho",FOREIGN_COUNTRY,"Foreign Country",5887,1832
 2018,ILLINOIS,"Illinois",ALABAMA,"Alabama",1280,862
 2018,ILLINOIS,"Illinois",ALASKA,"Alaska",1400,978
 2018,ILLINOIS,"Illinois",ARIZONA,"Arizona",5818,1489
@@ -661,8 +635,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,ILLINOIS,"Illinois",WEST_VIRGINIA,"West Virginia",869,444
 2018,ILLINOIS,"Illinois",WISCONSIN,"Wisconsin",13965,3014
 2018,ILLINOIS,"Illinois",WYOMING,"Wyoming",93,114
-2018,ILLINOIS,"Illinois",PUERTO_RICO,"Puerto Rico",2677,1184
-2018,ILLINOIS,"Illinois",FOREIGN_COUNTRY,"Foreign Country",64608,6311
 2018,INDIANA,"Indiana",ALABAMA,"Alabama",966,611
 2018,INDIANA,"Indiana",ALASKA,"Alaska",138,195
 2018,INDIANA,"Indiana",ARIZONA,"Arizona",3009,1795
@@ -710,8 +682,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,INDIANA,"Indiana",WEST_VIRGINIA,"West Virginia",477,580
 2018,INDIANA,"Indiana",WISCONSIN,"Wisconsin",3228,1190
 2018,INDIANA,"Indiana",WYOMING,"Wyoming",1008,979
-2018,INDIANA,"Indiana",PUERTO_RICO,"Puerto Rico",2561,1249
-2018,INDIANA,"Indiana",FOREIGN_COUNTRY,"Foreign Country",29522,5080
 2018,IOWA,"Iowa",ALABAMA,"Alabama",148,149
 2018,IOWA,"Iowa",ALASKA,"Alaska",66,110
 2018,IOWA,"Iowa",ARIZONA,"Arizona",2021,1036
@@ -756,8 +726,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,IOWA,"Iowa",WASHINGTON,"Washington",1244,528
 2018,IOWA,"Iowa",WISCONSIN,"Wisconsin",4333,1404
 2018,IOWA,"Iowa",WYOMING,"Wyoming",240,183
-2018,IOWA,"Iowa",PUERTO_RICO,"Puerto Rico",633,717
-2018,IOWA,"Iowa",FOREIGN_COUNTRY,"Foreign Country",10340,2342
 2018,KANSAS,"Kansas",ALABAMA,"Alabama",476,254
 2018,KANSAS,"Kansas",ALASKA,"Alaska",378,406
 2018,KANSAS,"Kansas",ARIZONA,"Arizona",1801,1070
@@ -802,8 +770,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,KANSAS,"Kansas",WEST_VIRGINIA,"West Virginia",90,118
 2018,KANSAS,"Kansas",WISCONSIN,"Wisconsin",948,677
 2018,KANSAS,"Kansas",WYOMING,"Wyoming",606,375
-2018,KANSAS,"Kansas",PUERTO_RICO,"Puerto Rico",152,178
-2018,KANSAS,"Kansas",FOREIGN_COUNTRY,"Foreign Country",14360,2671
 2018,KENTUCKY,"Kentucky",ALABAMA,"Alabama",2055,1170
 2018,KENTUCKY,"Kentucky",ALASKA,"Alaska",115,154
 2018,KENTUCKY,"Kentucky",ARIZONA,"Arizona",1480,768
@@ -851,8 +817,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,KENTUCKY,"Kentucky",WASHINGTON,"Washington",1238,732
 2018,KENTUCKY,"Kentucky",WEST_VIRGINIA,"West Virginia",3776,1370
 2018,KENTUCKY,"Kentucky",WISCONSIN,"Wisconsin",935,622
-2018,KENTUCKY,"Kentucky",PUERTO_RICO,"Puerto Rico",1122,927
-2018,KENTUCKY,"Kentucky",FOREIGN_COUNTRY,"Foreign Country",11225,2396
 2018,LOUISIANA,"Louisiana",ALABAMA,"Alabama",1462,541
 2018,LOUISIANA,"Louisiana",ALASKA,"Alaska",515,551
 2018,LOUISIANA,"Louisiana",ARIZONA,"Arizona",276,216
@@ -899,8 +863,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,LOUISIANA,"Louisiana",WEST_VIRGINIA,"West Virginia",567,663
 2018,LOUISIANA,"Louisiana",WISCONSIN,"Wisconsin",407,355
 2018,LOUISIANA,"Louisiana",WYOMING,"Wyoming",97,166
-2018,LOUISIANA,"Louisiana",PUERTO_RICO,"Puerto Rico",238,285
-2018,LOUISIANA,"Louisiana",FOREIGN_COUNTRY,"Foreign Country",12770,2619
 2018,MAINE,"Maine",ALASKA,"Alaska",47,82
 2018,MAINE,"Maine",ARIZONA,"Arizona",765,349
 2018,MAINE,"Maine",CALIFORNIA,"California",850,393
@@ -945,7 +907,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MAINE,"Maine",VIRGINIA,"Virginia",874,719
 2018,MAINE,"Maine",WASHINGTON,"Washington",283,207
 2018,MAINE,"Maine",WISCONSIN,"Wisconsin",102,120
-2018,MAINE,"Maine",FOREIGN_COUNTRY,"Foreign Country",3324,899
 2018,MARYLAND,"Maryland",ALABAMA,"Alabama",647,294
 2018,MARYLAND,"Maryland",ALASKA,"Alaska",485,486
 2018,MARYLAND,"Maryland",ARIZONA,"Arizona",2240,901
@@ -996,8 +957,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MARYLAND,"Maryland",WEST_VIRGINIA,"West Virginia",5422,1758
 2018,MARYLAND,"Maryland",WISCONSIN,"Wisconsin",1731,1687
 2018,MARYLAND,"Maryland",WYOMING,"Wyoming",147,238
-2018,MARYLAND,"Maryland",PUERTO_RICO,"Puerto Rico",1962,1166
-2018,MARYLAND,"Maryland",FOREIGN_COUNTRY,"Foreign Country",43531,5086
 2018,MASSACHUSETTS,"Massachusetts",ALABAMA,"Alabama",483,498
 2018,MASSACHUSETTS,"Massachusetts",ALASKA,"Alaska",241,232
 2018,MASSACHUSETTS,"Massachusetts",ARIZONA,"Arizona",1554,848
@@ -1047,8 +1006,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MASSACHUSETTS,"Massachusetts",WEST_VIRGINIA,"West Virginia",115,128
 2018,MASSACHUSETTS,"Massachusetts",WISCONSIN,"Wisconsin",703,431
 2018,MASSACHUSETTS,"Massachusetts",WYOMING,"Wyoming",44,72
-2018,MASSACHUSETTS,"Massachusetts",PUERTO_RICO,"Puerto Rico",5677,1887
-2018,MASSACHUSETTS,"Massachusetts",FOREIGN_COUNTRY,"Foreign Country",60454,5948
 2018,MICHIGAN,"Michigan",ALABAMA,"Alabama",537,277
 2018,MICHIGAN,"Michigan",ALASKA,"Alaska",1025,512
 2018,MICHIGAN,"Michigan",ARIZONA,"Arizona",4028,1614
@@ -1099,8 +1056,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MICHIGAN,"Michigan",WEST_VIRGINIA,"West Virginia",115,125
 2018,MICHIGAN,"Michigan",WISCONSIN,"Wisconsin",3613,1058
 2018,MICHIGAN,"Michigan",WYOMING,"Wyoming",101,148
-2018,MICHIGAN,"Michigan",PUERTO_RICO,"Puerto Rico",397,326
-2018,MICHIGAN,"Michigan",FOREIGN_COUNTRY,"Foreign Country",44379,5395
 2018,MINNESOTA,"Minnesota",ALABAMA,"Alabama",976,686
 2018,MINNESOTA,"Minnesota",ALASKA,"Alaska",363,250
 2018,MINNESOTA,"Minnesota",ARIZONA,"Arizona",2176,752
@@ -1149,8 +1104,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MINNESOTA,"Minnesota",WASHINGTON,"Washington",5889,2821
 2018,MINNESOTA,"Minnesota",WISCONSIN,"Wisconsin",15270,2140
 2018,MINNESOTA,"Minnesota",WYOMING,"Wyoming",424,557
-2018,MINNESOTA,"Minnesota",PUERTO_RICO,"Puerto Rico",100,124
-2018,MINNESOTA,"Minnesota",FOREIGN_COUNTRY,"Foreign Country",25713,2963
 2018,MISSISSIPPI,"Mississippi",ALABAMA,"Alabama",8401,2735
 2018,MISSISSIPPI,"Mississippi",ALASKA,"Alaska",191,185
 2018,MISSISSIPPI,"Mississippi",ARIZONA,"Arizona",674,438
@@ -1193,8 +1146,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MISSISSIPPI,"Mississippi",WEST_VIRGINIA,"West Virginia",285,416
 2018,MISSISSIPPI,"Mississippi",WISCONSIN,"Wisconsin",1243,1031
 2018,MISSISSIPPI,"Mississippi",WYOMING,"Wyoming",747,364
-2018,MISSISSIPPI,"Mississippi",PUERTO_RICO,"Puerto Rico",303,341
-2018,MISSISSIPPI,"Mississippi",FOREIGN_COUNTRY,"Foreign Country",6945,2037
 2018,MISSOURI,"Missouri",ALABAMA,"Alabama",2378,1148
 2018,MISSOURI,"Missouri",ALASKA,"Alaska",882,768
 2018,MISSOURI,"Missouri",ARIZONA,"Arizona",2009,1075
@@ -1244,8 +1195,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MISSOURI,"Missouri",WEST_VIRGINIA,"West Virginia",59,97
 2018,MISSOURI,"Missouri",WISCONSIN,"Wisconsin",1546,874
 2018,MISSOURI,"Missouri",WYOMING,"Wyoming",610,460
-2018,MISSOURI,"Missouri",PUERTO_RICO,"Puerto Rico",777,617
-2018,MISSOURI,"Missouri",FOREIGN_COUNTRY,"Foreign Country",17721,3217
 2018,MONTANA,"Montana",ALABAMA,"Alabama",540,447
 2018,MONTANA,"Montana",ALASKA,"Alaska",986,563
 2018,MONTANA,"Montana",ARIZONA,"Arizona",1787,1092
@@ -1290,8 +1239,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,MONTANA,"Montana",WASHINGTON,"Washington",5450,1434
 2018,MONTANA,"Montana",WISCONSIN,"Wisconsin",774,843
 2018,MONTANA,"Montana",WYOMING,"Wyoming",1949,767
-2018,MONTANA,"Montana",PUERTO_RICO,"Puerto Rico",131,224
-2018,MONTANA,"Montana",FOREIGN_COUNTRY,"Foreign Country",2640,1130
 2018,NEBRASKA,"Nebraska",ALABAMA,"Alabama",268,295
 2018,NEBRASKA,"Nebraska",ALASKA,"Alaska",34,57
 2018,NEBRASKA,"Nebraska",ARIZONA,"Arizona",1351,677
@@ -1339,8 +1286,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEBRASKA,"Nebraska",WEST_VIRGINIA,"West Virginia",41,76
 2018,NEBRASKA,"Nebraska",WISCONSIN,"Wisconsin",336,267
 2018,NEBRASKA,"Nebraska",WYOMING,"Wyoming",960,627
-2018,NEBRASKA,"Nebraska",PUERTO_RICO,"Puerto Rico",40,70
-2018,NEBRASKA,"Nebraska",FOREIGN_COUNTRY,"Foreign Country",9305,2324
 2018,NEVADA,"Nevada",ALABAMA,"Alabama",397,372
 2018,NEVADA,"Nevada",ALASKA,"Alaska",458,365
 2018,NEVADA,"Nevada",ARIZONA,"Arizona",6999,2594
@@ -1388,8 +1333,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEVADA,"Nevada",WASHINGTON,"Washington",6231,1507
 2018,NEVADA,"Nevada",WISCONSIN,"Wisconsin",1151,710
 2018,NEVADA,"Nevada",WYOMING,"Wyoming",791,660
-2018,NEVADA,"Nevada",PUERTO_RICO,"Puerto Rico",564,440
-2018,NEVADA,"Nevada",FOREIGN_COUNTRY,"Foreign Country",12897,2519
 2018,NEW_HAMPSHIRE,"New Hampshire",ALABAMA,"Alabama",158,209
 2018,NEW_HAMPSHIRE,"New Hampshire",ALASKA,"Alaska",45,80
 2018,NEW_HAMPSHIRE,"New Hampshire",ARIZONA,"Arizona",704,511
@@ -1431,8 +1374,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEW_HAMPSHIRE,"New Hampshire",VIRGINIA,"Virginia",836,485
 2018,NEW_HAMPSHIRE,"New Hampshire",WASHINGTON,"Washington",198,211
 2018,NEW_HAMPSHIRE,"New Hampshire",WISCONSIN,"Wisconsin",198,254
-2018,NEW_HAMPSHIRE,"New Hampshire",PUERTO_RICO,"Puerto Rico",1041,916
-2018,NEW_HAMPSHIRE,"New Hampshire",FOREIGN_COUNTRY,"Foreign Country",4994,1431
 2018,NEW_JERSEY,"New Jersey",ALABAMA,"Alabama",147,183
 2018,NEW_JERSEY,"New Jersey",ALASKA,"Alaska",67,85
 2018,NEW_JERSEY,"New Jersey",ARIZONA,"Arizona",1626,566
@@ -1477,8 +1418,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEW_JERSEY,"New Jersey",WASHINGTON,"Washington",1507,1328
 2018,NEW_JERSEY,"New Jersey",WEST_VIRGINIA,"West Virginia",304,314
 2018,NEW_JERSEY,"New Jersey",WISCONSIN,"Wisconsin",505,357
-2018,NEW_JERSEY,"New Jersey",PUERTO_RICO,"Puerto Rico",5863,2370
-2018,NEW_JERSEY,"New Jersey",FOREIGN_COUNTRY,"Foreign Country",56534,5436
 2018,NEW_MEXICO,"New Mexico",ALABAMA,"Alabama",1099,776
 2018,NEW_MEXICO,"New Mexico",ALASKA,"Alaska",197,166
 2018,NEW_MEXICO,"New Mexico",ARIZONA,"Arizona",3284,1147
@@ -1525,8 +1464,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEW_MEXICO,"New Mexico",WEST_VIRGINIA,"West Virginia",204,261
 2018,NEW_MEXICO,"New Mexico",WISCONSIN,"Wisconsin",285,244
 2018,NEW_MEXICO,"New Mexico",WYOMING,"Wyoming",248,279
-2018,NEW_MEXICO,"New Mexico",PUERTO_RICO,"Puerto Rico",725,1012
-2018,NEW_MEXICO,"New Mexico",FOREIGN_COUNTRY,"Foreign Country",9575,2441
 2018,NEW_YORK,"New York",ALABAMA,"Alabama",1395,687
 2018,NEW_YORK,"New York",ALASKA,"Alaska",415,344
 2018,NEW_YORK,"New York",ARIZONA,"Arizona",3541,1439
@@ -1577,8 +1514,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NEW_YORK,"New York",WEST_VIRGINIA,"West Virginia",1126,655
 2018,NEW_YORK,"New York",WISCONSIN,"Wisconsin",1935,860
 2018,NEW_YORK,"New York",WYOMING,"Wyoming",18,34
-2018,NEW_YORK,"New York",PUERTO_RICO,"Puerto Rico",9431,2872
-2018,NEW_YORK,"New York",FOREIGN_COUNTRY,"Foreign Country",123671,7226
 2018,NORTH_CAROLINA,"North Carolina",ALABAMA,"Alabama",3287,1262
 2018,NORTH_CAROLINA,"North Carolina",ALASKA,"Alaska",1562,728
 2018,NORTH_CAROLINA,"North Carolina",ARIZONA,"Arizona",2622,969
@@ -1629,8 +1564,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NORTH_CAROLINA,"North Carolina",WEST_VIRGINIA,"West Virginia",4624,1449
 2018,NORTH_CAROLINA,"North Carolina",WISCONSIN,"Wisconsin",1920,904
 2018,NORTH_CAROLINA,"North Carolina",WYOMING,"Wyoming",1046,920
-2018,NORTH_CAROLINA,"North Carolina",PUERTO_RICO,"Puerto Rico",2393,1366
-2018,NORTH_CAROLINA,"North Carolina",FOREIGN_COUNTRY,"Foreign Country",50362,5138
 2018,NORTH_DAKOTA,"North Dakota",ALABAMA,"Alabama",4,10
 2018,NORTH_DAKOTA,"North Dakota",ALASKA,"Alaska",112,125
 2018,NORTH_DAKOTA,"North Dakota",ARIZONA,"Arizona",530,393
@@ -1672,8 +1605,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,NORTH_DAKOTA,"North Dakota",WASHINGTON,"Washington",683,475
 2018,NORTH_DAKOTA,"North Dakota",WISCONSIN,"Wisconsin",475,392
 2018,NORTH_DAKOTA,"North Dakota",WYOMING,"Wyoming",290,302
-2018,NORTH_DAKOTA,"North Dakota",PUERTO_RICO,"Puerto Rico",119,137
-2018,NORTH_DAKOTA,"North Dakota",FOREIGN_COUNTRY,"Foreign Country",3281,1235
 2018,OHIO,"Ohio",ALABAMA,"Alabama",1744,766
 2018,OHIO,"Ohio",ALASKA,"Alaska",1200,868
 2018,OHIO,"Ohio",ARIZONA,"Arizona",2432,1126
@@ -1724,8 +1655,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,OHIO,"Ohio",WEST_VIRGINIA,"West Virginia",6260,1694
 2018,OHIO,"Ohio",WISCONSIN,"Wisconsin",2778,1685
 2018,OHIO,"Ohio",WYOMING,"Wyoming",75,120
-2018,OHIO,"Ohio",PUERTO_RICO,"Puerto Rico",2248,1377
-2018,OHIO,"Ohio",FOREIGN_COUNTRY,"Foreign Country",34862,4598
 2018,OKLAHOMA,"Oklahoma",ALABAMA,"Alabama",541,461
 2018,OKLAHOMA,"Oklahoma",ALASKA,"Alaska",661,614
 2018,OKLAHOMA,"Oklahoma",ARIZONA,"Arizona",3631,1566
@@ -1770,8 +1699,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,OKLAHOMA,"Oklahoma",WASHINGTON,"Washington",1258,799
 2018,OKLAHOMA,"Oklahoma",WISCONSIN,"Wisconsin",392,221
 2018,OKLAHOMA,"Oklahoma",WYOMING,"Wyoming",641,585
-2018,OKLAHOMA,"Oklahoma",PUERTO_RICO,"Puerto Rico",1221,583
-2018,OKLAHOMA,"Oklahoma",FOREIGN_COUNTRY,"Foreign Country",12927,2612
 2018,OREGON,"Oregon",ALABAMA,"Alabama",315,228
 2018,OREGON,"Oregon",ALASKA,"Alaska",4317,2090
 2018,OREGON,"Oregon",ARIZONA,"Arizona",7736,2320
@@ -1819,7 +1746,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,OREGON,"Oregon",WEST_VIRGINIA,"West Virginia",185,307
 2018,OREGON,"Oregon",WISCONSIN,"Wisconsin",419,309
 2018,OREGON,"Oregon",WYOMING,"Wyoming",1277,885
-2018,OREGON,"Oregon",FOREIGN_COUNTRY,"Foreign Country",19359,2984
 2018,PENNSYLVANIA,"Pennsylvania",ALABAMA,"Alabama",1202,809
 2018,PENNSYLVANIA,"Pennsylvania",ALASKA,"Alaska",553,356
 2018,PENNSYLVANIA,"Pennsylvania",ARIZONA,"Arizona",3269,1259
@@ -1870,8 +1796,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,PENNSYLVANIA,"Pennsylvania",WEST_VIRGINIA,"West Virginia",5485,1588
 2018,PENNSYLVANIA,"Pennsylvania",WISCONSIN,"Wisconsin",1725,771
 2018,PENNSYLVANIA,"Pennsylvania",WYOMING,"Wyoming",156,158
-2018,PENNSYLVANIA,"Pennsylvania",PUERTO_RICO,"Puerto Rico",11188,3271
-2018,PENNSYLVANIA,"Pennsylvania",FOREIGN_COUNTRY,"Foreign Country",50264,5417
 2018,RHODE_ISLAND,"Rhode Island",ALABAMA,"Alabama",183,315
 2018,RHODE_ISLAND,"Rhode Island",ARIZONA,"Arizona",50,86
 2018,RHODE_ISLAND,"Rhode Island",CALIFORNIA,"California",2219,868
@@ -1906,8 +1830,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,RHODE_ISLAND,"Rhode Island",VIRGINIA,"Virginia",1278,872
 2018,RHODE_ISLAND,"Rhode Island",WASHINGTON,"Washington",501,458
 2018,RHODE_ISLAND,"Rhode Island",WISCONSIN,"Wisconsin",77,95
-2018,RHODE_ISLAND,"Rhode Island",PUERTO_RICO,"Puerto Rico",662,822
-2018,RHODE_ISLAND,"Rhode Island",FOREIGN_COUNTRY,"Foreign Country",7668,2872
 2018,SOUTH_CAROLINA,"South Carolina",ALABAMA,"Alabama",4636,2614
 2018,SOUTH_CAROLINA,"South Carolina",ALASKA,"Alaska",715,563
 2018,SOUTH_CAROLINA,"South Carolina",ARIZONA,"Arizona",1460,912
@@ -1957,8 +1879,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,SOUTH_CAROLINA,"South Carolina",WEST_VIRGINIA,"West Virginia",1299,901
 2018,SOUTH_CAROLINA,"South Carolina",WISCONSIN,"Wisconsin",1643,1357
 2018,SOUTH_CAROLINA,"South Carolina",WYOMING,"Wyoming",266,444
-2018,SOUTH_CAROLINA,"South Carolina",PUERTO_RICO,"Puerto Rico",3505,2884
-2018,SOUTH_CAROLINA,"South Carolina",FOREIGN_COUNTRY,"Foreign Country",18378,3654
 2018,SOUTH_DAKOTA,"South Dakota",ALABAMA,"Alabama",84,146
 2018,SOUTH_DAKOTA,"South Dakota",ARIZONA,"Arizona",241,255
 2018,SOUTH_DAKOTA,"South Dakota",CALIFORNIA,"California",2073,953
@@ -1995,8 +1915,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,SOUTH_DAKOTA,"South Dakota",WASHINGTON,"Washington",567,508
 2018,SOUTH_DAKOTA,"South Dakota",WISCONSIN,"Wisconsin",37,54
 2018,SOUTH_DAKOTA,"South Dakota",WYOMING,"Wyoming",651,494
-2018,SOUTH_DAKOTA,"South Dakota",PUERTO_RICO,"Puerto Rico",262,443
-2018,SOUTH_DAKOTA,"South Dakota",FOREIGN_COUNTRY,"Foreign Country",3026,1230
 2018,TENNESSEE,"Tennessee",ALABAMA,"Alabama",8547,1999
 2018,TENNESSEE,"Tennessee",ALASKA,"Alaska",1137,1219
 2018,TENNESSEE,"Tennessee",ARIZONA,"Arizona",2886,1016
@@ -2047,8 +1965,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,TENNESSEE,"Tennessee",WEST_VIRGINIA,"West Virginia",1705,1498
 2018,TENNESSEE,"Tennessee",WISCONSIN,"Wisconsin",1492,1218
 2018,TENNESSEE,"Tennessee",WYOMING,"Wyoming",121,132
-2018,TENNESSEE,"Tennessee",PUERTO_RICO,"Puerto Rico",1615,1100
-2018,TENNESSEE,"Tennessee",FOREIGN_COUNTRY,"Foreign Country",26794,4127
 2018,TEXAS,"Texas",ALABAMA,"Alabama",5945,2230
 2018,TEXAS,"Texas",ALASKA,"Alaska",2375,1153
 2018,TEXAS,"Texas",ARIZONA,"Arizona",18628,4438
@@ -2099,8 +2015,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,TEXAS,"Texas",WEST_VIRGINIA,"West Virginia",924,655
 2018,TEXAS,"Texas",WISCONSIN,"Wisconsin",5844,3518
 2018,TEXAS,"Texas",WYOMING,"Wyoming",2327,1220
-2018,TEXAS,"Texas",PUERTO_RICO,"Puerto Rico",11057,3135
-2018,TEXAS,"Texas",FOREIGN_COUNTRY,"Foreign Country",189679,14038
 2018,UTAH,"Utah",ALABAMA,"Alabama",315,357
 2018,UTAH,"Utah",ALASKA,"Alaska",494,453
 2018,UTAH,"Utah",ARIZONA,"Arizona",6827,2086
@@ -2150,7 +2064,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,UTAH,"Utah",WEST_VIRGINIA,"West Virginia",75,126
 2018,UTAH,"Utah",WISCONSIN,"Wisconsin",1346,771
 2018,UTAH,"Utah",WYOMING,"Wyoming",1534,875
-2018,UTAH,"Utah",FOREIGN_COUNTRY,"Foreign Country",22096,4992
 2018,VERMONT,"Vermont",ALABAMA,"Alabama",124,175
 2018,VERMONT,"Vermont",ARIZONA,"Arizona",205,199
 2018,VERMONT,"Vermont",CALIFORNIA,"California",1380,776
@@ -2191,8 +2104,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,VERMONT,"Vermont",WASHINGTON,"Washington",165,209
 2018,VERMONT,"Vermont",WISCONSIN,"Wisconsin",179,200
 2018,VERMONT,"Vermont",WYOMING,"Wyoming",45,53
-2018,VERMONT,"Vermont",PUERTO_RICO,"Puerto Rico",5,11
-2018,VERMONT,"Vermont",FOREIGN_COUNTRY,"Foreign Country",2375,888
 2018,VIRGINIA,"Virginia",ALABAMA,"Alabama",3426,1469
 2018,VIRGINIA,"Virginia",ALASKA,"Alaska",1235,649
 2018,VIRGINIA,"Virginia",ARIZONA,"Arizona",4162,2181
@@ -2242,8 +2153,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,VIRGINIA,"Virginia",WEST_VIRGINIA,"West Virginia",2423,829
 2018,VIRGINIA,"Virginia",WISCONSIN,"Wisconsin",1631,708
 2018,VIRGINIA,"Virginia",WYOMING,"Wyoming",266,227
-2018,VIRGINIA,"Virginia",PUERTO_RICO,"Puerto Rico",2328,1038
-2018,VIRGINIA,"Virginia",FOREIGN_COUNTRY,"Foreign Country",56522,6064
 2018,WASHINGTON,"Washington",ALABAMA,"Alabama",495,417
 2018,WASHINGTON,"Washington",ALASKA,"Alaska",3520,1054
 2018,WASHINGTON,"Washington",ARIZONA,"Arizona",14252,3623
@@ -2294,8 +2203,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,WASHINGTON,"Washington",WEST_VIRGINIA,"West Virginia",182,210
 2018,WASHINGTON,"Washington",WISCONSIN,"Wisconsin",3381,1343
 2018,WASHINGTON,"Washington",WYOMING,"Wyoming",1237,692
-2018,WASHINGTON,"Washington",PUERTO_RICO,"Puerto Rico",1477,1065
-2018,WASHINGTON,"Washington",FOREIGN_COUNTRY,"Foreign Country",60173,6871
 2018,WEST_VIRGINIA,"West Virginia",ALABAMA,"Alabama",83,108
 2018,WEST_VIRGINIA,"West Virginia",ARIZONA,"Arizona",272,353
 2018,WEST_VIRGINIA,"West Virginia",ARKANSAS,"Arkansas",288,316
@@ -2335,8 +2242,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,WEST_VIRGINIA,"West Virginia",VIRGINIA,"Virginia",6646,1807
 2018,WEST_VIRGINIA,"West Virginia",WASHINGTON,"Washington",185,243
 2018,WEST_VIRGINIA,"West Virginia",WISCONSIN,"Wisconsin",437,402
-2018,WEST_VIRGINIA,"West Virginia",PUERTO_RICO,"Puerto Rico",220,261
-2018,WEST_VIRGINIA,"West Virginia",FOREIGN_COUNTRY,"Foreign Country",1317,533
 2018,WISCONSIN,"Wisconsin",ALABAMA,"Alabama",572,482
 2018,WISCONSIN,"Wisconsin",ALASKA,"Alaska",484,599
 2018,WISCONSIN,"Wisconsin",ARIZONA,"Arizona",2883,1187
@@ -2387,8 +2292,6 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,WISCONSIN,"Wisconsin",WASHINGTON,"Washington",1938,758
 2018,WISCONSIN,"Wisconsin",WEST_VIRGINIA,"West Virginia",265,265
 2018,WISCONSIN,"Wisconsin",WYOMING,"Wyoming",206,182
-2018,WISCONSIN,"Wisconsin",PUERTO_RICO,"Puerto Rico",2285,1343
-2018,WISCONSIN,"Wisconsin",FOREIGN_COUNTRY,"Foreign Country",15208,2299
 2018,WYOMING,"Wyoming",ALABAMA,"Alabama",639,672
 2018,WYOMING,"Wyoming",ARIZONA,"Arizona",934,692
 2018,WYOMING,"Wyoming",ARKANSAS,"Arkansas",392,301
@@ -2434,29 +2337,3 @@ period,source_id,source_label,destination_id,destination_label,estimate,moe
 2018,WYOMING,"Wyoming",WASHINGTON,"Washington",373,265
 2018,WYOMING,"Wyoming",WEST_VIRGINIA,"West Virginia",118,215
 2018,WYOMING,"Wyoming",WISCONSIN,"Wisconsin",29,61
-2018,WYOMING,"Wyoming",PUERTO_RICO,"Puerto Rico",119,189
-2018,WYOMING,"Wyoming",FOREIGN_COUNTRY,"Foreign Country",2496,1254
-2018,PUERTO_RICO,"Puerto Rico",ARIZONA,"Arizona",195,300
-2018,PUERTO_RICO,"Puerto Rico",CALIFORNIA,"California",520,422
-2018,PUERTO_RICO,"Puerto Rico",COLORADO,"Colorado",722,1093
-2018,PUERTO_RICO,"Puerto Rico",CONNECTICUT,"Connecticut",1008,992
-2018,PUERTO_RICO,"Puerto Rico",FLORIDA,"Florida",5916,2269
-2018,PUERTO_RICO,"Puerto Rico",GEORGIA,"Georgia",173,184
-2018,PUERTO_RICO,"Puerto Rico",HAWAII,"Hawaii",212,345
-2018,PUERTO_RICO,"Puerto Rico",ILLINOIS,"Illinois",594,529
-2018,PUERTO_RICO,"Puerto Rico",MARYLAND,"Maryland",202,216
-2018,PUERTO_RICO,"Puerto Rico",MASSACHUSETTS,"Massachusetts",1789,1235
-2018,PUERTO_RICO,"Puerto Rico",NEVADA,"Nevada",85,158
-2018,PUERTO_RICO,"Puerto Rico",NEW_HAMPSHIRE,"New Hampshire",160,279
-2018,PUERTO_RICO,"Puerto Rico",NEW_JERSEY,"New Jersey",1758,830
-2018,PUERTO_RICO,"Puerto Rico",NEW_YORK,"New York",2334,1234
-2018,PUERTO_RICO,"Puerto Rico",NORTH_CAROLINA,"North Carolina",335,373
-2018,PUERTO_RICO,"Puerto Rico",OREGON,"Oregon",48,80
-2018,PUERTO_RICO,"Puerto Rico",PENNSYLVANIA,"Pennsylvania",1214,800
-2018,PUERTO_RICO,"Puerto Rico",RHODE_ISLAND,"Rhode Island",411,667
-2018,PUERTO_RICO,"Puerto Rico",SOUTH_CAROLINA,"South Carolina",103,161
-2018,PUERTO_RICO,"Puerto Rico",TENNESSEE,"Tennessee",123,211
-2018,PUERTO_RICO,"Puerto Rico",TEXAS,"Texas",2394,1264
-2018,PUERTO_RICO,"Puerto Rico",VIRGINIA,"Virginia",473,478
-2018,PUERTO_RICO,"Puerto Rico",WISCONSIN,"Wisconsin",131,230
-2018,PUERTO_RICO,"Puerto Rico",FOREIGN_COUNTRY,"Foreign Country",2936,941

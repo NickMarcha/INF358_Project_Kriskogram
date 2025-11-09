@@ -11,12 +11,13 @@ import ChordView from '../components/views/ChordView'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import SettingsPanel from '../components/SettingsPanel'
 import { useSidebar } from '../contexts/SidebarContext'
-import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, type StoredDataset } from '../lib/storage'
+import { ensurePersistentStorage, getDataset, saveDataset, detectDatasetProperties, deleteDataset, type StoredDataset } from '../lib/storage'
 import { loadCSVFromUrl, parseStateMigrationCSV } from '../lib/csv-parser'
 import { parseTwoFileCSV } from '../lib/csv-two-file-parser'
 import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } from '../lib/gexf-parser'
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
+import { EXPECTED_STATE_COUNT, STATE_LABEL_SET } from '../data/stateLabels'
 const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSING_YEARS.reduce(
   (acc, year) => {
     acc[year] =
@@ -353,7 +354,7 @@ function ExplorerPage() {
       // Reset to show all data when snapshot changes
       setMinThreshold(minValue)
       setMaxThreshold(Math.max(maxValue, minValue))
-      setMaxEdges(Math.min(500, currentSnapshot.edges.length)) // Reset to total edges or 500, whichever is smaller
+      setMaxEdges(currentSnapshot.edges.length)
     }
   }, [currentSnapshot])
 
@@ -432,6 +433,19 @@ function ExplorerPage() {
       activeNodeIds.add(e.target)
     })
     
+    if (process.env.NODE_ENV !== 'production' && maxEdges < (currentSnapshot.edges as any[]).length) {
+      const hiddenNodes = (currentSnapshot.nodes as any[])
+        .filter((n: any) => !activeNodeIds.has(n.id))
+        .map((n: any) => n.label || n.id)
+
+      if (hiddenNodes.length > 0) {
+        console.info(
+          `[Explorer] ${hiddenNodes.length} nodes currently lack visible edges after filtering (maxEdges=${maxEdges}, thresholds=${minThreshold}-${maxThreshold}).`,
+          hiddenNodes.slice(0, 10),
+        )
+      }
+    }
+
     const filteredNodes = (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
     
     // Compute dynamic attributes (total incoming/outgoing) for each node
@@ -1164,7 +1178,7 @@ function ExplorerPage() {
                               onClick={() => {
                                 setMinThreshold(minValue)
                                 setMaxThreshold(stats.maxValue)
-                                setMaxEdges(Math.max(500, stats.totalEdges))
+                                setMaxEdges(stats.totalEdges)
                               }}
                               disabled={!isFiltered}
                               type="button"
@@ -1638,64 +1652,124 @@ function ExplorerPage() {
 
 async function preloadDefaults(): Promise<string | undefined> {
   // Preload defaults if missing: multi-year CSV series, single-year CSV 2021, sample GEXF, and Swiss Relocations
-  const multiId = 'csv-usa-multi'
+  const preId = 'csv-usa-pre-2020'
+  const postId = 'csv-usa-post-2020'
   const csvId = 'csv-2021'
   const gexfId = 'gexf-sample'
   const swissId = 'swiss-2016'
 
-  const existingMulti = await getDataset(multiId)
-  let multiAvailable = !!existingMulti
+  let existingPre = await getDataset(preId)
+  let existingPost = await getDataset(postId)
+
+  const hasCompleteCoverage = (dataset: StoredDataset | undefined) => {
+    if (!dataset) return false
+    return dataset.snapshots.every((snapshot) => {
+      const labels = new Set(snapshot.nodes.map((node: any) => node.label))
+      if (labels.size !== EXPECTED_STATE_COUNT) return false
+      for (const label of labels) {
+        if (!STATE_LABEL_SET.has(label)) return false
+      }
+      return true
+    })
+  }
+
+  const needsPreRefresh = existingPre ? !hasCompleteCoverage(existingPre) : false
+  if (needsPreRefresh) {
+    await deleteDataset(preId).catch(() => {})
+    existingPre = undefined
+  }
+
+  const needsPostRefresh = existingPost ? !hasCompleteCoverage(existingPost) : false
+  if (needsPostRefresh) {
+    await deleteDataset(postId).catch(() => {})
+    existingPost = undefined
+  }
+
+  let preAvailable = !!existingPre
+  let postAvailable = !!existingPost
   const existingCsv = await getDataset(csvId)
   const existingGexf = await getDataset(gexfId)
   const existingSwiss = await getDataset(swissId)
 
-  if (!existingMulti) {
+  const buildSnapshots = async (entries: typeof STATE_MIGRATION_CSV_FILES) => {
     const snapshots: KriskogramSnapshot[] = []
-
-    for (const entry of STATE_MIGRATION_CSV_FILES) {
+    for (const entry of entries) {
       try {
         const csvUrl = new URL(`../data/StateToStateMigrationUSCSV/${entry.filename}`, import.meta.url)
         const csvText = await loadCSVFromUrl(csvUrl.toString())
         const parsed = parseStateMigrationCSV(csvText)
-        const snapshot: KriskogramSnapshot = {
+        snapshots.push({
           timestamp: entry.year,
           nodes: parsed.nodes as any[],
           edges: parsed.edges as any[],
-        }
-        snapshots.push(snapshot)
+        })
       } catch (error) {
         console.warn(`⚠️ Failed to load snapshot for ${entry.filename}:`, error)
       }
     }
+    snapshots.sort((a, b) => {
+      const ta = typeof a.timestamp === 'string' ? Number.parseInt(a.timestamp, 10) : a.timestamp
+      const tb = typeof b.timestamp === 'string' ? Number.parseInt(b.timestamp, 10) : b.timestamp
+      return ta - tb
+    })
+    return snapshots
+  }
 
-    if (snapshots.length > 0) {
-      snapshots.sort((a, b) => {
-        const ta = typeof a.timestamp === 'string' ? Number.parseInt(a.timestamp, 10) : a.timestamp
-        const tb = typeof b.timestamp === 'string' ? Number.parseInt(b.timestamp, 10) : b.timestamp
-        return ta - tb
-      })
+  if (!existingPre) {
+    const preEntries = STATE_MIGRATION_CSV_FILES.filter((entry) => entry.year <= 2019)
+    const preSnapshots = await buildSnapshots(preEntries)
 
-      const firstSnapshot = snapshots[0]
-      const lastSnapshot = snapshots[snapshots.length - 1]
-      const metadata = detectDatasetProperties(firstSnapshot)
+    if (preSnapshots.length > 0) {
+      const first = preSnapshots[0]
+      const last = preSnapshots[preSnapshots.length - 1]
+      const metadata = detectDatasetProperties(first)
 
       const ds: StoredDataset = {
-        id: multiId,
-        name: 'US State-to-State Migration (2005-2023)',
+        id: preId,
+        name: 'US State-to-State Migration (2005-2019)',
         notes:
-          'Tidy CSV exports converted from the U.S. Census Bureau ACS 1-year state-to-state migration flow tables. ACS 1-year migration flows for 2020 were not released, so that year is omitted. The 2022 release includes revised Connecticut flows per Census errata guidance.',
+          'Tidy ACS 1-year state-to-state migration flows from 2005 through 2019. The Census Bureau did not release 2020 1-year migration flows, so the series stops before the pandemic.',
         type: 'csv',
         timeRange: {
-          start: typeof firstSnapshot.timestamp === 'string' ? Number.parseInt(firstSnapshot.timestamp, 10) : firstSnapshot.timestamp,
-          end: typeof lastSnapshot.timestamp === 'string' ? Number.parseInt(lastSnapshot.timestamp, 10) : lastSnapshot.timestamp,
+          start: typeof first.timestamp === 'string' ? Number.parseInt(first.timestamp, 10) : first.timestamp,
+          end: typeof last.timestamp === 'string' ? Number.parseInt(last.timestamp, 10) : last.timestamp,
         },
-        snapshots,
+        snapshots: preSnapshots,
         metadata,
         createdAt: Date.now(),
       }
 
       await saveDataset(ds)
-      multiAvailable = true
+      preAvailable = true
+    }
+  }
+
+  if (!existingPost) {
+    const postEntries = STATE_MIGRATION_CSV_FILES.filter((entry) => entry.year >= 2021)
+    const postSnapshots = await buildSnapshots(postEntries)
+
+    if (postSnapshots.length > 0) {
+      const first = postSnapshots[0]
+      const last = postSnapshots[postSnapshots.length - 1]
+      const metadata = detectDatasetProperties(first)
+
+      const ds: StoredDataset = {
+        id: postId,
+        name: 'US State-to-State Migration (2021-2023)',
+        notes:
+          'Post-2020 ACS 1-year state-to-state migration flows. The 2022 release includes revised Connecticut flows per Census errata guidance.',
+        type: 'csv',
+        timeRange: {
+          start: typeof first.timestamp === 'string' ? Number.parseInt(first.timestamp, 10) : first.timestamp,
+          end: typeof last.timestamp === 'string' ? Number.parseInt(last.timestamp, 10) : last.timestamp,
+        },
+        snapshots: postSnapshots,
+        metadata,
+        createdAt: Date.now(),
+      }
+
+      await saveDataset(ds)
+      postAvailable = true
     }
   }
 
@@ -1773,12 +1847,17 @@ async function preloadDefaults(): Promise<string | undefined> {
     await saveDataset(ds)
   }
 
-  if (!multiAvailable) {
-    // If multi dataset failed to load, fall back to single-year
-    return existingCsv ? csvId : undefined
+  if (preAvailable) {
+    return preId
+  }
+  if (postAvailable) {
+    return postId
+  }
+  if (existingCsv) {
+    return csvId
   }
 
-  return multiId
+  return undefined
 }
 
 
