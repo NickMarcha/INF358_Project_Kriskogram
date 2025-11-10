@@ -2282,14 +2282,23 @@ function ExplorerPage() {
                     {/* Edge Color */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-medium text-gray-700">Edge Color</label>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-medium text-gray-700">Edge Color</label>
+                          {egoNodeId && egoStepColoring && (
+                            <span className="text-[11px] text-gray-400">(disabled by neighbor step coloring)</span>
+                          )}
+                        </div>
                         <label className="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer">
                           <input
                             type="checkbox"
                             className="w-3.5 h-3.5"
+                            disabled={Boolean(egoNodeId && egoStepColoring)}
                             checked={edgeColorAdvanced}
                             onChange={(e) => {
                               const checked = e.target.checked
+                              if (egoNodeId && egoStepColoring) {
+                                return
+                              }
                               setEdgeColorAdvanced(checked)
                               if (!checked) {
                                 setEdgeColorHue('direction')
@@ -2304,7 +2313,7 @@ function ExplorerPage() {
                           Advanced
                         </label>
                       </div>
-                      {!edgeColorAdvanced && (
+                      {!edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
                         <div className="flex flex-col gap-1.5 text-xs">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -2321,51 +2330,52 @@ function ExplorerPage() {
                             <input
                               type="radio"
                               name="edgeColorHueSimple"
-                              value="weight"
-                              checked={edgeColorIntensity === 'weight' && edgeColorHue === 'single'}
-                              onChange={() => { setEdgeColorHue('single'); setEdgeColorIntensity('weight') }}
+                              value="single"
+                              checked={edgeColorHue === 'single'}
+                              onChange={() => setEdgeColorHue('single')}
                               className="w-3.5 h-3.5"
                             />
-                            <span>By Weight Intensity</span>
+                            <span>Single Color</span>
                           </label>
                         </div>
                       )}
-                      {edgeColorAdvanced && (
-                        <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-700">Hue Source</label>
+
+                      {edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
+                        <div className="mt-2 space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
+                          <div>
+                            <label className="text-xs font-medium text-gray-700">
+                              Hue Source
+                            </label>
                             <select
                               value={edgeColorHue}
-                              onChange={(e) => {
-                                const value = e.target.value as typeof edgeColorHue
-                                setEdgeColorHue(value)
-                              }}
-                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onChange={(e) => setEdgeColorHue(e.target.value as typeof edgeColorHue)}
+                              className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="direction">Direction (above/below)</option>
+                              <option value="direction">Direction (Above/Below)</option>
+                              <option value="single">Single</option>
                               <option value="region" disabled={!hasRegionData}>Region</option>
                               <option value="division" disabled={!hasDivisionData}>Division</option>
                               <option value="attribute">Attribute</option>
-                              <option value="single">Single Color</option>
                             </select>
                             {edgeColorHue === 'attribute' && dataset?.metadata && (
                               <div className="mt-2">
                                 <label className="text-xs text-gray-600">Hue Attribute</label>
-                                <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorHueAttribute || ''} onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}>
+                                <select
+                                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  value={edgeColorHueAttribute || ''}
+                                  onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}
+                                >
                                   <option value="">Select attribute…</option>
-                                  {[...dataset.metadata.hasNumericProperties.edges, ...dataset.metadata.hasCategoricalProperties.edges]
-                                    .filter((v, i, a) => a.indexOf(v) === i)
-                                    .map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
+                                  {dataset.metadata.hasCategoricalProperties.edges.concat(dataset.metadata.hasNumericProperties.edges).map((prop) => (
+                                    <option key={prop} value={prop}>
+                                      {prop}
+                                    </option>
+                                  ))}
                                 </select>
                               </div>
                             )}
-                            {(edgeColorHue === 'region' || edgeColorHue === 'division') && (
-                              <label className="flex items-center gap-2 mt-2 text-[11px] text-gray-600 cursor-pointer">
-                                <input type="checkbox" className="w-3.5 h-3.5" checked={edgeColorInterGrayscale} onChange={(e) => setEdgeColorInterGrayscale(e.target.checked)} />
-                                Inter edges grayscale by intensity
-                              </label>
-                            )}
                           </div>
+
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-700">Intensity Source</label>
                             <select
