@@ -318,6 +318,8 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(0.5).default(3),
   ),
+  nodeFilterAttribute: safeCoerceNullableString(),
+  nodeFilterValue: safeCoerceNullableString(),
 })
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
@@ -518,6 +520,20 @@ export const Route = createFileRoute('/explorer')({
       return Number.isNaN(num) ? 3 : Math.max(0.5, num)
     })()
 
+    const safeNodeFilterAttribute = (() => {
+      if (typeof search.nodeFilterAttribute === 'string' && search.nodeFilterAttribute !== '') {
+        return search.nodeFilterAttribute
+      }
+      return null
+    })()
+
+    const safeNodeFilterValue = (() => {
+      if (typeof search.nodeFilterValue === 'string' && search.nodeFilterValue !== '') {
+        return search.nodeFilterValue
+      }
+      return null
+    })()
+
     const safeNodeOrderMode = (() => {
       if (typeof search.nodeOrderMode === 'string' && search.nodeOrderMode.trim() !== '') {
         return search.nodeOrderMode
@@ -698,6 +714,8 @@ export const Route = createFileRoute('/explorer')({
       edgeSegmentScaleByWeight: safeEdgeSegmentScaleByWeight,
       edgeSegmentCap: safeEdgeSegmentCap,
       edgeOutlineGap: safeEdgeOutlineGap,
+      nodeFilterAttribute: safeNodeFilterAttribute,
+      nodeFilterValue: safeNodeFilterValue,
       nodeOrderMode: safeNodeOrderMode,
       arcOpacity: safeArcOpacity,
       edgeWidthMode: safeEdgeWidthMode,
@@ -763,6 +781,8 @@ const [edgeSegmentScaleByWeight, setEdgeSegmentScaleByWeight] = useState<boolean
 const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
 const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, search.edgeOutlineGap ?? 3))
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
+  const [nodeFilterAttribute, setNodeFilterAttribute] = useState<string | null>(search.nodeFilterAttribute ?? null)
+  const [nodeFilterValue, setNodeFilterValue] = useState<string | null>(search.nodeFilterValue ?? null)
   const krRef = useRef<KriskogramRef>(null)
   
   // Sidebar state for right panel
@@ -883,6 +903,20 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
   }, [navigate])
 
+  const availableNodeFilterAttributes = useMemo(() => {
+    return dataset?.metadata?.hasCategoricalProperties?.nodes ?? []
+  }, [dataset])
+
+  useEffect(() => {
+    if (!dataset) return
+    if (!nodeFilterAttribute) return
+    if (!availableNodeFilterAttributes.includes(nodeFilterAttribute)) {
+      setNodeFilterAttribute(null)
+      setNodeFilterValue(null)
+      updateSearchParams({ nodeFilterAttribute: null, nodeFilterValue: null })
+    }
+  }, [dataset, availableNodeFilterAttributes, nodeFilterAttribute, updateSearchParams])
+
   const hasTime = useMemo(() => {
     return dataset && dataset.timeRange.start !== dataset.timeRange.end
   }, [dataset])
@@ -963,6 +997,27 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       return ts === currentYear
     }) as any
   }, [dataset, currentYear])
+
+  const nodeFilterValueOptions = useMemo(() => {
+    if (!currentSnapshot || !nodeFilterAttribute) return []
+    const values = new Set<string>()
+    ;(currentSnapshot.nodes as any[]).forEach((node: any) => {
+      const value = node?.[nodeFilterAttribute]
+      if (value !== undefined && value !== null && value !== '') {
+        values.add(String(value))
+      }
+    })
+    return Array.from(values).sort((a, b) => a.localeCompare(b))
+  }, [currentSnapshot, nodeFilterAttribute])
+
+  useEffect(() => {
+    if (!nodeFilterAttribute) return
+    if (!currentSnapshot) return
+    if (nodeFilterValue && !nodeFilterValueOptions.includes(nodeFilterValue)) {
+      setNodeFilterValue(null)
+      updateSearchParams({ nodeFilterValue: null })
+    }
+  }, [nodeFilterAttribute, nodeFilterValue, nodeFilterValueOptions, currentSnapshot, updateSearchParams])
 
   const snapshotByYear = useMemo(() => {
     if (!dataset) return new Map<number, KriskogramSnapshot>()
@@ -1195,10 +1250,34 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
     const currentYearValue = typeof currentYear === 'number' ? currentYear : null
 
+    const snapshotNodesAll = currentSnapshot.nodes as any[]
+    const attributeFilterActive = Boolean(nodeFilterAttribute && nodeFilterValue)
+    const attributeFilteredNodes = attributeFilterActive
+      ? snapshotNodesAll.filter((node: any) => {
+          const nodeValue = node?.[nodeFilterAttribute as string]
+          return nodeValue === nodeFilterValue
+        })
+      : snapshotNodesAll
+    const allowedNodeIds = new Set(attributeFilteredNodes.map((node: any) => node.id))
+
+    if (allowedNodeIds.size === 0) {
+      return {
+        nodes: [],
+        baseEdges: [],
+        edges: [],
+        currentEdgeCount: 0,
+        egoStepMax: 0,
+        temporalOverlay: null,
+      }
+    }
+
     const totalIncomingAll = new Map<string, number>()
     const totalOutgoingAll = new Map<string, number>()
     const totalSelfFlowAll = new Map<string, number>()
     ;(currentSnapshot.edges as any[]).forEach((edge: any) => {
+      if (!allowedNodeIds.has(edge.source) || !allowedNodeIds.has(edge.target)) {
+        return
+      }
       const outgoing = totalOutgoingAll.get(edge.source) || 0
       totalOutgoingAll.set(edge.source, outgoing + edge.value)
 
@@ -1232,7 +1311,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       edgeTypeFilter,
     )
 
-    edgesToFilter = applyIntraFilter(edgesToFilter, currentSnapshot.nodes as any[])
+    edgesToFilter = edgesToFilter.filter((edge: any) => allowedNodeIds.has(edge.source) && allowedNodeIds.has(edge.target))
+    edgesToFilter = applyIntraFilter(edgesToFilter, attributeFilteredNodes)
     edgesToFilter = edgesToFilter.filter((edge: any) => edge?.source !== edge?.target)
 
     const filteredEdgesBase = edgesToFilter
@@ -1368,6 +1448,18 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         if (!snapshot) continue
 
         const rawEdges = Array.isArray(snapshot.edges) ? (snapshot.edges as any[]) : []
+        let overlayAllowedNodeIds: Set<string> | null = null
+        if (attributeFilterActive) {
+          overlayAllowedNodeIds = new Set(
+            (snapshot.nodes as any[]).filter((node: any) => {
+              const nodeValue = node?.[nodeFilterAttribute as string]
+              return nodeValue === nodeFilterValue
+            }).map((node: any) => node.id),
+          )
+          if (overlayAllowedNodeIds.size === 0) {
+            continue
+          }
+        }
         let edgesForSnapshot = filterEdgesByProperty(
           rawEdges,
           edgeTypeInfo?.property || '',
@@ -1401,6 +1493,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
               return s && t && s.division && t.division && s.division !== t.division
             })
           }
+        }
+
+        if (overlayAllowedNodeIds) {
+          edgesForSnapshot = edgesForSnapshot.filter(
+            (e: any) => overlayAllowedNodeIds!.has(e.source) && overlayAllowedNodeIds!.has(e.target),
+          )
         }
 
         const overlayDashArray =
@@ -1467,7 +1565,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       process.env.NODE_ENV !== 'production' &&
       maxEdges < (currentSnapshot.edges as any[]).length
     ) {
-      const hiddenNodes = (currentSnapshot.nodes as any[])
+      const hiddenNodes = attributeFilteredNodes
         .filter((n: any) => !activeNodeIds.has(n.id))
         .map((n: any) => n.label || n.id)
 
@@ -1480,8 +1578,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     const baseNodes = keepAllNodes
-      ? (currentSnapshot.nodes as any[])
-      : (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
+      ? attributeFilteredNodes
+      : attributeFilteredNodes.filter((n: any) => activeNodeIds.has(n.id))
 
     const nodesWithDynamicAttrs = baseNodes.map((n: any) => {
       const visibleIncoming = nodeIncoming.get(n.id) || 0
@@ -1594,6 +1692,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeSegmentCap,
     edgeSegmentAnimate,
     edgeOutlineGap,
+    nodeFilterAttribute,
+    nodeFilterValue,
     dataset,
   ])
 
@@ -2686,12 +2786,16 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                     const edgesUpperBound = Math.max(1, datasetMaxEdgesCount)
                     setEdgeTypeFilter(null)
                     setIntraFilter('none')
+                    setNodeFilterAttribute(null)
+                    setNodeFilterValue(null)
                     setMinThreshold(datasetMinEdgeValue)
                     setMaxThreshold(datasetMaxEdgeValue)
                     setMaxEdges(edgesUpperBound)
                     updateSearchParams({
                       edgeType: null,
                       intraFilter: 'none',
+                      nodeFilterAttribute: null,
+                      nodeFilterValue: null,
                       minThreshold: datasetMinEdgeValue,
                       maxThreshold: datasetMaxEdgeValue,
                       maxEdges: edgesUpperBound,
@@ -2758,6 +2862,53 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                           {hasRegionData && <option value="interRegion">Inter Region</option>}
                           {hasDivisionData && <option value="interDivision">Inter Division</option>}
                         </select>
+                      </div>
+                    )}
+
+                    {availableNodeFilterAttributes.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Node Filter</label>
+                        <select
+                          value={nodeFilterAttribute ?? ''}
+                          onChange={(e) => {
+                            const attr = e.target.value || null
+                            setNodeFilterAttribute(attr)
+                            setNodeFilterValue(null)
+                            updateSearchParams({ nodeFilterAttribute: attr, nodeFilterValue: null })
+                          }}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All nodes</option>
+                          {availableNodeFilterAttributes.map((attr) => (
+                            <option key={attr} value={attr}>
+                              {attr}
+                            </option>
+                          ))}
+                        </select>
+                        {nodeFilterAttribute && (
+                          nodeFilterValueOptions.length > 0 ? (
+                            <select
+                              value={nodeFilterValue ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value || null
+                                setNodeFilterValue(value)
+                                updateSearchParams({ nodeFilterValue: value })
+                              }}
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">All {nodeFilterAttribute}</option>
+                              {nodeFilterValueOptions.map((value) => (
+                                <option key={value} value={value}>
+                                  {value}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-xs text-gray-500 italic">
+                              No values available for {nodeFilterAttribute} in this snapshot.
+                            </p>
+                          )
+                        )}
                       </div>
                     )}
 
