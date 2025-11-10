@@ -34,7 +34,7 @@ export default function Header() {
               temporalOverlayNodeStyle: 'filled',
               edgeSegmentLength: 8,
               edgeSegmentGap: 4,
-              edgeSegmentOffset: 0,
+              edgeSegmentOffset: 15,
               edgeSegmentCap: 'round',
               edgeSegmentAnimate: false,
               edgeOutlineGap: 3,

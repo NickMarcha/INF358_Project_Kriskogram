@@ -1268,6 +1268,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           edgeSegmentLength,
           edgeSegmentGap,
           edgeSegmentOffset,
+          edgeSegmentSpeed,
+          edgeSegmentScaleByWeight,
           edgeSegmentCap,
           edgeSegmentAnimate,
           edgeOutlineGap,
