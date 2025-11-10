@@ -22,16 +22,19 @@ interface SankeyViewProps {
   height?: number
 }
 
-interface SankeyNodeExtra extends d3Sankey.SankeyNode<d3Sankey.SankeyNodeExtraProperties, d3Sankey.SankeyLinkExtraProperties> {
+type SankeyNodeDatum = d3Sankey.SankeyExtraProperties & {
   name: string
   originalId: string
   isLeft: boolean
   [key: string]: any
 }
 
-interface SankeyLinkExtra extends d3Sankey.SankeyLink<SankeyNodeExtra, d3Sankey.SankeyLinkExtraProperties> {
+type SankeyLinkDatum = d3Sankey.SankeyExtraProperties & {
   [key: string]: any
 }
+
+type SankeyNodeExtra = d3Sankey.SankeyNode<SankeyNodeDatum, SankeyLinkDatum>
+type SankeyLinkExtra = d3Sankey.SankeyLink<SankeyNodeDatum, SankeyLinkDatum>
 
 interface NodeStats {
   id: string
@@ -331,7 +334,7 @@ export default function SankeyView({
       .attr('width', nodeWidth)
       .attr('height', d => d.height)
       .attr('fill', (d, i) => color(String(i)))
-      .attr('stroke', (d, i) => d3.rgb(color(String(i))).darker())
+      .attr('stroke', (d, i) => d3.rgb(color(String(i))).darker().formatHex())
       .attr('stroke-width', d => 
         selectedNodeId === d.node.id && selectedSide === 'left' ? 3 : 1
       )
@@ -340,7 +343,7 @@ export default function SankeyView({
       )
       .on('mouseover', function(event, d) {
         d3.select(this)
-          .attr('fill', d3.rgb(color(String(d.index))).brighter(0.5))
+          .attr('fill', d3.rgb(color(String(d.index))).brighter(0.5).formatHex())
       })
       .on('mouseout', function(event, d) {
         d3.select(this)
@@ -386,7 +389,7 @@ export default function SankeyView({
       .attr('width', nodeWidth)
       .attr('height', d => d.height)
       .attr('fill', (d, i) => color(String(i)))
-      .attr('stroke', (d, i) => d3.rgb(color(String(i))).darker())
+      .attr('stroke', (d, i) => d3.rgb(color(String(i))).darker().formatHex())
       .attr('stroke-width', d => 
         selectedNodeId === d.node.id && selectedSide === 'right' ? 3 : 1
       )
@@ -395,7 +398,7 @@ export default function SankeyView({
       )
       .on('mouseover', function(event, d) {
         d3.select(this)
-          .attr('fill', d3.rgb(color(String(d.index))).brighter(0.5))
+          .attr('fill', d3.rgb(color(String(d.index))).brighter(0.5).formatHex())
       })
       .on('mouseout', function(event, d) {
         d3.select(this)

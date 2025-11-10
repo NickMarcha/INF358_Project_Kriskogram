@@ -289,7 +289,7 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
               const hasAB = dirSet.has(`${a}->${b}`)
               const hasBA = dirSet.has(`${b}->${a}`)
 
-              const paths: JSX.Element[] = []
+              const paths: React.ReactElement[] = []
 
               if (hasAB && hasBA) {
                 // Two parallel lines equidistant from centerline

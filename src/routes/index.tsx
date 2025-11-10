@@ -29,6 +29,7 @@ function App() {
                 minThreshold: 0,
                 maxThreshold: 200000,
                 maxEdges: 500,
+                showAllNodes: false,
               }}
               className="explore-button relative inline-flex items-center gap-3 text-white text-lg md:text-xl font-bold px-10 md:px-12 py-5 md:py-6 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 overflow-hidden group"
               style={{

@@ -166,7 +166,9 @@ export default function ImportPanel({
         })
         setDatasetName(files[0].name.replace('.gexf', ''))
       } catch (error) {
-        setValidationErrors([error instanceof Error ? error.message : 'Failed to parse GEXF'])
+        setValidationErrors({
+          general: error instanceof Error ? error.message : 'Failed to parse GEXF',
+        })
       }
     } else if (firstFileName.endsWith('.csv')) {
       setFileType('csv')
@@ -201,7 +203,10 @@ export default function ImportPanel({
           if (targetField) setEdgeTargetField(targetField)
           if (valueField) setEdgeValueField(valueField)
           
-          setValidationErrors([`Could not parse as state migration format. Please select which file contains nodes and which contains edges.`])
+          setValidationErrors({
+            general:
+              'Could not parse as state migration format. Please select which file contains nodes and which contains edges.',
+          })
         }
       } else if (files.length === 2) {
         // Two CSV files
@@ -242,7 +247,9 @@ export default function ImportPanel({
   function tryParseTwoFile() {
     if (nodesFileIndex === null || edgesFileIndex === null ||
         !nodeIdField || !edgeSourceField || !edgeTargetField || !edgeValueField) {
-      setValidationErrors(['Please select all required fields'])
+      setValidationErrors({
+        general: 'Please select all required fields',
+      })
       setParsedData(null)
       return
     }
@@ -267,9 +274,11 @@ export default function ImportPanel({
         edges: result.edges,
         timeRange: { start: 2016, end: 2016 }, // Default, could be made configurable
       })
-      setValidationErrors([])
+      setValidationErrors({})
     } catch (error) {
-      setValidationErrors([error instanceof Error ? error.message : 'Failed to parse two-file CSV'])
+      setValidationErrors({
+        general: error instanceof Error ? error.message : 'Failed to parse two-file CSV',
+      })
       setParsedData(null)
     }
   }

@@ -116,11 +116,11 @@ export default function ChordView({
 
     group.append('path')
       .attr('fill', (d) => color(String(d.index)))
-      .attr('stroke', (d) => d3.rgb(color(String(d.index))).darker())
+      .attr('stroke', (d) => d3.rgb(color(String(d.index))).darker().formatHex())
       .attr('d', d3.arc<d3.ChordGroup>().innerRadius(innerRadius).outerRadius(outerRadius))
       .on('mouseover', function(event, d) {
         d3.select(this)
-          .attr('fill', d3.rgb(color(String(d.index))).brighter(1))
+          .attr('fill', d3.rgb(color(String(d.index))).brighter(1).formatHex())
         // Highlight connected chords
         g.selectAll('path.chord')
           .style('opacity', (p: any) => {
@@ -136,16 +136,13 @@ export default function ChordView({
 
     // Add labels
     group.append('text')
-      .each((d) => {
-        d.angle = (d.startAngle + d.endAngle) / 2
-      })
       .attr('dy', '.35em')
       .attr('transform', (d) => `
-        rotate(${(d.angle * 180) / Math.PI - 90})
+        rotate(${(((d.startAngle + d.endAngle) / 2) * 180) / Math.PI - 90})
         translate(${outerRadius + 10})
-        ${d.angle > Math.PI ? 'rotate(180)' : ''}
+        ${((d.startAngle + d.endAngle) / 2) > Math.PI ? 'rotate(180)' : ''}
       `)
-      .attr('text-anchor', (d) => d.angle > Math.PI ? 'end' : 'start')
+      .attr('text-anchor', (d) => ((d.startAngle + d.endAngle) / 2) > Math.PI ? 'end' : 'start')
       .text((d) => chordData.labels[d.index])
       .style('font-size', '12px')
       .style('font-weight', '500')
@@ -157,9 +154,9 @@ export default function ChordView({
       .data(arcs)
       .join('path')
       .attr('class', 'chord')
-      .attr('d', ribbon)
+      .attr('d', (d): string => ribbon(d as any) ?? '')
       .attr('fill', (d) => color(String(d.source.index)))
-      .attr('stroke', (d) => d3.rgb(color(String(d.source.index))).darker())
+      .attr('stroke', (d) => d3.rgb(color(String(d.source.index))).darker().formatHex())
       .style('stroke-width', '1px')
       .on('mouseover', function(event, d) {
         d3.select(this)

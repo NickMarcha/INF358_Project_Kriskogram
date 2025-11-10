@@ -309,11 +309,28 @@ function ExplorerPage() {
   const [intraFilter, setIntraFilter] = useState<'none' | 'region' | 'division' | 'interRegion' | 'interDivision'>('none')
   const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
   const [nodeColorMode, setNodeColorMode] = useState<
-    'single' | 'attribute' | 'visible_outgoing' | 'visible_incoming' | 'year_outgoing' | 'year_incoming' | 'net_year'
+    | 'single'
+    | 'attribute'
+    | 'visible_outgoing'
+    | 'visible_incoming'
+    | 'year_outgoing'
+    | 'year_incoming'
+    | 'net_year'
+    | 'outgoing'
+    | 'incoming'
   >('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [nodeSizeMode, setNodeSizeMode] = useState<
-    'fixed' | 'attribute' | 'visible_outgoing' | 'visible_incoming' | 'year_outgoing' | 'year_incoming' | 'net_visible' | 'net_year'
+    | 'fixed'
+    | 'attribute'
+    | 'visible_outgoing'
+    | 'visible_incoming'
+    | 'year_outgoing'
+    | 'year_incoming'
+    | 'net_visible'
+    | 'net_year'
+    | 'outgoing'
+    | 'incoming'
   >('fixed')
   const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>('pan')

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Network } from 'lucide-react'
 import Kriskogram from './Kriskogram'
 
@@ -134,7 +134,7 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
           const key = [a,b].sort().join('|')
           if (!pairKeys.has(key)) { pairKeys.add(key); pairs.push([a,b]) }
         }
-        const out: JSX.Element[] = []
+        const out: React.ReactElement[] = []
         for (let i=0;i<pairs.length;i++){
           const [a,b] = pairs[i]
           const A = positions[a]

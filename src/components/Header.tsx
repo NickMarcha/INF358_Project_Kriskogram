@@ -25,6 +25,7 @@ export default function Header() {
               minThreshold: 0,
               maxThreshold: 200000,
               maxEdges: 500,
+              showAllNodes: false,
             }}
           >
             Explorer
