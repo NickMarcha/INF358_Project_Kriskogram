@@ -251,8 +251,7 @@ function DatasetsPage() {
                   edgeSegmentOffset: 0,
                   edgeSegmentCap: 'round',
                   edgeSegmentAnimate: false,
-                  edgeOutlineThickness: 3,
-                  edgeOutlineGap: 2,
+                  edgeOutlineGap: 3,
                   temporalOverlayYears: 1,
                   edgeWeightScale: 'linear',
                 }}
@@ -287,7 +286,6 @@ function DatasetsPage() {
           <Link
             to="/explorer"
             search={{
-              dataset: undefined,
               view: 'kriskogram' as const,
               year: undefined as number | undefined,
               minThreshold: 0,
@@ -305,10 +303,8 @@ function DatasetsPage() {
               edgeSegmentOffset: 0,
               edgeSegmentCap: 'round',
               edgeSegmentAnimate: false,
-              edgeOutlineThickness: 3,
-              edgeOutlineGap: 2,
+              edgeOutlineGap: 3,
               temporalOverlayYears: 1,
-              edgeType: null,
               edgeWeightScale: 'linear',
             }}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
