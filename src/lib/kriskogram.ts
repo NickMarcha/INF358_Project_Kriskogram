@@ -27,6 +27,7 @@ export interface KriskogramAccessors {
   nodeColor?: (node: Node) => string;
   nodeRadius?: (node: Node) => number;
   nodeShape?: (node: Node) => "circle" | "rect";
+  nodeStroke?: (node: Node) => { color: string; width?: number; dashArray?: string };
   edgeWidth?: (edge: Edge) => number;
   edgeColor?: (edge: Edge, isAbove: boolean) => string;
   nodeOrder?: (node: Node) => string | number;
@@ -53,6 +54,7 @@ export interface KriskogramConfig {
         max?: number;
         samples?: Array<{ value: number; color: string; width: number; fraction?: number }>;
       }
+    | { type: 'temporalOverlay'; entries: Array<{ label: string; color: string }> }
     | { type: 'egoSteps'; entries: Array<{ step: number; color: string }> }
     | { type: 'categorical'; title?: string; entries: Array<{ label: string; color: string }>; interNote?: string };
 }
@@ -81,6 +83,15 @@ export function createKriskogram(config: KriskogramConfig) {
   const getNodeColor = accessors.nodeColor ?? (() => "#555");
   const getNodeRadius = accessors.nodeRadius ?? (() => 6);
   const getNodeShape = accessors.nodeShape ?? (() => "circle");
+  const getNodeStroke = accessors.nodeStroke ?? (() => ({ color: '#fff', width: 2 }));
+  const resolveNodeStroke = (node: Node) => {
+    const stroke = getNodeStroke(node) as { color: string; width?: number; dashArray?: string };
+    return {
+      color: stroke.color,
+      width: stroke.width ?? 2,
+      dashArray: stroke.dashArray ?? null,
+    };
+  };
   const getEdgeWidth = accessors.edgeWidth ?? ((d: Edge) => Math.sqrt(d.value));
   const getEdgeColor =
     accessors.edgeColor ??
@@ -93,7 +104,8 @@ export function createKriskogram(config: KriskogramConfig) {
     if (e.value <= 0) {
       console.warn("Edge value must be positive:", e);
     }
-    const key = `${e.source}-${e.target}`;
+    const yearSegment = (e as any)?.__displayYear ?? 'current';
+    const key = `${e.source}-${e.target}-${yearSegment}`;
     if (seen.has(key)) {
       console.warn("Duplicate edge detected:", e);
     }
@@ -224,7 +236,7 @@ export function createKriskogram(config: KriskogramConfig) {
 
   edgeGroup
     .selectAll("path.arc")
-    .data(edges)
+    .data(edges, (d: any) => `${d.source}-${d.target}-${(d && d.__displayYear) ?? 'current'}`)
     .enter()
     .append("path")
     .attr("class", "arc")
@@ -242,7 +254,8 @@ export function createKriskogram(config: KriskogramConfig) {
       return getEdgeColor(d, isAbove);
     })
     .attr("stroke-width", (d) => getEdgeWidth(d))
-    .attr("opacity", arcOpacity)
+    .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
+    .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
     .style("cursor", "pointer")
     .on("mouseover", function(_event, d) {
       const currentStroke = d3.select(this).attr("stroke");
@@ -279,8 +292,13 @@ export function createKriskogram(config: KriskogramConfig) {
         .style("z-index", "1000")
         .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
       
+      const displayYear = (d as any)?.__displayYear;
+      const temporalDelta = (d as any)?.__temporalDelta ?? 0;
+      const temporalLabel = temporalDelta === 0 ? 'Current year' : temporalDelta < 0 ? 'Past overlay' : 'Future overlay';
+
       tooltip.html(`
         <strong>${sourceNode?.label || d.source} → ${targetNode?.label || d.target}</strong><br/>
+        ${displayYear ? `<strong>Year:</strong> ${displayYear} (${temporalLabel})<br/>` : ''}
         <strong>Migrants:</strong> ${d.value.toLocaleString()} people<br/>
         ${d.moe ? `<strong>MOE:</strong> ±${d.moe.toLocaleString()}<br/>` : ''}
         ${sourceNode?.region ? `<strong>From Region:</strong> ${sourceNode.region}<br/>` : ''}
@@ -302,7 +320,7 @@ export function createKriskogram(config: KriskogramConfig) {
     })
     .on("mouseout", function() {
       d3.select(this)
-        .attr("opacity", arcOpacity)
+        .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
         .attr("stroke-width", (d: any) => getEdgeWidth(d))
         .style("filter", null);
       
@@ -351,6 +369,9 @@ enhanceNodeSelection
     const yearOutgoing = (d as any)?.total_outgoing_year ?? visibleOutgoing;
     const netVisible = (d as any)?.net_flow_visible ?? (visibleIncoming - visibleOutgoing);
     const netYear = (d as any)?.net_flow_year ?? (yearIncoming - yearOutgoing);
+    const overlayPast = (d as any)?._overlayPastTotal ?? 0;
+    const overlayFuture = (d as any)?._overlayFutureTotal ?? 0;
+    const overlayDelta = (d as any)?._overlayDelta ?? 0;
 
     tooltip.html(`
       <strong>${d.label || d.id}</strong><br/>
@@ -364,6 +385,7 @@ enhanceNodeSelection
     <strong>* Visible Outgoing:</strong> ${visibleOutgoing.toLocaleString()}<br/>
       <strong>Total Net (year):</strong> ${netYear.toLocaleString()}<br/>
       <strong>* Visible Net:</strong> ${netVisible.toLocaleString()}<br/>
+      ${(overlayPast || overlayFuture) ? `<strong>Overlay Past Total:</strong> ${overlayPast.toLocaleString()}<br/><strong>Overlay Future Total:</strong> ${overlayFuture.toLocaleString()}<br/><strong>Overlay Δ (future - past):</strong> ${overlayDelta.toLocaleString()}<br/>` : ''}
       <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
     `);
 
@@ -386,7 +408,7 @@ enhanceNodeSelection
     edges.filter(e => e.source === d.id || e.target === d.id);
 
     edgeGroup.selectAll("path.arc")
-      .attr("opacity", 0.3);
+      .attr("opacity", (edge: any) => (edge && edge.__isOverlay ? Math.max(0.15, arcOpacity * 0.4) : 0.3));
 
     edgeGroup.selectAll("path.arc")
       .filter((edge: any) => edge.source === d.id || edge.target === d.id)
@@ -395,7 +417,7 @@ enhanceNodeSelection
 
     setTimeout(() => {
       edgeGroup.selectAll("path.arc")
-        .attr("opacity", arcOpacity)
+        .attr("opacity", (edge: any) => (edge && edge.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
         .attr("stroke-width", (edge: any) => getEdgeWidth(edge));
     }, 2000);
   });
@@ -405,13 +427,16 @@ enhanceNodeSelection.each(function (d) {
       const shape = getNodeShape(d);
       const r = getNodeRadius(d);
       const fill = getNodeColor(d);
+      const stroke = resolveNodeStroke(d);
+      const dashArray = stroke.dashArray;
 
       if (shape === "circle") {
         g.append("circle")
           .attr("r", r)
           .attr("fill", fill)
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 2);
+          .attr("stroke", stroke.color)
+          .attr("stroke-width", stroke.width)
+          .attr("stroke-dasharray", dashArray);
       } else if (shape === "rect") {
         g.append("rect")
           .attr("x", -r)
@@ -419,8 +444,9 @@ enhanceNodeSelection.each(function (d) {
           .attr("width", 2 * r)
           .attr("height", 2 * r)
           .attr("fill", fill)
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 2);
+          .attr("stroke", stroke.color)
+          .attr("stroke-width", stroke.width)
+          .attr("stroke-dasharray", dashArray);
       }
 
       // Label positioning: adjust these values to fine-tune label placement
@@ -600,6 +626,41 @@ enhanceNodeSelection.each(function (d) {
       });
       w = 72 + maxLabelChars * 6.2;
       h = cursorY;
+    } else if ((config.legend as any).type === 'temporalOverlay') {
+      const overlayLegend = config.legend as { entries: Array<{ label: string; color: string }> };
+      const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
+      let cursorY = 0;
+      group
+        .append('text')
+        .attr('x', 0)
+        .attr('y', cursorY)
+        .attr('fill', '#333')
+        .attr('font-size', 12)
+        .attr('font-weight', 600)
+        .text('Temporal overlay');
+      cursorY += 16;
+      overlayLegend.entries.forEach(({ label, color }) => {
+        group
+          .append('line')
+          .attr('x1', 0)
+          .attr('y1', cursorY + 4)
+          .attr('x2', 36)
+          .attr('y2', cursorY + 4)
+          .attr('stroke', color)
+          .attr('stroke-width', 5)
+          .attr('stroke-linecap', 'round');
+        group
+          .append('text')
+          .attr('x', 44)
+          .attr('y', cursorY + 8)
+          .attr('fill', '#333')
+          .attr('font-size', 11)
+          .text(label);
+        cursorY += 20;
+      });
+      const maxLabelChars = overlayLegend.entries.reduce((acc, entry) => Math.max(acc, entry.label.length), 0);
+      w = 44 + maxLabelChars * 6.5;
+      h = cursorY;
     } else if ((config.legend as any).type === 'egoSteps') {
       const egoLegend = config.legend as { entries: Array<{ step: number; color: string }> };
       const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
@@ -708,8 +769,9 @@ enhanceNodeSelection.each(function (d) {
       nodeEnter.append("circle")
         .attr("r", 0)
         .attr("fill", (d) => getNodeColor(d))
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 2);
+        .attr("stroke", (d) => resolveNodeStroke(d).color)
+        .attr("stroke-width", (d) => resolveNodeStroke(d).width)
+        .attr("stroke-dasharray", (d) => resolveNodeStroke(d).dashArray);
       
       // Label positioning for dynamically added nodes (same as above)
       nodeEnter.append("text")
@@ -733,12 +795,15 @@ enhanceNodeSelection.each(function (d) {
         .transition()
         .duration(750)
         .attr("r", (d) => getNodeRadius(d))
-        .attr("fill", (d) => getNodeColor(d));
+        .attr("fill", (d) => getNodeColor(d))
+        .attr("stroke", (d) => resolveNodeStroke(d).color)
+        .attr("stroke-width", (d) => resolveNodeStroke(d).width)
+        .attr("stroke-dasharray", (d) => resolveNodeStroke(d).dashArray);
       
       // Update edges
       const edgeUpdate = edgeGroup
         .selectAll("path.arc")
-        .data(newEdges, (d: any) => `${d.source}-${d.target}`);
+        .data(newEdges, (d: any) => `${d.source}-${d.target}-${(d && d.__displayYear) ?? 'current'}`);
       
       edgeUpdate.exit().remove();
       
@@ -747,6 +812,20 @@ enhanceNodeSelection.each(function (d) {
         .attr("class", "arc")
         .attr("fill", "none")
         .attr("opacity", 0)
+        .attr("d", (d) => {
+          const x1 = xScale(d.source)!;
+          const x2 = xScale(d.target)!;
+          const isAbove = x1 > x2;
+          return arcPath(x1, x2, isAbove);
+        })
+        .attr("stroke", (d) => {
+          const x1 = xScale(d.source)!;
+          const x2 = xScale(d.target)!;
+          const isAbove = x1 > x2;
+          return getEdgeColor(d, isAbove);
+        })
+        .attr("stroke-width", (d) => getEdgeWidth(d))
+        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
         .style("cursor", "pointer")
         .on("mouseover", function(_event, d) {
           const currentStroke = d3.select(this).attr("stroke");
@@ -783,8 +862,13 @@ enhanceNodeSelection.each(function (d) {
             .style("z-index", "1000")
             .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
           
+          const displayYear = (d as any)?.__displayYear;
+          const temporalDelta = (d as any)?.__temporalDelta ?? 0;
+          const temporalLabel = temporalDelta === 0 ? 'Current year' : temporalDelta < 0 ? 'Past overlay' : 'Future overlay';
+
           tooltip.html(`
             <strong>${sourceNode?.label || d.source} → ${targetNode?.label || d.target}</strong><br/>
+            ${displayYear ? `<strong>Year:</strong> ${displayYear} (${temporalLabel})<br/>` : ''}
             <strong>Migrants:</strong> ${d.value.toLocaleString()} people<br/>
             ${d.moe ? `<strong>MOE:</strong> ±${d.moe.toLocaleString()}<br/>` : ''}
             ${sourceNode?.region ? `<strong>From Region:</strong> ${sourceNode.region}<br/>` : ''}
@@ -806,7 +890,7 @@ enhanceNodeSelection.each(function (d) {
         })
         .on("mouseout", function() {
           d3.select(this)
-            .attr("opacity", arcOpacity)
+            .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
             .attr("stroke-width", (d: any) => getEdgeWidth(d))
             .style("filter", null);
           
@@ -831,7 +915,8 @@ enhanceNodeSelection.each(function (d) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("opacity", arcOpacity);
+        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
+        .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity));
 
       // Re-render legend when data/props change
       renderLegend();

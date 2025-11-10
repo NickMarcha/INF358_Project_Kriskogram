@@ -168,6 +168,17 @@ const explorerSearchSchema = z.object({
     z.string().nullable().optional()
   ),
   showAllNodes: safeCoerceBoolean(false),
+  temporalOverlay: safeCoerceBoolean(false),
+  temporalOverlaySegmented: safeCoerceBoolean(true),
+  temporalOverlayYears: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+      if (Number.isNaN(num) || num < 1) return 1
+      return Math.max(1, Math.round(num))
+    },
+    z.number().min(1).default(1),
+  ),
 })
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
@@ -268,6 +279,37 @@ export const Route = createFileRoute('/explorer')({
       return false
     })()
 
+    const safeTemporalOverlay = (() => {
+      if (typeof search.temporalOverlay === 'boolean') return search.temporalOverlay
+      if (typeof search.temporalOverlay === 'string') {
+        const lowered = search.temporalOverlay.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
+    })()
+
+    const safeTemporalOverlaySegmented = (() => {
+      if (typeof search.temporalOverlaySegmented === 'boolean') return search.temporalOverlaySegmented
+      if (typeof search.temporalOverlaySegmented === 'string') {
+        const lowered = search.temporalOverlaySegmented.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return true
+    })()
+
+    const safeTemporalOverlayYears = (() => {
+      if (search.temporalOverlayYears === undefined || search.temporalOverlayYears === null || search.temporalOverlayYears === '') {
+        return 1
+      }
+      const num = typeof search.temporalOverlayYears === 'string'
+        ? parseInt(search.temporalOverlayYears, 10)
+        : Number(search.temporalOverlayYears)
+      if (Number.isNaN(num) || num < 1) return 1
+      return Math.max(1, Math.round(num))
+    })()
+
     return {
       dataset: typeof search.dataset === 'string' ? search.dataset : undefined,
       view: safeView,
@@ -280,6 +322,9 @@ export const Route = createFileRoute('/explorer')({
       egoNodeId: safeEgoNodeId,
       egoNeighborSteps: safeEgoNeighborSteps,
       egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
+      temporalOverlay: safeTemporalOverlay,
+      temporalOverlaySegmented: safeTemporalOverlaySegmented,
+      temporalOverlayYears: safeTemporalOverlayYears,
       edgeWeightScale: safeEdgeWeightScale,
     }
   },
@@ -312,6 +357,11 @@ function ExplorerPage() {
   const [edgeWeightScale, setEdgeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
     search.edgeWeightScale ?? 'linear',
   )
+  const [temporalOverlayEnabled, setTemporalOverlayEnabled] = useState<boolean>(search.temporalOverlay ?? false)
+  const [temporalOverlaySegmented, setTemporalOverlaySegmented] = useState<boolean>(
+    search.temporalOverlaySegmented ?? true,
+  )
+  const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
   
   // Sidebar state for right panel
@@ -436,6 +486,14 @@ function ExplorerPage() {
     return dataset && dataset.timeRange.start !== dataset.timeRange.end
   }, [dataset])
   
+  const maxTemporalNeighbor = useMemo(() => {
+    if (!dataset) return 0
+    const start = dataset.timeRange?.start
+    const end = dataset.timeRange?.end
+    if (typeof start !== 'number' || typeof end !== 'number') return 0
+    return Math.max(0, end - start)
+  }, [dataset])
+  
   const isInitialMount = useRef(true)
 
   useEffect(() => {
@@ -486,6 +544,18 @@ function ExplorerPage() {
       return ts === currentYear
     }) as any
   }, [dataset, currentYear])
+
+  const snapshotByYear = useMemo(() => {
+    if (!dataset) return new Map<number, KriskogramSnapshot>()
+    const map = new Map<number, KriskogramSnapshot>()
+    dataset.snapshots.forEach((snapshot: any) => {
+      const ts = typeof snapshot.timestamp === 'string' ? parseInt(snapshot.timestamp, 10) : snapshot.timestamp
+      if (Number.isFinite(ts)) {
+        map.set(ts, snapshot)
+      }
+    })
+    return map
+  }, [dataset])
 
   const datasetEdgeStats = useMemo(() => {
     if (!dataset) return null
@@ -693,9 +763,19 @@ function ExplorerPage() {
 
   // Calculate filtered edges and nodes
   const filteredData = useMemo(() => {
-    if (!currentSnapshot) return { nodes: [], edges: [] }
-    
-    // Precompute totals across all edges (unfiltered) for full-year stats
+    if (!dataset || !currentSnapshot) {
+      return {
+        nodes: [],
+        edges: [],
+        baseEdges: [],
+        overlayEdges: [],
+        egoStepMax: 0,
+        overlayMeta: { hasPast: false, hasFuture: false, maxDelta: 0 },
+      }
+    }
+
+    const currentYearValue = typeof currentYear === 'number' ? currentYear : null
+
     const totalIncomingAll = new Map<string, number>()
     const totalOutgoingAll = new Map<string, number>()
     const totalSelfFlowAll = new Map<string, number>()
@@ -712,52 +792,36 @@ function ExplorerPage() {
       }
     })
 
-    // First filter by edge type if selected
+    const applyIntraFilter = (edgesList: any[], nodesList: any[]) => {
+      if (intraFilter === 'none') return edgesList
+      const idToNode = new Map<string, any>(nodesList.map((n: any) => [n.id, n]))
+      return edgesList.filter((edge: any) => {
+        const s = idToNode.get(edge.source)
+        const t = idToNode.get(edge.target)
+        if (!s || !t) return false
+        if (intraFilter === 'region') return s.region && t.region && s.region === t.region
+        if (intraFilter === 'division') return s.division && t.division && s.division === t.division
+        if (intraFilter === 'interRegion') return s.region && t.region && s.region !== t.region
+        if (intraFilter === 'interDivision') return s.division && t.division && s.division !== t.division
+        return true
+      })
+    }
+
     let edgesToFilter = filterEdgesByProperty(
       currentSnapshot.edges as any[],
       edgeTypeInfo?.property || '',
-      edgeTypeFilter
+      edgeTypeFilter,
     )
 
+    edgesToFilter = applyIntraFilter(edgesToFilter, currentSnapshot.nodes as any[])
     edgesToFilter = edgesToFilter.filter((edge: any) => edge?.source !== edge?.target)
 
-    // Intra-only filter by region/division
-    if (intraFilter !== 'none') {
-      const idToNode = new Map<string, any>((currentSnapshot.nodes as any[]).map((n: any) => [n.id, n]))
-      if (intraFilter === 'region') {
-        edgesToFilter = edgesToFilter.filter((e: any) => {
-          const s = idToNode.get(e.source)
-          const t = idToNode.get(e.target)
-          return s && t && s.region && t.region && s.region === t.region
-        })
-      } else if (intraFilter === 'division') {
-        edgesToFilter = edgesToFilter.filter((e: any) => {
-          const s = idToNode.get(e.source)
-          const t = idToNode.get(e.target)
-          return s && t && s.division && t.division && s.division === t.division
-        })
-      } else if (intraFilter === 'interRegion') {
-        edgesToFilter = edgesToFilter.filter((e: any) => {
-          const s = idToNode.get(e.source)
-          const t = idToNode.get(e.target)
-          return s && t && s.region && t.region && s.region !== t.region
-        })
-      } else if (intraFilter === 'interDivision') {
-        edgesToFilter = edgesToFilter.filter((e: any) => {
-          const s = idToNode.get(e.source)
-          const t = idToNode.get(e.target)
-          return s && t && s.division && t.division && s.division !== t.division
-        })
-      }
-    }
-    
-    // Then filter by value thresholds and limit
-    const filteredEdges = edgesToFilter
+    const filteredEdgesBase = edgesToFilter
       .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
       .sort((a: any, b: any) => b.value - a.value)
       .slice(0, maxEdges)
 
-    const filteredEdgeInfos = filteredEdges.map((edge: any, idx: number) => ({ edge, idx }))
+    const filteredEdgeInfos = filteredEdgesBase.map((edge: any, idx: number) => ({ edge, idx }))
     let visibleEdgeInfos = filteredEdgeInfos
     const edgeStepMap = new Map<number, number>()
     let maxEgoStepUsed = 0
@@ -804,16 +868,25 @@ function ExplorerPage() {
       })
     }
 
-    const visibleEdges = visibleEdgeInfos.map(({ edge, idx }) => {
+    const visibleEdgesCurrent = visibleEdgeInfos.map(({ edge, idx }) => {
       const step = edgeStepMap.get(idx)
-      if (step !== undefined) {
-        return { ...edge, _egoStep: step }
+      const decorated: any = {
+        ...edge,
+        __isOverlay: false,
+        __displayYear: currentYearValue,
+        __temporalDelta: 0,
+        _overlayType: undefined,
+        _overlayYear: currentYearValue,
+        __overlaySegmented: false,
       }
-      return edge
+      if (step !== undefined) {
+        decorated._egoStep = step
+      }
+      return decorated
     })
-    
+
     const activeNodeIds = new Set<string>()
-    visibleEdges.forEach((e: any) => {
+    visibleEdgesCurrent.forEach((e: any) => {
       activeNodeIds.add(e.source)
       activeNodeIds.add(e.target)
     })
@@ -821,17 +894,118 @@ function ExplorerPage() {
     if (egoNodeId) {
       activeNodeIds.add(egoNodeId)
     }
-    
+
     const nodeIncoming = new Map<string, number>()
     const nodeOutgoing = new Map<string, number>()
 
-    visibleEdges.forEach((e: any) => {
+    visibleEdgesCurrent.forEach((e: any) => {
       const outgoing = nodeOutgoing.get(e.source) || 0
       nodeOutgoing.set(e.source, outgoing + e.value)
 
       const incoming = nodeIncoming.get(e.target) || 0
       nodeIncoming.set(e.target, incoming + e.value)
     })
+
+    const overlayEdges: any[] = []
+    const overlayPastTotals = new Map<string, number>()
+    const overlayFutureTotals = new Map<string, number>()
+    let overlayNodeAbsMax = 0
+    let overlayHasPast = false
+    let overlayHasFuture = false
+
+    const yearToSnapshot = new Map<number, any>()
+    if (dataset) {
+      dataset.snapshots.forEach((snap: any) => {
+        const ts = typeof snap.timestamp === 'string' ? parseInt(snap.timestamp, 10) : snap.timestamp
+        if (Number.isFinite(ts)) {
+          yearToSnapshot.set(ts, snap)
+        }
+      })
+    }
+
+    if (temporalOverlayEnabled && dataset && typeof currentYear === 'number' && dataset.timeRange.start !== dataset.timeRange.end) {
+      const windowSize = Math.max(1, Math.round(temporalOverlayYears))
+      for (let offset = -windowSize; offset <= windowSize; offset += 1) {
+        if (offset === 0) continue
+        const targetYear = currentYear + offset
+        const snapshot = yearToSnapshot.get(targetYear)
+        if (!snapshot) continue
+
+        const rawEdges = Array.isArray(snapshot.edges) ? (snapshot.edges as any[]) : []
+        let edgesForSnapshot = filterEdgesByProperty(
+          rawEdges,
+          edgeTypeInfo?.property || '',
+          edgeTypeFilter,
+        )
+
+        if (intraFilter !== 'none') {
+          const idToNode = new Map<string, any>((snapshot.nodes as any[]).map((n: any) => [n.id, n]))
+          if (intraFilter === 'region') {
+            edgesForSnapshot = edgesForSnapshot.filter((e: any) => {
+              const s = idToNode.get(e.source)
+              const t = idToNode.get(e.target)
+              return s && t && s.region && t.region && s.region === t.region
+            })
+          } else if (intraFilter === 'division') {
+            edgesForSnapshot = edgesForSnapshot.filter((e: any) => {
+              const s = idToNode.get(e.source)
+              const t = idToNode.get(e.target)
+              return s && t && s.division && t.division && s.division === t.division
+            })
+          } else if (intraFilter === 'interRegion') {
+            edgesForSnapshot = edgesForSnapshot.filter((e: any) => {
+              const s = idToNode.get(e.source)
+              const t = idToNode.get(e.target)
+              return s && t && s.region && t.region && s.region !== t.region
+            })
+          } else if (intraFilter === 'interDivision') {
+            edgesForSnapshot = edgesForSnapshot.filter((e: any) => {
+              const s = idToNode.get(e.source)
+              const t = idToNode.get(e.target)
+              return s && t && s.division && t.division && s.division !== t.division
+            })
+          }
+        }
+
+        const overlaySubset = edgesForSnapshot
+          .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
+          .sort((a: any, b: any) => b.value - a.value)
+          .slice(0, maxEdges)
+          .map((edge: any) => ({
+            ...edge,
+            _overlayType: offset < 0 ? 'past' : 'future',
+            _overlayYear: targetYear,
+            __isOverlay: true,
+            __displayYear: targetYear,
+            __temporalDelta: offset,
+            __overlaySegmented: temporalOverlaySegmented,
+          }))
+
+        overlaySubset.forEach((edge: any) => {
+          overlayEdges.push(edge)
+          if (edge._overlayType === 'past') {
+            overlayHasPast = true
+            const out = overlayPastTotals.get(edge.source) || 0
+            overlayPastTotals.set(edge.source, out + edge.value)
+            const inn = overlayPastTotals.get(edge.target) || 0
+            overlayPastTotals.set(edge.target, inn + edge.value)
+          } else {
+            overlayHasFuture = true
+            const out = overlayFutureTotals.get(edge.source) || 0
+            overlayFutureTotals.set(edge.source, out + edge.value)
+            const inn = overlayFutureTotals.get(edge.target) || 0
+            overlayFutureTotals.set(edge.target, inn + edge.value)
+          }
+        })
+      }
+    }
+
+    if (overlayEdges.length > 0) {
+      overlayEdges.forEach((edge: any) => {
+        activeNodeIds.add(edge.source)
+        activeNodeIds.add(edge.target)
+      })
+    }
 
     const keepAllNodes = viewType === 'kriskogram' && showAllNodes
 
@@ -864,6 +1038,12 @@ function ExplorerPage() {
       const netVisible = visibleIncoming - visibleOutgoing
       const netYear = totalIncomingYear - totalOutgoingYear
       const selfFlowYear = totalSelfFlowAll.get(n.id) || 0
+      const overlayPast = overlayPastTotals.get(n.id) || 0
+      const overlayFuture = overlayFutureTotals.get(n.id) || 0
+      const overlayDelta = overlayFuture - overlayPast
+      if (Math.abs(overlayDelta) > overlayNodeAbsMax) {
+        overlayNodeAbsMax = Math.abs(overlayDelta)
+      }
 
       return {
         ...n,
@@ -876,13 +1056,56 @@ function ExplorerPage() {
         net_flow_visible: netVisible,
         net_flow_year: netYear,
         self_flow_year: selfFlowYear,
+        temporal_overlay_past_total: overlayPast,
+        temporal_overlay_future_total: overlayFuture,
+        temporal_overlay_delta: overlayDelta,
+        _overlayPastTotal: overlayPast,
+        _overlayFutureTotal: overlayFuture,
+        _overlayDelta: overlayDelta,
       }
     })
-    
+
+    if (temporalOverlayEnabled) {
+      nodesWithDynamicAttrs.forEach((node: any) => {
+        const delta = node._overlayDelta ?? 0
+        if (overlayNodeAbsMax > 0 && delta !== 0) {
+          const ratio = Math.max(0, Math.min(1, Math.abs(delta) / overlayNodeAbsMax))
+          node._overlayStrokeWidth = 1.5 + ratio * 3
+          node._overlayStrokeColor = delta > 0 ? 'hsl(0, 75%, 55%)' : 'hsl(210, 75%, 55%)'
+        } else if (overlayNodeAbsMax > 0) {
+          node._overlayStrokeWidth = 1.5
+          node._overlayStrokeColor = '#cbd5f5'
+        } else {
+          node._overlayStrokeWidth = 2
+          node._overlayStrokeColor = '#fff'
+        }
+      })
+    } else {
+      nodesWithDynamicAttrs.forEach((node: any) => {
+        node._overlayStrokeWidth = 2
+        node._overlayStrokeColor = '#fff'
+      })
+    }
+
+    const temporalOverlaySummary = temporalOverlayEnabled
+      ? {
+          hasPast: overlayHasPast,
+          hasFuture: overlayHasFuture,
+          nodeDeltaAbsMax: overlayNodeAbsMax,
+        }
+      : null
+
+    const combinedEdges = temporalOverlayEnabled && overlayEdges.length > 0
+      ? [...visibleEdgesCurrent, ...overlayEdges]
+      : visibleEdgesCurrent
+
     return {
       nodes: nodesWithDynamicAttrs,
-      edges: visibleEdges,
+      baseEdges: visibleEdgesCurrent,
+      edges: combinedEdges,
+      currentEdgeCount: visibleEdgesCurrent.length,
       egoStepMax: maxEgoStepUsed,
+      temporalOverlay: temporalOverlaySummary,
     }
   }, [
     currentSnapshot,
@@ -897,6 +1120,10 @@ function ExplorerPage() {
     egoNodeId,
     egoNeighborSteps,
     edgeWeightScale,
+    temporalOverlayEnabled,
+    temporalOverlaySegmented,
+    temporalOverlayYears,
+    dataset,
   ])
 
   // Calculate statistics
@@ -913,7 +1140,7 @@ function ExplorerPage() {
       totalNodes,
       totalEdges,
       visibleNodes: filteredData.nodes.length,
-      visibleEdges: filteredData.edges.length,
+      visibleEdges: filteredData.currentEdgeCount ?? filteredData.edges.filter((e: any) => !e._overlayType).length,
       avgValue,
       maxValue,
     }
@@ -929,8 +1156,10 @@ function ExplorerPage() {
 
   // Effective minimum value after applying thresholds and maxEdges (top-N)
   const effectiveMinEdgeValue = useMemo(() => {
-    if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
-    return Math.min(...filteredData.edges.map((e: any) => e.value))
+    if (!filteredData || filteredData.currentEdgeCount === 0) return undefined as number | undefined
+    const currentEdgesOnly = filteredData.edges.filter((e: any) => !e._overlayType)
+    if (currentEdgesOnly.length === 0) return undefined as number | undefined
+    return Math.min(...currentEdgesOnly.map((e: any) => e.value))
   }, [filteredData])
 
   // Metadata presence for conditional UI (region/division coloring)
@@ -951,8 +1180,10 @@ function ExplorerPage() {
   }, [hasRegionData, hasDivisionData, edgeColorHue])
 
   const effectiveMaxEdgeValue = useMemo(() => {
-    if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
-    return Math.max(...filteredData.edges.map((e: any) => e.value))
+    if (!filteredData || filteredData.currentEdgeCount === 0) return undefined as number | undefined
+    const currentEdgesOnly = filteredData.edges.filter((e: any) => !e._overlayType)
+    if (currentEdgesOnly.length === 0) return undefined as number | undefined
+    return Math.max(...currentEdgesOnly.map((e: any) => e.value))
   }, [filteredData])
 
   // Update visualization when filtered data changes (only for kriskogram view)
@@ -1001,6 +1232,45 @@ function ExplorerPage() {
     }
   }, [selectedId])
 
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      // no-op
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!currentSnapshot) return
+    if (egoNodeId) {
+      const exists = (currentSnapshot.nodes as any[]).some((n: any) => n.id === egoNodeId)
+      if (!exists) {
+        setEgoNodeId(null)
+        if (egoStepColoring) {
+          setEgoStepColoring(false)
+        }
+        updateSearchParams({ egoNodeId: null, egoStepColoring: false })
+      }
+    }
+  }, [currentSnapshot, egoNodeId, egoStepColoring, updateSearchParams])
+
+  useEffect(() => {
+    if (!dataset || dataset.timeRange.start === dataset.timeRange.end || typeof currentYear !== 'number') {
+      if (temporalOverlayEnabled) {
+        setTemporalOverlayEnabled(false)
+        updateSearchParams({ temporalOverlay: false, temporalOverlaySegmented })
+      }
+    }
+  }, [dataset, currentYear, temporalOverlayEnabled, temporalOverlaySegmented, updateSearchParams])
+
+  useEffect(() => {
+    if (!isInitialMount.current) {
+      updateSearchParams({
+        temporalOverlay: temporalOverlayEnabled,
+        temporalOverlayYears,
+        temporalOverlaySegmented,
+      })
+    }
+  }, [temporalOverlayEnabled, temporalOverlayYears, temporalOverlaySegmented])
+
   return (
     <ErrorBoundary
       fallback={
@@ -1028,7 +1298,7 @@ function ExplorerPage() {
               <>
               <div className="flex-1 flex flex-col overflow-hidden bg-white">
                 <div className={`flex-1 overflow-hidden ${viewType === 'table' ? '' : 'p-4'}`}>
-                {filteredData.nodes.length > 0 && filteredData.edges.length > 0 ? (
+                {filteredData.nodes.length > 0 && filteredData.baseEdges.length > 0 ? (
                     <>
                       {viewType === 'kriskogram' && (
                         <ErrorBoundary
@@ -1051,7 +1321,7 @@ function ExplorerPage() {
                               title={dataset.name}
                               accessors={(() => {
                               // Compute edge weight min/max for scaling
-                              const edgeWeights = filteredData.edges.map((e: any) => e.value)
+                              const edgeWeights = filteredData.baseEdges.map((e: any) => e.value)
                               const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
                               const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
                               const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
@@ -1152,6 +1422,20 @@ function ExplorerPage() {
                               }
                               
                               const categoricalColors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                              
+                              const overlaySummary = filteredData.temporalOverlay
+                              const overlayActive = Boolean(overlaySummary)
+                              const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0
+                              const overlayEdgeColor = (delta: number) => {
+                                if (delta === 0) return '#6b7280'
+                                const clamped = Math.max(-overlayDeltaMax, Math.min(overlayDeltaMax, delta))
+                                const intensity = overlayDeltaMax > 0 ? Math.abs(clamped) / overlayDeltaMax : 0.5
+                                const baseLightness = 65 - intensity * 20
+                                if (delta < 0) {
+                                  return `hsl(210, 75%, ${Math.round(baseLightness)}%)`
+                                }
+                                return `hsl(0, 75%, ${Math.round(baseLightness)}%)`
+                              }
                               
                               return {
                                 // Node ordering
@@ -1293,6 +1577,12 @@ function ExplorerPage() {
                                     return sizeFromRatio(netYear / netAbsDenominator)
                                   }
 
+                                  if (nodeSizeMode === 'self_year') {
+                                    const maxSelf = datasetNodeSelfFlowStats?.max ?? 0
+                                    const ratio = maxSelf > 0 ? selfYear / maxSelf : 0
+                                    return sizeFromRatio(ratio)
+                                  }
+
                                   if (nodeSizeMode === 'attribute' && nodeSizeAttribute) {
                                     const propValue = d[nodeSizeAttribute]
                                     if (typeof propValue !== 'number') return 6
@@ -1309,17 +1599,14 @@ function ExplorerPage() {
                                     return sizeFromRatio(normalized)
                                   }
                                   
-                                  if (nodeSizeMode === 'self_year') {
-                                    const maxSelf = datasetNodeSelfFlowStats?.max ?? 0
-                                    const ratio = maxSelf > 0 ? selfYear / maxSelf : 0
-                                    return sizeFromRatio(ratio)
-                                  }
-                                  
                                   return 6
                                 },
-                                
                                 // Edge width
                                 edgeWidth: (e: any) => {
+                                  if (e?.__temporalDelta) {
+                                    const normalized = normalizeEdgeWeight(e.value)
+                                    return 0.5 + (normalized * 8)
+                                  }
                                   if (edgeWidthMode === 'weight') {
                                     const normalized = normalizeEdgeWeight(e.value)
                                     return 0.5 + (normalized * 15) // 0.5 to 15.5
@@ -1329,13 +1616,16 @@ function ExplorerPage() {
                                 
                                 // Edge color (supports advanced hue/intensity sources)
                                 edgeColor: (e: any, isAbove: boolean) => {
+                                  const temporalDelta = e?.__temporalDelta
+                                  if (overlayActive && temporalDelta) {
+                                    return overlayEdgeColor(temporalDelta)
+                                  }
                                   if (shouldColorEdgesByEgoStep) {
-                                    const step = (e as any)?._egoStep
-                                    if (typeof step === 'number' && step > 0) {
+                                    const step = e?._egoStep ?? 0
+                                    if (step > 0) {
                                       return computeEgoStepColor(step)
                                     }
                                   }
-
                                   const weightNorm = normalizeEdgeWeight(e.value)
 
                                   // Helper: categorical palette
@@ -1366,7 +1656,7 @@ function ExplorerPage() {
                                     const val = (e as any)[edgeColorHueAttribute]
                                     if (val != null) {
                                       if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorHueAttribute)) {
-                                        const allVals = filteredData.edges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => typeof v === 'number') as number[]
+                                        const allVals = filteredData.baseEdges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => typeof v === 'number') as number[]
                                         const minVal = Math.min(...allVals)
                                         const maxVal = Math.max(...allVals)
                                         const range = maxVal - minVal || 1
@@ -1374,7 +1664,7 @@ function ExplorerPage() {
                                         const hue = 120 - (n * 120)
                                         hueColor = `hsl(${hue}, 70%, 50%)`
                                       } else {
-                                        const uniq = Array.from(new Set(filteredData.edges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => v != null)))
+                                        const uniq = Array.from(new Set(filteredData.baseEdges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => v != null)))
                                         const map = new Map(uniq.map((v, idx) => [v, palette[idx % palette.length]]))
                                         hueColor = map.get(val) || '#2563eb'
                                       }
@@ -1390,7 +1680,7 @@ function ExplorerPage() {
                                   } else if (edgeColorIntensity === 'attribute' && edgeColorIntensityAttribute) {
                                     const val = (e as any)[edgeColorIntensityAttribute]
                                     if (val != null && dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorIntensityAttribute)) {
-                                      const allVals = filteredData.edges.map((ed: any) => ed[edgeColorIntensityAttribute]).filter((v: any) => typeof v === 'number') as number[]
+                                      const allVals = filteredData.baseEdges.map((ed: any) => ed[edgeColorIntensityAttribute]).filter((v: any) => typeof v === 'number') as number[]
                                       const minVal = Math.min(...allVals)
                                       const maxVal = Math.max(...allVals)
                                       const range = maxVal - minVal || 1
@@ -1429,83 +1719,109 @@ function ExplorerPage() {
                                   // Attribute hue using computed HSL
                                   return hueColor
                                 },
+                                nodeStroke: (d: any) => {
+                                  if (!overlayActive || overlayDeltaMax <= 0) {
+                                    return { color: '#fff', width: 2 }
+                                  }
+                                  const delta = d.temporal_overlay_delta ?? 0
+                                  if (!delta) {
+                                    return { color: '#d1d5db', width: 1.5 }
+                                  }
+                                  const ratio = Math.min(1, Math.abs(delta) / overlayDeltaMax)
+                                  const hue = delta >= 0 ? 0 : 210
+                                  const lightness = 70 - ratio * 25
+                                  return { color: `hsl(${Math.round(hue)}, 75%, ${Math.round(lightness)}%)`, width: 2 + ratio * 2 }
+                                },
                               }
                             })()}
                             legend={(() => {
                               // Build legend from current color settings
-                              const egoLegendMax = filteredData.egoStepMax ?? 0
-                              if (egoNodeId && egoStepColoring && egoLegendMax > 0) {
-                                const legendStepColor = (step: number) => {
-                                  if (egoLegendMax <= 1) {
+                              const temporalOverlayInfo = filteredData.temporalOverlay
+                              if (temporalOverlayInfo && (temporalOverlayInfo.hasPast || temporalOverlayInfo.hasFuture)) {
+                                const entries: Array<{ label: string; color: string }> = []
+                                if (temporalOverlayInfo.hasPast) {
+                                  entries.push({ label: 'Past years', color: 'hsl(210, 75%, 55%)' })
+                                }
+                                if (temporalOverlayInfo.hasFuture) {
+                                  entries.push({ label: 'Future years', color: 'hsl(0, 75%, 55%)' })
+                                }
+                                return { type: 'temporalOverlay' as const, entries }
+                              }
+
+                              const egoStepMax = filteredData.egoStepMax ?? 0
+                              const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && egoStepMax > 0)
+                              if (shouldColorEdgesByEgoStep) {
+                                const colorForStep = (step: number) => {
+                                  if (egoStepMax <= 1) {
                                     return 'hsl(210, 80%, 55%)'
                                   }
-                                  const clamped = Math.max(1, Math.min(step, egoLegendMax))
-                                  const ratio = egoLegendMax <= 1 ? 0 : (clamped - 1) / (egoLegendMax - 1)
+                                  const clamped = Math.max(1, Math.min(step, egoStepMax))
+                                  const ratio = egoStepMax <= 1 ? 0 : (clamped - 1) / (egoStepMax - 1)
                                   const hue = 210 - ratio * 150
                                   const lightness = 60 - ratio * 20
                                   return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`
                                 }
-                                const entries = Array.from({ length: egoLegendMax }, (_, index) => ({
+                                const entries = Array.from({ length: egoStepMax }, (_, index) => ({
                                   step: index + 1,
-                                  color: legendStepColor(index + 1),
+                                  color: colorForStep(index + 1),
                                 }))
                                 return { type: 'egoSteps' as const, entries }
                               }
 
-                              const edgeWeights = filteredData.edges.map((e: any) => e.value)
-                              const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
-                              const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
-                              const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
-                              const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
-                              const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0)
+                              const edgeWeightsForLegend = filteredData.baseEdges.map((e: any) => e.value)
+                              const minEdgeWeightLegend = edgeWeightsForLegend.length > 0 ? Math.min(...edgeWeightsForLegend) : 0
+                              const maxEdgeWeightLegend = edgeWeightsForLegend.length > 0 ? Math.max(...edgeWeightsForLegend) : 1
+                              const globalMinLegend = datasetEdgeStats?.min ?? minEdgeWeightLegend
+                              const globalMaxLegend = datasetEdgeStats?.max ?? maxEdgeWeightLegend
+                              const legendWeightSpan = Math.max(globalMaxLegend - globalMinLegend, 0)
 
                               const normalizeEdgeWeightForLegend = (value: number) => {
-                                if (!Number.isFinite(value) || weightSpan <= 0) return 0
+                                if (!Number.isFinite(value) || legendWeightSpan <= 0) return 0
                                 const clamped = Math.min(
-                                  Math.max(value, globalMinEdgeWeight),
-                                  globalMaxEdgeWeight,
+                                  Math.max(value, globalMinLegend),
+                                  globalMaxLegend,
                                 )
-                                const shifted = clamped - globalMinEdgeWeight
+                                const shifted = clamped - globalMinLegend
                                 switch (edgeWeightScale) {
                                   case 'sqrt': {
-                                    const denom = Math.sqrt(weightSpan)
+                                    const denom = Math.sqrt(legendWeightSpan)
                                     if (denom <= 0) return 0
                                     return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom))
                                   }
                                   case 'log': {
-                                    const denom = Math.log10(weightSpan + 1)
+                                    const denom = Math.log10(legendWeightSpan + 1)
                                     if (!Number.isFinite(denom) || denom <= 0) return 0
                                     return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom))
                                   }
                                   case 'linear':
                                   default: {
-                                    if (weightSpan <= 0) return 0
-                                    return Math.max(0, Math.min(1, shifted / weightSpan))
+                                    if (legendWeightSpan <= 0) return 0
+                                    return Math.max(0, Math.min(1, shifted / legendWeightSpan))
                                   }
                                 }
                               }
 
                               const valueForFractionForLegend = (fraction: number) => {
-                                if (weightSpan <= 0) return globalMinEdgeWeight
+                                if (legendWeightSpan <= 0) return globalMinLegend
                                 const clampedF = Math.max(0, Math.min(1, fraction))
                                 switch (edgeWeightScale) {
                                   case 'sqrt':
-                                    return globalMinEdgeWeight + Math.pow(clampedF, 2) * weightSpan
+                                    return globalMinLegend + Math.pow(clampedF, 2) * legendWeightSpan
                                   case 'log': {
-                                    const denom = Math.log10(weightSpan + 1)
-                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinEdgeWeight
+                                    const denom = Math.log10(legendWeightSpan + 1)
+                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinLegend
                                     const increment = Math.pow(10, clampedF * denom) - 1
-                                    return globalMinEdgeWeight + increment
+                                    return globalMinLegend + increment
                                   }
                                   case 'linear':
                                   default:
-                                    return globalMinEdgeWeight + clampedF * weightSpan
+                                    return globalMinLegend + clampedF * legendWeightSpan
                                 }
                               }
 
                               if (!edgeColorAdvanced) {
                                 if (edgeColorHue === 'direction') {
-                                  return { type: 'direction' as const };
+                                  return { type: 'direction' as const }
                                 }
                                 if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
                                   const sampleFractions = [0, 0.5, 1]
@@ -1515,10 +1831,7 @@ function ExplorerPage() {
                                     const intensity = normalized
                                     const light = 80 - (intensity * 55)
                                     const color = `hsl(210, 70%, ${Math.round(light)}%)`
-                                    const width =
-                                      edgeWidthMode === 'weight'
-                                        ? 0.5 + normalized * 15
-                                        : baseEdgeWidth
+                                    const width = edgeWidthMode === 'weight' ? 0.5 + normalized * 15 : baseEdgeWidth
                                     return {
                                       fraction: normalized,
                                       value,
@@ -1530,8 +1843,8 @@ function ExplorerPage() {
                                     type: 'weight' as const,
                                     color: '#1f77b4',
                                     scale: edgeWeightScale,
-                                    min: globalMinEdgeWeight,
-                                    max: globalMaxEdgeWeight,
+                                    min: globalMinLegend,
+                                    max: globalMaxLegend,
                                     samples,
                                   }
                                 }
@@ -1571,8 +1884,8 @@ function ExplorerPage() {
                                     type: 'weight' as const,
                                     color: '#1f77b4',
                                     scale: edgeWeightScale,
-                                    min: globalMinEdgeWeight,
-                                    max: globalMaxEdgeWeight,
+                                    min: globalMinLegend,
+                                    max: globalMaxLegend,
                                     samples,
                                   }
                                 }
@@ -1602,7 +1915,7 @@ function ExplorerPage() {
                           }
                         >
                           <div className="h-full w-full flex flex-col min-h-0">
-                            <TableView nodes={filteredData.nodes} edges={filteredData.edges} />
+                            <TableView nodes={filteredData.nodes} edges={filteredData.baseEdges} />
                           </div>
                         </ErrorBoundary>
                       )}
@@ -1618,7 +1931,7 @@ function ExplorerPage() {
                           <div className="h-full min-h-0">
                             <SankeyView 
                               nodes={filteredData.nodes} 
-                              edges={filteredData.edges} 
+                              edges={filteredData.baseEdges} 
                               width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
                               height={Math.max(600, windowSize.height - 80)}
                             />
@@ -1636,7 +1949,7 @@ function ExplorerPage() {
                         >
                           <ChordView 
                             nodes={filteredData.nodes} 
-                            edges={filteredData.edges} 
+                            edges={filteredData.baseEdges} 
                             width={Math.max(800, windowSize.width - (leftSidebarCollapsed ? 64 : leftSidebarWidth) - (rightSidebarCollapsed ? 4 : rightSidebarWidth) - 40)}
                             height={Math.max(600, windowSize.height - 80)}
                           />
@@ -2059,11 +2372,17 @@ function ExplorerPage() {
                       setEgoNeighborSteps(1)
                       setEgoStepColoring(false)
                       setEdgeWeightScale('linear')
+                      setTemporalOverlayEnabled(false)
+                      setTemporalOverlaySegmented(true)
+                      setTemporalOverlayYears(1)
                       updateSearchParams({
                         showAllNodes: false,
                         egoNodeId: null,
                         egoNeighborSteps: 1,
                         egoStepColoring: false,
+                        temporalOverlay: false,
+                        temporalOverlayYears: 1,
+                        temporalOverlaySegmented: true,
                         edgeWeightScale: 'linear',
                       })
                     }}
@@ -2175,6 +2494,85 @@ function ExplorerPage() {
                                 const checked = e.target.checked && Boolean(egoNodeId)
                                 setEgoStepColoring(checked)
                                 updateSearchParams({ egoStepColoring: checked })
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 border border-gray-200 rounded-md p-3">
+                          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Temporal Overlay</div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay">
+                                Show neighboring years
+                              </label>
+                              <p className="text-[11px] text-gray-500">
+                                Overlay edges from nearby years to compare past and future flows.
+                              </p>
+                            </div>
+                            <input
+                              id="kriskogram-temporal-overlay"
+                              type="checkbox"
+                              className="w-4 h-4"
+                              disabled={!dataset || dataset.timeRange.start === dataset.timeRange.end || typeof currentYear !== 'number'}
+                              checked={temporalOverlayEnabled && dataset?.timeRange.start !== dataset?.timeRange.end}
+                              onChange={(e) => {
+                                const enabled = e.target.checked
+                                setTemporalOverlayEnabled(enabled)
+                                updateSearchParams({ temporalOverlay: enabled })
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-years">
+                              Neighbor years
+                            </label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                id="kriskogram-temporal-overlay-years"
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={temporalOverlayYears}
+                                disabled={!temporalOverlayEnabled}
+                                onChange={(e) => {
+                                  const raw = Number.parseInt(e.target.value, 10)
+                                  if (Number.isNaN(raw)) return
+                                  const clamped = Math.max(1, Math.min(raw, 10))
+                                  setTemporalOverlayYears(clamped)
+                                  updateSearchParams({ temporalOverlayYears: clamped })
+                                }}
+                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                              />
+                              <span className="text-[11px] text-gray-500">
+                                Include the selected number of years before and after the current year.
+                              </span>
+                            </div>
+                            {(!dataset || dataset.timeRange.start === dataset.timeRange.end) && (
+                              <p className="mt-2 text-[11px] text-gray-400 italic">
+                                Temporal overlay is unavailable because this dataset has a single year.
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-segments">
+                                Segment overlay arcs
+                              </label>
+                              <p className="text-[11px] text-gray-500">
+                                Use dashed strokes for past/future flows to separate them visually.
+                              </p>
+                            </div>
+                            <input
+                              id="kriskogram-temporal-overlay-segments"
+                              type="checkbox"
+                              className="w-4 h-4"
+                              disabled={!temporalOverlayEnabled}
+                              checked={temporalOverlaySegmented}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setTemporalOverlaySegmented(checked)
+                                updateSearchParams({ temporalOverlaySegmented: checked })
                               }}
                             />
                           </div>

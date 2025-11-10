@@ -29,6 +29,9 @@ export default function Header() {
               egoNodeId: null,
               egoNeighborSteps: 1,
               egoStepColoring: false,
+              temporalOverlay: false,
+              temporalOverlaySegmented: true,
+              temporalOverlayYears: 1,
               edgeWeightScale: 'linear',
             }}
           >
