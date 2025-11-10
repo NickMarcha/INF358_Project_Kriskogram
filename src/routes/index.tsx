@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { explorerDefaultSearch } from '../lib/explorerDefaults'
 import { Globe, Info, Network } from 'lucide-react'
 
 export const Route = createFileRoute('/')({
@@ -23,28 +24,7 @@ function App() {
           <div className="flex flex-col md:flex-row items-center justify-center gap-6 mb-10">
             <Link
               to="/explorer"
-              search={{
-                view: 'kriskogram' as const,
-                year: undefined as number | undefined,
-                minThreshold: 0,
-                maxThreshold: 200000,
-                maxEdges: 500,
-                showAllNodes: false,
-                egoNodeId: null,
-                egoNeighborSteps: 1,
-                egoStepColoring: false,
-                temporalOverlay: false,
-                temporalOverlayEdgeStyle: 'filled',
-                temporalOverlayNodeStyle: 'filled',
-                edgeSegmentLength: 8,
-                edgeSegmentGap: 4,
-                edgeSegmentOffset: 15,
-                edgeSegmentCap: 'round',
-                edgeSegmentAnimate: false,
-                edgeOutlineGap: 3,
-                temporalOverlayYears: 1,
-                edgeWeightScale: 'linear',
-              }}
+              search={{ ...explorerDefaultSearch }}
               className="explore-button relative inline-flex items-center gap-3 text-white text-lg md:text-xl font-bold px-10 md:px-12 py-5 md:py-6 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 overflow-hidden group"
               style={{
                 background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #6366f1 100%)',

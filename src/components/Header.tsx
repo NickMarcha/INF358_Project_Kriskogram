@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { explorerDefaultSearch } from '../lib/explorerDefaults'
 
 export default function Header() {
   return (
@@ -19,28 +20,7 @@ export default function Header() {
         <div className="px-2 font-bold">
           <Link 
             to="/explorer" 
-            search={{
-              view: 'kriskogram' as const,
-              year: undefined as number | undefined,
-              minThreshold: 0,
-              maxThreshold: 200000,
-              maxEdges: 500,
-              showAllNodes: false,
-              egoNodeId: null,
-              egoNeighborSteps: 1,
-              egoStepColoring: false,
-              temporalOverlay: false,
-              temporalOverlayEdgeStyle: 'filled',
-              temporalOverlayNodeStyle: 'filled',
-              edgeSegmentLength: 8,
-              edgeSegmentGap: 4,
-              edgeSegmentOffset: 15,
-              edgeSegmentCap: 'round',
-              edgeSegmentAnimate: false,
-              edgeOutlineGap: 3,
-              temporalOverlayYears: 1,
-              edgeWeightScale: 'linear',
-            }}
+            search={{ ...explorerDefaultSearch }}
           >
             Explorer
           </Link>

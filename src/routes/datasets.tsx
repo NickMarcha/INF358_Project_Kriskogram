@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
+import { explorerDefaultSearch } from '../lib/explorerDefaults'
 
 export const Route = createFileRoute('/datasets')({
   component: DatasetsPage,
@@ -233,28 +234,7 @@ function DatasetsPage() {
               After downloading a dataset, you can import it into Kriskogram using the{' '}
               <Link
                 to="/explorer"
-                search={{
-                  view: 'kriskogram' as const,
-                  year: undefined as number | undefined,
-                  minThreshold: 0,
-                  maxThreshold: 200000,
-                  maxEdges: 500,
-                  showAllNodes: false,
-                  egoNodeId: null,
-                  egoNeighborSteps: 1,
-                  egoStepColoring: false,
-                  temporalOverlay: false,
-                  temporalOverlayEdgeStyle: 'filled',
-                  temporalOverlayNodeStyle: 'filled',
-                  edgeSegmentLength: 8,
-                  edgeSegmentGap: 4,
-                  edgeSegmentOffset: 15,
-                  edgeSegmentCap: 'round',
-                  edgeSegmentAnimate: false,
-                  edgeOutlineGap: 3,
-                  temporalOverlayYears: 1,
-                  edgeWeightScale: 'linear',
-                }}
+                search={{ ...explorerDefaultSearch }}
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 Explorer page
@@ -285,28 +265,7 @@ function DatasetsPage() {
         <div className="max-w-6xl mx-auto mt-8 text-center">
           <Link
             to="/explorer"
-            search={{
-              view: 'kriskogram' as const,
-              year: undefined as number | undefined,
-              minThreshold: 0,
-              maxThreshold: 200000,
-              maxEdges: 500,
-              showAllNodes: false,
-              egoNodeId: null,
-              egoNeighborSteps: 1,
-              egoStepColoring: false,
-              temporalOverlay: false,
-              temporalOverlayEdgeStyle: 'filled',
-              temporalOverlayNodeStyle: 'filled',
-              edgeSegmentLength: 8,
-              edgeSegmentGap: 4,
-              edgeSegmentOffset: 15,
-              edgeSegmentCap: 'round',
-              edgeSegmentAnimate: false,
-              edgeOutlineGap: 3,
-              temporalOverlayYears: 1,
-              edgeWeightScale: 'linear',
-            }}
+            search={{ ...explorerDefaultSearch }}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Explorer
