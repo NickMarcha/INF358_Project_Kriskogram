@@ -61,7 +61,15 @@ export default function TableView({
     
     const allKeys = new Set<string>()
     nodes.forEach(node => {
-      Object.keys(node).forEach(key => allKeys.add(key))
+      Object.keys(node).forEach(key => {
+        if (
+          key === '_totalIncoming' ||
+          key === '_totalOutgoing'
+        ) {
+          return
+        }
+        allKeys.add(key)
+      })
     })
     
     const keys = Array.from(allKeys)

@@ -468,6 +468,17 @@ function ExplorerPage() {
   const filteredData = useMemo(() => {
     if (!currentSnapshot) return { nodes: [], edges: [] }
     
+    // Precompute totals across all edges (unfiltered) for full-year stats
+    const totalIncomingAll = new Map<string, number>()
+    const totalOutgoingAll = new Map<string, number>()
+    ;(currentSnapshot.edges as any[]).forEach((edge: any) => {
+      const outgoing = totalOutgoingAll.get(edge.source) || 0
+      totalOutgoingAll.set(edge.source, outgoing + edge.value)
+
+      const incoming = totalIncomingAll.get(edge.target) || 0
+      totalIncomingAll.set(edge.target, incoming + edge.value)
+    })
+
     // First filter by edge type if selected
     let edgesToFilter = filterEdgesByProperty(
       currentSnapshot.edges as any[],
@@ -551,11 +562,22 @@ function ExplorerPage() {
       ? (currentSnapshot.nodes as any[])
       : (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
 
-    const nodesWithDynamicAttrs = baseNodes.map((n: any) => ({
-      ...n,
-      _totalIncoming: nodeIncoming.get(n.id) || 0,
-      _totalOutgoing: nodeOutgoing.get(n.id) || 0,
-    }))
+    const nodesWithDynamicAttrs = baseNodes.map((n: any) => {
+      const visibleIncoming = nodeIncoming.get(n.id) || 0
+      const visibleOutgoing = nodeOutgoing.get(n.id) || 0
+      const totalIncomingYear = totalIncomingAll.get(n.id) || 0
+      const totalOutgoingYear = totalOutgoingAll.get(n.id) || 0
+
+      return {
+        ...n,
+        _totalIncoming: visibleIncoming,
+        _totalOutgoing: visibleOutgoing,
+        total_incoming_visible: visibleIncoming,
+        total_outgoing_visible: visibleOutgoing,
+        total_incoming_year: totalIncomingYear,
+        total_outgoing_year: totalOutgoingYear,
+      }
+    })
     
     return { nodes: nodesWithDynamicAttrs, edges: filteredEdges }
   }, [

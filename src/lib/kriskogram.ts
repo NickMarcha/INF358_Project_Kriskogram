@@ -311,34 +311,84 @@ export function createKriskogram(config: KriskogramConfig) {
   // - Current: y = r + 10, x = r + 5 (balanced position)
   const nodeGroup = zoomGroup.append("g").attr("class", "nodes");
 
-  nodeGroup
-    .selectAll("g.node")
-    .data(sortedNodes)
-    .enter()
-    .append("g")
-    .attr("class", "node")
-    .attr("transform", (d) => `translate(${xScale(d.id)},${baselineY})`)
-    .style("cursor", "pointer")
-    .on("click", function(_event, d) {
-      // Highlight connected edges
-      edges.filter(e => e.source === d.id || e.target === d.id);
-      
+const enhanceNodeSelection = nodeGroup
+  .selectAll("g.node")
+  .data(sortedNodes)
+  .enter()
+  .append("g")
+  .attr("class", "node")
+  .attr("transform", (d) => `translate(${xScale(d.id)},${baselineY})`)
+  .style("cursor", "pointer");
+
+enhanceNodeSelection
+  .on("mouseover", function(event, d) {
+    d3.selectAll(".kriskogram-tooltip").remove();
+
+    const tooltip = d3.select("body")
+      .append("div")
+      .attr("class", "kriskogram-tooltip")
+      .style("position", "absolute")
+      .style("background", "rgba(0, 0, 0, 0.9)")
+      .style("color", "white")
+      .style("padding", "10px")
+      .style("border-radius", "6px")
+      .style("font-size", "12px")
+      .style("pointer-events", "none")
+      .style("z-index", "1000")
+      .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
+
+  const visibleIncoming = (d as any)?.total_incoming_visible ?? (d as any)?._totalIncoming ?? 0;
+  const visibleOutgoing = (d as any)?.total_outgoing_visible ?? (d as any)?._totalOutgoing ?? 0;
+  const yearIncoming = (d as any)?.total_incoming_year ?? visibleIncoming;
+  const yearOutgoing = (d as any)?.total_outgoing_year ?? visibleOutgoing;
+
+    tooltip.html(`
+      <strong>${d.label || d.id}</strong><br/>
+      ${d.region ? `<strong>Region:</strong> ${d.region}<br/>` : ''}
+      ${d.division ? `<strong>Division:</strong> ${d.division}<br/>` : ''}
+      ${(d as any)?.population ? `<strong>Population:</strong> ${(d as any).population.toLocaleString()}<br/>` : ''}
+      ${(d as any)?.economic_index != null ? `<strong>Economic Index:</strong> ${(d as any).economic_index}<br/>` : ''}
+    <strong>Total Incoming (year):</strong> ${yearIncoming.toLocaleString()}<br/>
+    <strong>Total Outgoing (year):</strong> ${yearOutgoing.toLocaleString()}<br/>
+    <strong>* Visible Incoming:</strong> ${visibleIncoming.toLocaleString()}<br/>
+    <strong>* Visible Outgoing:</strong> ${visibleOutgoing.toLocaleString()}<br/>
+    <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
+    `);
+
+    tooltip
+      .style("left", (event.pageX + 10) + "px")
+      .style("top", (event.pageY - 10) + "px");
+  })
+  .on("mousemove", function(event) {
+    const tooltip = d3.select(".kriskogram-tooltip");
+    if (!tooltip.empty()) {
+      tooltip
+        .style("left", (event.pageX + 10) + "px")
+        .style("top", (event.pageY - 10) + "px");
+    }
+  })
+  .on("mouseout", function() {
+    d3.selectAll(".kriskogram-tooltip").remove();
+  })
+  .on("click", function(_event, d) {
+    edges.filter(e => e.source === d.id || e.target === d.id);
+
+    edgeGroup.selectAll("path.arc")
+      .attr("opacity", 0.3);
+
+    edgeGroup.selectAll("path.arc")
+      .filter((edge: any) => edge.source === d.id || edge.target === d.id)
+      .attr("opacity", 1)
+      .attr("stroke-width", (edge: any) => getEdgeWidth(edge) * 1.5);
+
+    setTimeout(() => {
       edgeGroup.selectAll("path.arc")
-        .attr("opacity", 0.3);
-      
-      edgeGroup.selectAll("path.arc")
-        .filter((edge: any) => edge.source === d.id || edge.target === d.id)
-        .attr("opacity", 1)
-        .attr("stroke-width", (edge: any) => getEdgeWidth(edge) * 1.5);
-      
-      // Reset after 2 seconds
-      setTimeout(() => {
-        edgeGroup.selectAll("path.arc")
-          .attr("opacity", 0.85)
-          .attr("stroke-width", (edge: any) => getEdgeWidth(edge));
-      }, 2000);
-    })
-    .each(function (d) {
+        .attr("opacity", arcOpacity)
+        .attr("stroke-width", (edge: any) => getEdgeWidth(edge));
+    }, 2000);
+  });
+
+enhanceNodeSelection.each(function (d) {
       const g = d3.select(this);
       const shape = getNodeShape(d);
       const r = getNodeRadius(d);
