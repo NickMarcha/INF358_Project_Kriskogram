@@ -169,7 +169,7 @@ const explorerSearchSchema = z.object({
   ),
   showAllNodes: safeCoerceBoolean(false),
   temporalOverlay: safeCoerceBoolean(false),
-  temporalOverlayStyle: z.preprocess(
+  temporalOverlayEdgeStyle: z.preprocess(
     (val) => {
       if (typeof val === 'string') {
         const lowered = val.toLowerCase()
@@ -177,9 +177,21 @@ const explorerSearchSchema = z.object({
           return lowered
         }
       }
-      return 'segmented'
+      return 'filled'
     },
-    z.enum(['segmented', 'filled', 'outline']).default('segmented'),
+    z.enum(['segmented', 'filled', 'outline']).default('filled'),
+  ),
+  temporalOverlayNodeStyle: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const lowered = val.toLowerCase()
+        if (['filled', 'outline'].includes(lowered)) {
+          return lowered
+        }
+      }
+      return 'filled'
+    },
+    z.enum(['filled', 'outline']).default('filled'),
   ),
   temporalOverlayYears: z.preprocess(
     (val) => {
@@ -190,6 +202,21 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(1).default(1),
   ),
+  edgeSegmentOffset: safeCoerceNumber(0),
+  edgeSegmentCap: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const lowered = val.toLowerCase()
+        if (['round', 'butt'].includes(lowered)) {
+          return lowered
+        }
+      }
+      return 'round'
+    },
+    z.enum(['round', 'butt']).default('round'),
+  ),
+  edgeSegmentLength: safeCoerceNumber(8),
+  edgeSegmentGap: safeCoerceNumber(4),
 })
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
@@ -300,14 +327,24 @@ export const Route = createFileRoute('/explorer')({
       return false
     })()
 
-    const safeTemporalOverlayStyle = (() => {
-      if (typeof search.temporalOverlayStyle === 'string') {
-        const lowered = search.temporalOverlayStyle.toLowerCase()
+    const safeTemporalOverlayEdgeStyle = (() => {
+      if (typeof search.temporalOverlayEdgeStyle === 'string') {
+        const lowered = search.temporalOverlayEdgeStyle.toLowerCase()
         if (['segmented', 'filled', 'outline'].includes(lowered)) {
           return lowered as 'segmented' | 'filled' | 'outline'
         }
       }
-      return 'segmented' as const
+      return 'filled' as const
+    })()
+
+    const safeTemporalOverlayNodeStyle = (() => {
+      if (typeof search.temporalOverlayNodeStyle === 'string') {
+        const lowered = search.temporalOverlayNodeStyle.toLowerCase()
+        if (['filled', 'outline'].includes(lowered)) {
+          return lowered as 'filled' | 'outline'
+        }
+      }
+      return 'filled' as const
     })()
 
     const safeTemporalOverlayYears = (() => {
@@ -318,6 +355,34 @@ export const Route = createFileRoute('/explorer')({
         ? parseInt(search.temporalOverlayYears, 10) : Number(search.temporalOverlayYears)
       if (Number.isNaN(num) || num < 1) return 1
       return Math.max(1, Math.round(num))
+    })()
+
+    const safeEdgeSegmentLength = (() => {
+      if (search.edgeSegmentLength === undefined || search.edgeSegmentLength === null || search.edgeSegmentLength === '') return 8
+      const num = typeof search.edgeSegmentLength === 'string' ? parseFloat(search.edgeSegmentLength) : Number(search.edgeSegmentLength)
+      return Number.isNaN(num) ? 8 : Math.max(1, num)
+    })()
+
+    const safeEdgeSegmentGap = (() => {
+      if (search.edgeSegmentGap === undefined || search.edgeSegmentGap === null || search.edgeSegmentGap === '') return 4
+      const num = typeof search.edgeSegmentGap === 'string' ? parseFloat(search.edgeSegmentGap) : Number(search.edgeSegmentGap)
+      return Number.isNaN(num) ? 4 : Math.max(0.5, num)
+    })()
+
+    const safeEdgeSegmentOffset = (() => {
+      if (search.edgeSegmentOffset === undefined || search.edgeSegmentOffset === null || search.edgeSegmentOffset === '') return 0
+      const num = typeof search.edgeSegmentOffset === 'string' ? parseFloat(search.edgeSegmentOffset) : Number(search.edgeSegmentOffset)
+      return Number.isNaN(num) ? 0 : Math.max(0, num)
+    })()
+
+    const safeEdgeSegmentCap = (() => {
+      if (typeof search.edgeSegmentCap === 'string') {
+        const lowered = search.edgeSegmentCap.toLowerCase()
+        if (['round', 'butt'].includes(lowered)) {
+          return lowered as 'round' | 'butt'
+        }
+      }
+      return 'round' as const
     })()
 
     return {
@@ -333,9 +398,14 @@ export const Route = createFileRoute('/explorer')({
       egoNeighborSteps: safeEgoNeighborSteps,
       egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
       temporalOverlay: safeTemporalOverlay,
-      temporalOverlayStyle: safeTemporalOverlayStyle,
+      temporalOverlayEdgeStyle: safeTemporalOverlayEdgeStyle,
+      temporalOverlayNodeStyle: safeTemporalOverlayNodeStyle,
       temporalOverlayYears: safeTemporalOverlayYears,
       edgeWeightScale: safeEdgeWeightScale,
+      edgeSegmentLength: safeEdgeSegmentLength,
+      edgeSegmentGap: safeEdgeSegmentGap,
+      edgeSegmentOffset: safeEdgeSegmentOffset,
+      edgeSegmentCap: safeEdgeSegmentCap,
     }
   },
   search: {
@@ -368,9 +438,16 @@ function ExplorerPage() {
     search.edgeWeightScale ?? 'linear',
   )
   const [temporalOverlayEnabled, setTemporalOverlayEnabled] = useState<boolean>(search.temporalOverlay ?? false)
-  const [temporalOverlayStyle, setTemporalOverlayStyle] = useState<'segmented' | 'filled' | 'outline'>(
-    search.temporalOverlayStyle ?? 'segmented',
-  )
+const [temporalOverlayEdgeStyle, setTemporalOverlayEdgeStyle] = useState<'segmented' | 'filled' | 'outline'>(
+  search.temporalOverlayEdgeStyle ?? 'filled',
+)
+const [temporalOverlayNodeStyle, setTemporalOverlayNodeStyle] = useState<'filled' | 'outline'>(
+  search.temporalOverlayNodeStyle ?? 'filled',
+)
+const [edgeSegmentLength, setEdgeSegmentLength] = useState<number>(search.edgeSegmentLength ?? 8)
+const [edgeSegmentGap, setEdgeSegmentGap] = useState<number>(search.edgeSegmentGap ?? 4)
+const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 0)
+const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
   
@@ -878,6 +955,13 @@ function ExplorerPage() {
       })
     }
 
+    const currentEdgeStyle = temporalOverlayEdgeStyle
+    const currentDashArray =
+      temporalOverlayEdgeStyle === 'segmented'
+        ? `${Math.max(1, edgeSegmentLength)} ${Math.max(0.5, edgeSegmentGap)}`
+        : null
+    const currentDashOffset = temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0
+    const currentLineCap = temporalOverlayEdgeStyle === 'segmented' ? edgeSegmentCap : 'round'
     const visibleEdgesCurrent = visibleEdgeInfos.map(({ edge, idx }) => {
       const step = edgeStepMap.get(idx)
       const decorated: any = {
@@ -887,7 +971,10 @@ function ExplorerPage() {
         __temporalDelta: 0,
         _overlayType: undefined,
         _overlayYear: currentYearValue,
-        __overlayStyle: 'current',
+        __overlayStyle: currentEdgeStyle,
+        __overlayDash: currentDashArray,
+        __overlayDashOffset: currentDashOffset,
+        __overlayLineCap: currentLineCap,
       }
       if (step !== undefined) {
         decorated._egoStep = step
@@ -977,6 +1064,13 @@ function ExplorerPage() {
           }
         }
 
+        const overlayDashArray =
+          temporalOverlayEdgeStyle === 'segmented'
+            ? `${Math.max(1, edgeSegmentLength)} ${Math.max(0.5, edgeSegmentGap)}`
+            : null
+        const overlayDashOffset = temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0
+        const overlayLineCap = temporalOverlayEdgeStyle === 'segmented' ? edgeSegmentCap : 'round'
+
         const overlaySubset = edgesForSnapshot
           .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
           .sort((a: any, b: any) => b.value - a.value)
@@ -988,7 +1082,10 @@ function ExplorerPage() {
             __isOverlay: true,
             __displayYear: targetYear,
             __temporalDelta: offset,
-            __overlayStyle: temporalOverlayStyle,
+            __overlayStyle: temporalOverlayEdgeStyle,
+            __overlayDash: overlayDashArray,
+            __overlayDashOffset: overlayDashOffset,
+            __overlayLineCap: overlayLineCap,
           }))
 
         overlaySubset.forEach((edge: any) => {
@@ -1102,7 +1199,7 @@ function ExplorerPage() {
           hasPast: overlayHasPast,
           hasFuture: overlayHasFuture,
           nodeDeltaAbsMax: overlayNodeAbsMax,
-          style: temporalOverlayStyle,
+          style: temporalOverlayEdgeStyle,
         }
       : null
 
@@ -1132,8 +1229,11 @@ function ExplorerPage() {
     egoNeighborSteps,
     edgeWeightScale,
     temporalOverlayEnabled,
-    temporalOverlayStyle,
+    temporalOverlayEdgeStyle,
+    temporalOverlayNodeStyle,
     temporalOverlayYears,
+    edgeSegmentLength,
+    edgeSegmentGap,
     dataset,
   ])
 
@@ -1267,20 +1367,54 @@ function ExplorerPage() {
     if (!dataset || dataset.timeRange.start === dataset.timeRange.end || typeof currentYear !== 'number') {
       if (temporalOverlayEnabled) {
         setTemporalOverlayEnabled(false)
-        updateSearchParams({ temporalOverlay: false, temporalOverlayStyle })
+        updateSearchParams({
+          temporalOverlay: false,
+          temporalOverlayEdgeStyle,
+          temporalOverlayNodeStyle,
+          edgeSegmentLength,
+          edgeSegmentGap,
+          edgeSegmentOffset,
+          edgeSegmentCap,
+        })
       }
     }
-  }, [dataset, currentYear, temporalOverlayEnabled, temporalOverlayStyle, updateSearchParams])
+  }, [
+    dataset,
+    currentYear,
+    temporalOverlayEnabled,
+    temporalOverlayEdgeStyle,
+    temporalOverlayNodeStyle,
+    edgeSegmentLength,
+    edgeSegmentGap,
+    edgeSegmentOffset,
+    edgeSegmentCap,
+    updateSearchParams,
+  ])
 
   useEffect(() => {
     if (!isInitialMount.current) {
       updateSearchParams({
         temporalOverlay: temporalOverlayEnabled,
         temporalOverlayYears,
-        temporalOverlayStyle,
+        temporalOverlayEdgeStyle,
+        temporalOverlayNodeStyle,
+        edgeSegmentLength,
+        edgeSegmentGap,
+        edgeSegmentOffset,
+        edgeSegmentCap,
       })
     }
-  }, [temporalOverlayEnabled, temporalOverlayYears, temporalOverlayStyle])
+  }, [
+    temporalOverlayEnabled,
+    temporalOverlayYears,
+    temporalOverlayEdgeStyle,
+    temporalOverlayNodeStyle,
+    edgeSegmentLength,
+    edgeSegmentGap,
+    edgeSegmentOffset,
+    edgeSegmentCap,
+    updateSearchParams,
+  ])
 
   return (
     <ErrorBoundary
@@ -1436,8 +1570,9 @@ function ExplorerPage() {
                               
                               const overlaySummary = filteredData.temporalOverlay
                               const overlayActive = Boolean(overlaySummary)
-                              const overlayStyle = overlaySummary?.style ?? temporalOverlayStyle
-                              const overlayOutlineActive = overlayActive && overlayStyle === 'outline'
+                              const edgeStyleSetting = temporalOverlayEdgeStyle
+                              const nodeStyleSetting = temporalOverlayNodeStyle
+                              const nodeOutlineActive = nodeStyleSetting === 'outline'
                               const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0
                               const overlayEdgeColor = (delta: number) => {
                                 if (delta === 0) return '#6b7280'
@@ -1448,6 +1583,83 @@ function ExplorerPage() {
                                   return `hsl(210, 75%, ${Math.round(baseLightness)}%)`
                                 }
                                 return `hsl(0, 75%, ${Math.round(baseLightness)}%)`
+                              }
+                              
+                              const resolveBaseNodeColor = (node: any): string => {
+                                const normalizedRatio = (value: number, max: number) => {
+                                  if (!Number.isFinite(value) || max <= 0) return 0
+                                  return Math.max(0, Math.min(1, value / max))
+                                }
+
+                                const gradientColor = (hue: number, saturation: number, ratio: number) => {
+                                  const clamped = Math.max(0, Math.min(1, ratio))
+                                  const lightness = 85 - clamped * 45
+                                  return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                                }
+
+                                const netColor = (netValue: number) => {
+                                  if (!Number.isFinite(netValue) || globalNetAbs <= 0) {
+                                    return '#6b7280'
+                                  }
+                                  if (Math.abs(netValue) < 1e-6) {
+                                    return '#9ca3af'
+                                  }
+                                  const intensity = Math.max(0, Math.min(1, Math.abs(netValue) / globalNetAbs))
+                                  const lightness = 85 - intensity * 45
+                                  return netValue >= 0 ? `hsl(0, 75%, ${lightness}%)` : `hsl(210, 75%, ${lightness}%)`
+                                }
+
+                                switch (nodeColorMode) {
+                                  case 'single':
+                                    return '#2563eb'
+                                  case 'outgoing':
+                                  case 'visible_outgoing': {
+                                    const ratio = normalizedRatio(node.total_outgoing_visible || node._totalOutgoing || 0, maxVisibleOutgoing)
+                                    return gradientColor(24, 85, ratio)
+                                  }
+                                  case 'incoming':
+                                  case 'visible_incoming': {
+                                    const ratio = normalizedRatio(node.total_incoming_visible || node._totalIncoming || 0, maxVisibleIncoming)
+                                    return gradientColor(160, 70, ratio)
+                                  }
+                                  case 'year_outgoing': {
+                                    const ratio = normalizedRatio(node.total_outgoing_year || 0, globalMaxYearOutgoing)
+                                    return gradientColor(24, 85, ratio)
+                                  }
+                                  case 'year_incoming': {
+                                    const ratio = normalizedRatio(node.total_incoming_year || 0, globalMaxYearIncoming)
+                                    return gradientColor(160, 70, ratio)
+                                  }
+                                  case 'net_year':
+                                    return netColor(node.net_flow_year || 0)
+                                  case 'self_year': {
+                                    const ratio = normalizedRatio(node.self_flow_year || 0, datasetNodeSelfFlowStats?.max ?? 0)
+                                    return gradientColor(280, 70, ratio)
+                                  }
+                                  case 'attribute': {
+                                    if (!nodeColorAttribute) return '#2563eb'
+                                    const propValue = node[nodeColorAttribute]
+                                    if (propValue === undefined || propValue === null) return '#9ca3af'
+
+                                    if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
+                                      const allValues = filteredData.nodes
+                                        .map((n: any) => n[nodeColorAttribute])
+                                        .filter((v: any) => typeof v === 'number') as number[]
+                                      if (allValues.length === 0) return '#2563eb'
+
+                                      const minVal = Math.min(...allValues)
+                                      const maxVal = Math.max(...allValues)
+                                      const range = maxVal - minVal || 1
+                                      const normalized = (Number(propValue) - minVal) / range
+                                      const hue = 120 - Math.max(0, Math.min(1, normalized)) * 120
+                                      return `hsl(${hue}, 70%, 50%)`
+                                    }
+
+                                    return getCategoricalColor(nodeColorAttribute, propValue, categoricalColors)
+                                  }
+                                  default:
+                                    return '#2563eb'
+                                }
                               }
                               
                               return {
@@ -1469,87 +1681,9 @@ function ExplorerPage() {
                                 
                                 // Node color
                                 nodeColor: (d: any) => {
-                                  const normalizedRatio = (value: number, max: number) => {
-                                    if (!Number.isFinite(value) || max <= 0) return 0
-                                    return Math.max(0, Math.min(1, value / max))
-                                  }
-
-                                  const gradientColor = (hue: number, saturation: number, ratio: number) => {
-                                    const clamped = Math.max(0, Math.min(1, ratio))
-                                    const lightness = 85 - (clamped * 45) // 85% (light) to 40% (dark)
-                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
-                                  }
-
-                                  const netColor = (netValue: number) => {
-                                    if (!Number.isFinite(netValue) || globalNetAbs <= 0) {
-                                      return '#6b7280'
-                                    }
-                                    if (Math.abs(netValue) < 1e-6) {
-                                      return '#9ca3af'
-                                    }
-                                    const intensity = Math.max(0, Math.min(1, Math.abs(netValue) / globalNetAbs))
-                                    const lightness = 85 - intensity * 45
-                                    if (netValue >= 0) {
-                                      return `hsl(0, 75%, ${lightness}%)`
-                                    }
-                                    return `hsl(210, 75%, ${lightness}%)`
-                                  }
-
-                                  if (overlayOutlineActive) {
-                                    return 'transparent'
-                                  }
-
-                                  switch (nodeColorMode) {
-                                    case 'single':
-                                      return '#2563eb'
-                                    case 'outgoing': // legacy fallback
-                                    case 'visible_outgoing': {
-                                      const ratio = normalizedRatio(d.total_outgoing_visible || d._totalOutgoing || 0, maxVisibleOutgoing)
-                                      return gradientColor(24, 85, ratio)
-                                    }
-                                    case 'incoming': // legacy fallback
-                                    case 'visible_incoming': {
-                                      const ratio = normalizedRatio(d.total_incoming_visible || d._totalIncoming || 0, maxVisibleIncoming)
-                                      return gradientColor(160, 70, ratio)
-                                    }
-                                    case 'year_outgoing': {
-                                      const ratio = normalizedRatio(d.total_outgoing_year || 0, globalMaxYearOutgoing)
-                                      return gradientColor(24, 85, ratio)
-                                    }
-                                    case 'year_incoming': {
-                                      const ratio = normalizedRatio(d.total_incoming_year || 0, globalMaxYearIncoming)
-                                      return gradientColor(160, 70, ratio)
-                                    }
-                                    case 'net_year':
-                                      return netColor(d.net_flow_year || 0)
-                                case 'self_year': {
-                                  const ratio = normalizedRatio(d.self_flow_year || 0, datasetNodeSelfFlowStats?.max ?? 0)
-                                  return gradientColor(280, 70, ratio)
-                                }
-                                    case 'attribute': {
-                                      if (!nodeColorAttribute) return '#2563eb'
-                                      const propValue = d[nodeColorAttribute]
-                                      if (propValue === undefined || propValue === null) return '#9ca3af'
-
-                                      if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
-                                        const allValues = filteredData.nodes
-                                          .map((n: any) => n[nodeColorAttribute])
-                                          .filter((v: any) => typeof v === 'number') as number[]
-                                        if (allValues.length === 0) return '#2563eb'
-
-                                        const minVal = Math.min(...allValues)
-                                        const maxVal = Math.max(...allValues)
-                                        const range = maxVal - minVal || 1
-                                        const normalized = (Number(propValue) - minVal) / range
-                                        const hue = 120 - (Math.max(0, Math.min(1, normalized)) * 120)
-                                        return `hsl(${hue}, 70%, 50%)`
-                                      }
-
-                                      return getCategoricalColor(nodeColorAttribute, propValue, categoricalColors)
-                                    }
-                                    default:
-                                      return '#2563eb'
-                                  }
+                                  const baseColor = resolveBaseNodeColor(d)
+                                  d.__baseFillColor = baseColor
+                                  return nodeOutlineActive ? 'transparent' : baseColor
                                 },
                                 
                                 // Node size
@@ -1620,19 +1754,25 @@ function ExplorerPage() {
                                 },
                                 // Edge width
                                 edgeWidth: (e: any) => {
-                                  if (e?.__temporalDelta) {
-                                    if (overlayStyle === 'outline') {
-                                      return Math.max(1.5, baseEdgeWidth)
+                                  const style = (e as any)?.__overlayStyle ?? edgeStyleSetting
+                                  const normalized = normalizeEdgeWeight(e.value)
+                                  const weightedWidth =
+                                    edgeWidthMode === 'weight'
+                                      ? 0.5 + normalized * (style === 'segmented' ? 12 : 15)
+                                      : baseEdgeWidth
+
+                                  if (style === 'outline') {
+                                    return Math.max(2.5, baseEdgeWidth)
+                                  }
+
+                                  if (style === 'segmented') {
+                                    if (edgeWidthMode === 'weight') {
+                                      return weightedWidth
                                     }
-                                    const normalized = normalizeEdgeWeight(e.value)
-                                    const overlayWidthMultiplier = overlayStyle === 'filled' ? 12 : 8
-                                    return 0.5 + (normalized * overlayWidthMultiplier)
+                                    return Math.max(baseEdgeWidth, 2)
                                   }
-                                  if (edgeWidthMode === 'weight') {
-                                    const normalized = normalizeEdgeWeight(e.value)
-                                    return 0.5 + (normalized * 15) // 0.5 to 15.5
-                                  }
-                                  return baseEdgeWidth
+
+                                  return weightedWidth
                                 },
                                 
                                 // Edge color (supports advanced hue/intensity sources)
@@ -1741,17 +1881,27 @@ function ExplorerPage() {
                                   return hueColor
                                 },
                                 nodeStroke: (d: any) => {
-                                  if (!overlayActive || overlayDeltaMax <= 0) {
-                                    return { color: '#fff', width: 2 }
-                                  }
                                   const delta = d.temporal_overlay_delta ?? 0
+                                  const baseColor = d.__baseFillColor ?? resolveBaseNodeColor(d)
+                                  if (!overlayActive || overlayDeltaMax <= 0) {
+                                    const width = nodeOutlineActive ? 2.5 : 2
+                                    const color = nodeOutlineActive ? baseColor : '#fff'
+                                    return { color, width }
+                                  }
                                   if (!delta) {
-                                    return { color: '#d1d5db', width: 1.5 }
+                                    const width = nodeOutlineActive ? 2.5 : 1.5
+                                    const color = nodeOutlineActive ? baseColor : '#d1d5db'
+                                    return { color, width }
                                   }
                                   const ratio = Math.min(1, Math.abs(delta) / overlayDeltaMax)
+                                  if (nodeOutlineActive) {
+                                    const width = 2.5 + ratio * 1.5
+                                    return { color: baseColor, width }
+                                  }
                                   const hue = delta >= 0 ? 0 : 210
                                   const lightness = 70 - ratio * 25
-                                  return { color: `hsl(${Math.round(hue)}, 75%, ${Math.round(lightness)}%)`, width: 2 + ratio * 2 }
+                                  const width = 2 + ratio * 2
+                                  return { color: `hsl(${Math.round(hue)}, 75%, ${Math.round(lightness)}%)`, width }
                                 },
                               }
                             })()}
@@ -2394,8 +2544,11 @@ function ExplorerPage() {
                       setEgoStepColoring(false)
                       setEdgeWeightScale('linear')
                       setTemporalOverlayEnabled(false)
-                      setTemporalOverlayStyle('segmented')
+                      setTemporalOverlayEdgeStyle('filled')
+                      setTemporalOverlayNodeStyle('filled')
                       setTemporalOverlayYears(1)
+                      setEdgeSegmentLength(8)
+                      setEdgeSegmentGap(4)
                       updateSearchParams({
                         showAllNodes: false,
                         egoNodeId: null,
@@ -2403,7 +2556,10 @@ function ExplorerPage() {
                         egoStepColoring: false,
                         temporalOverlay: false,
                         temporalOverlayYears: 1,
-                        temporalOverlayStyle: 'segmented',
+                        temporalOverlayEdgeStyle: 'filled',
+                        temporalOverlayNodeStyle: 'filled',
+                        edgeSegmentLength: 8,
+                        edgeSegmentGap: 4,
                         edgeWeightScale: 'linear',
                       })
                     }}
@@ -2518,6 +2674,9 @@ function ExplorerPage() {
                               }}
                             />
                           </div>
+                          <p className="text-[11px] text-gray-500">
+                            Edge and node styling options are available in the sections below.
+                          </p>
                         </div>
 
                         <div className="space-y-3 border border-gray-200 rounded-md p-3">
@@ -2574,29 +2733,6 @@ function ExplorerPage() {
                                 Temporal overlay is unavailable because this dataset has a single year.
                               </p>
                             )}
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-style">
-                              Overlay display mode
-                            </label>
-                            <p className="text-[11px] text-gray-500 mb-1">
-                              Choose how past and future flows (and node fills) are rendered.
-                            </p>
-                            <select
-                              id="kriskogram-temporal-overlay-style"
-                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              value={temporalOverlayStyle}
-                              disabled={!temporalOverlayEnabled}
-                              onChange={(e) => {
-                                const next = e.target.value as 'segmented' | 'filled' | 'outline'
-                                setTemporalOverlayStyle(next)
-                                updateSearchParams({ temporalOverlayStyle: next })
-                              }}
-                            >
-                              <option value="segmented">Segmented (dashed arcs)</option>
-                              <option value="filled">Filled (solid weight)</option>
-                              <option value="outline">Outline (stroke only)</option>
-                            </select>
                           </div>
                         </div>
 
@@ -2695,6 +2831,28 @@ function ExplorerPage() {
                               </select>
                             )}
                           </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-node-styling">
+                              Node styling
+                            </label>
+                            <p className="text-[11px] text-gray-500">
+                              Control how nodes are rendered. Outline mode hides the fill and emphasizes the stroke.
+                            </p>
+                            <select
+                              id="kriskogram-node-styling"
+                              value={temporalOverlayNodeStyle}
+                              onChange={(e) => {
+                                const next = e.target.value as 'filled' | 'outline'
+                                setTemporalOverlayNodeStyle(next)
+                                updateSearchParams({ temporalOverlayNodeStyle: next })
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="filled">Filled nodes</option>
+                              <option value="outline">Outline only</option>
+                            </select>
+                          </div>
                         </div>
 
                         {/* Arc Opacity */}
@@ -2775,6 +2933,110 @@ function ExplorerPage() {
                                 Applies to both edge widths and weight-based color intensity.
                               </p>
                             </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-edge-style">
+                              Line styling
+                            </label>
+                            <p className="text-[11px] text-gray-500">
+                              Choose how edges are drawn. Segmented uses dashed arcs; outline shows a thin perimeter.
+                            </p>
+                            <select
+                              id="kriskogram-edge-style"
+                              value={temporalOverlayEdgeStyle}
+                              onChange={(e) => {
+                                const next = e.target.value as 'segmented' | 'filled' | 'outline'
+                                setTemporalOverlayEdgeStyle(next)
+                                updateSearchParams({ temporalOverlayEdgeStyle: next })
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="filled">Filled (solid weight)</option>
+                              <option value="segmented">Segmented (dashed)</option>
+                              <option value="outline">Outline only</option>
+                            </select>
+                            {temporalOverlayEdgeStyle === 'segmented' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Dash length (px)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    step={0.5}
+                                    value={edgeSegmentLength}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(1, val)
+                                      setEdgeSegmentLength(clamped)
+                                      updateSearchParams({ edgeSegmentLength: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Gap length (px)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0.5}
+                                    step={0.5}
+                                    value={edgeSegmentGap}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(0.5, val)
+                                      setEdgeSegmentGap(clamped)
+                                      updateSearchParams({ edgeSegmentGap: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Initial gap (px)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={0.5}
+                                    value={edgeSegmentOffset}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(0, val)
+                                      setEdgeSegmentOffset(clamped)
+                                      updateSearchParams({ edgeSegmentOffset: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {temporalOverlayEdgeStyle === 'segmented' && (
+                              <div className="mt-2">
+                                <label className="text-[11px] font-medium text-gray-600" htmlFor="kriskogram-edge-cap">
+                                  Segment cap style
+                                </label>
+                                <select
+                                  id="kriskogram-edge-cap"
+                                  value={edgeSegmentCap}
+                                  onChange={(e) => {
+                                    const next = e.target.value as 'round' | 'butt'
+                                    setEdgeSegmentCap(next)
+                                    updateSearchParams({ edgeSegmentCap: next })
+                                  }}
+                                  className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="round">Rounded segment ends</option>
+                                  <option value="butt">Sharp segment ends</option>
+                                </select>
+                              </div>
+                            )}
                           </div>
 
                           {/* Edge Color */}

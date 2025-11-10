@@ -254,7 +254,12 @@ export function createKriskogram(config: KriskogramConfig) {
       return getEdgeColor(d, isAbove);
     })
     .attr("stroke-width", (d) => getEdgeWidth(d))
-    .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
+    .attr("stroke-linecap", (d: any) => ((d as any)?.__overlayLineCap) ?? "round")
+    .attr("stroke-dasharray", (d: any) => {
+      const dash = (d as any)?.__overlayDash;
+      return dash ? dash : null;
+    })
+    .attr("stroke-dashoffset", (d: any) => (d as any)?.__overlayDashOffset ?? 0)
     .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
     .style("cursor", "pointer")
     .on("mouseover", function(_event, d) {
@@ -346,6 +351,94 @@ const enhanceNodeSelection = nodeGroup
   .attr("transform", (d) => `translate(${xScale(d.id)},${baselineY})`)
   .style("cursor", "pointer");
 
+const formatNodeTooltipBlock = (node: any) => {
+  const formatNumber = (value: number) =>
+    Number.isFinite(value) ? value.toLocaleString() : '0';
+
+  const accentColor = node.__baseFillColor ?? node._overlayStrokeColor ?? '#93c5fd';
+  const pastColor = 'hsl(210, 75%, 65%)';
+  const futureColor = 'hsl(0, 75%, 65%)';
+
+  const optionalLine = (label: string, value: any) =>
+    value != null && value !== ''
+      ? `<span style="color:${accentColor}"><strong>${label}</strong> ${typeof value === 'number' ? formatNumber(value) : value}</span><br/>`
+      : '';
+
+  const visibleIncoming = node.total_incoming_visible ?? node._totalIncoming ?? 0;
+  const visibleOutgoing = node.total_outgoing_visible ?? node._totalOutgoing ?? 0;
+  const yearIncoming = node.total_incoming_year ?? visibleIncoming;
+  const yearOutgoing = node.total_outgoing_year ?? visibleOutgoing;
+  const netVisible = node.net_flow_visible ?? (visibleIncoming - visibleOutgoing);
+  const netYear = node.net_flow_year ?? (yearIncoming - yearOutgoing);
+  const overlayPast = node._overlayPastTotal ?? node.temporal_overlay_past_total ?? 0;
+  const overlayFuture = node._overlayFutureTotal ?? node.temporal_overlay_future_total ?? 0;
+  const overlayDelta = node._overlayDelta ?? node.temporal_overlay_delta ?? 0;
+
+  return `
+    <div>
+      <strong style="color:${accentColor}">${node.label || node.id}</strong><br/>
+      ${optionalLine('Region:', node.region)}
+      ${optionalLine('Division:', node.division)}
+      ${optionalLine('Population:', node.population != null ? node.population : '')}
+      ${optionalLine('Economic Index:', node.economic_index != null ? node.economic_index : '')}
+      <span style="color:${accentColor}"><strong>Total Incoming (year):</strong> ${formatNumber(yearIncoming)}</span><br/>
+      <span style="color:${accentColor}"><strong>Total Outgoing (year):</strong> ${formatNumber(yearOutgoing)}</span><br/>
+      <span style="color:${accentColor}"><strong>* Visible Incoming:</strong> ${formatNumber(visibleIncoming)}</span><br/>
+      <span style="color:${accentColor}"><strong>* Visible Outgoing:</strong> ${formatNumber(visibleOutgoing)}</span><br/>
+      <span style="color:${accentColor}"><strong>Total Net (year):</strong> ${formatNumber(netYear)}</span><br/>
+      <span style="color:${accentColor}"><strong>* Visible Net:</strong> ${formatNumber(netVisible)}</span><br/>
+      ${
+        overlayPast || overlayFuture
+          ? `<span style="color:${pastColor}"><strong>Overlay Past Total:</strong> ${formatNumber(overlayPast)}</span><br/>
+             <span style="color:${futureColor}"><strong>Overlay Future Total:</strong> ${formatNumber(overlayFuture)}</span><br/>
+             <span style="color:${futureColor}"><strong>Overlay Δ (future - past):</strong> ${formatNumber(overlayDelta)}</span><br/>`
+          : ''
+      }
+      <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
+    </div>
+  `;
+};
+
+const gatherNodesAtPointer = (event: any, fallback: any) => {
+  if (typeof document === "undefined" || !document.elementsFromPoint) {
+    return [fallback];
+  }
+  const elements = document.elementsFromPoint(event.clientX, event.clientY);
+  const seen = new Set<string>();
+  const nodes: any[] = [];
+  for (const el of elements) {
+    if (!el) continue;
+    const group = el.closest && el.closest("g.node");
+    if (group) {
+      const datum = d3.select(group).datum() as any;
+      if (datum && typeof datum.id === "string" && !seen.has(datum.id)) {
+        seen.add(datum.id);
+        nodes.push(datum);
+      }
+    }
+  }
+  if (nodes.length === 0) {
+    nodes.push(fallback);
+  }
+  return nodes;
+};
+
+const renderTooltipHtmlForNodes = (nodes: any[]) => {
+  if (nodes.length === 1) {
+    return formatNodeTooltipBlock(nodes[0]);
+  }
+  return nodes
+    .map((node, index) => {
+      const header = `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#bfdbfe;margin-bottom:4px;">Node ${
+        index + 1
+      }</div>`;
+      return `<div style="margin-bottom:${index === nodes.length - 1 ? 0 : 10}px;">${header}${formatNodeTooltipBlock(
+        node,
+      )}</div>`;
+    })
+    .join('<hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:8px 0;" />');
+};
+
 enhanceNodeSelection
   .on("mouseover", function(event, d) {
     d3.selectAll(".kriskogram-tooltip").remove();
@@ -363,31 +456,8 @@ enhanceNodeSelection
       .style("z-index", "1000")
       .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
 
-    const visibleIncoming = (d as any)?.total_incoming_visible ?? (d as any)?._totalIncoming ?? 0;
-    const visibleOutgoing = (d as any)?.total_outgoing_visible ?? (d as any)?._totalOutgoing ?? 0;
-    const yearIncoming = (d as any)?.total_incoming_year ?? visibleIncoming;
-    const yearOutgoing = (d as any)?.total_outgoing_year ?? visibleOutgoing;
-    const netVisible = (d as any)?.net_flow_visible ?? (visibleIncoming - visibleOutgoing);
-    const netYear = (d as any)?.net_flow_year ?? (yearIncoming - yearOutgoing);
-    const overlayPast = (d as any)?._overlayPastTotal ?? 0;
-    const overlayFuture = (d as any)?._overlayFutureTotal ?? 0;
-    const overlayDelta = (d as any)?._overlayDelta ?? 0;
-
-    tooltip.html(`
-      <strong>${d.label || d.id}</strong><br/>
-      ${d.region ? `<strong>Region:</strong> ${d.region}<br/>` : ''}
-      ${d.division ? `<strong>Division:</strong> ${d.division}<br/>` : ''}
-      ${(d as any)?.population ? `<strong>Population:</strong> ${(d as any).population.toLocaleString()}<br/>` : ''}
-      ${(d as any)?.economic_index != null ? `<strong>Economic Index:</strong> ${(d as any).economic_index}<br/>` : ''}
-    <strong>Total Incoming (year):</strong> ${yearIncoming.toLocaleString()}<br/>
-    <strong>Total Outgoing (year):</strong> ${yearOutgoing.toLocaleString()}<br/>
-    <strong>* Visible Incoming:</strong> ${visibleIncoming.toLocaleString()}<br/>
-    <strong>* Visible Outgoing:</strong> ${visibleOutgoing.toLocaleString()}<br/>
-      <strong>Total Net (year):</strong> ${netYear.toLocaleString()}<br/>
-      <strong>* Visible Net:</strong> ${netVisible.toLocaleString()}<br/>
-      ${(overlayPast || overlayFuture) ? `<strong>Overlay Past Total:</strong> ${overlayPast.toLocaleString()}<br/><strong>Overlay Future Total:</strong> ${overlayFuture.toLocaleString()}<br/><strong>Overlay Δ (future - past):</strong> ${overlayDelta.toLocaleString()}<br/>` : ''}
-      <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
-    `);
+    const nodesForTooltip = gatherNodesAtPointer(event, d);
+    tooltip.html(renderTooltipHtmlForNodes(nodesForTooltip));
 
     tooltip
       .style("left", (event.pageX + 10) + "px")
@@ -396,6 +466,8 @@ enhanceNodeSelection
   .on("mousemove", function(event) {
     const tooltip = d3.select(".kriskogram-tooltip");
     if (!tooltip.empty()) {
+      const nodesForTooltip = gatherNodesAtPointer(event, d3.select(this).datum());
+      tooltip.html(renderTooltipHtmlForNodes(nodesForTooltip));
       tooltip
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 10) + "px");
@@ -825,7 +897,12 @@ enhanceNodeSelection.each(function (d) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
+        .attr("stroke-linecap", (d: any) => ((d as any)?.__overlayLineCap) ?? "round")
+        .attr("stroke-dasharray", (d: any) => {
+          const dash = (d as any)?.__overlayDash;
+          return dash ? dash : null;
+        })
+        .attr("stroke-dashoffset", (d: any) => (d as any)?.__overlayDashOffset ?? 0)
         .style("cursor", "pointer")
         .on("mouseover", function(_event, d) {
           const currentStroke = d3.select(this).attr("stroke");
@@ -915,7 +992,12 @@ enhanceNodeSelection.each(function (d) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
+        .attr("stroke-linecap", (d: any) => ((d as any)?.__overlayLineCap) ?? "round")
+        .attr("stroke-dasharray", (d: any) => {
+          const dash = (d as any)?.__overlayDash;
+          return dash ? dash : null;
+        })
+        .attr("stroke-dashoffset", (d: any) => (d as any)?.__overlayDashOffset ?? 0)
         .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity));
 
       // Re-render legend when data/props change

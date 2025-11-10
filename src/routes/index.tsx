@@ -34,7 +34,12 @@ function App() {
                 egoNeighborSteps: 1,
                 egoStepColoring: false,
                 temporalOverlay: false,
-                temporalOverlayStyle: 'segmented',
+                temporalOverlayEdgeStyle: 'filled',
+                temporalOverlayNodeStyle: 'filled',
+                edgeSegmentLength: 8,
+                edgeSegmentGap: 4,
+                edgeSegmentOffset: 0,
+                edgeSegmentCap: 'round',
                 temporalOverlayYears: 1,
                 edgeWeightScale: 'linear',
               }}
