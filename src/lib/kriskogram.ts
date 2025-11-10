@@ -45,7 +45,14 @@ export interface KriskogramConfig {
   lens?: { enabled: boolean; x: number; y: number; radius: number };
   legend?:
     | { type: 'direction'; labels?: { above: string; below: string }; colors?: { above: string; below: string } }
-    | { type: 'weight'; color: string }
+    | {
+        type: 'weight';
+        color: string;
+        scale?: 'linear' | 'sqrt' | 'log';
+        min?: number;
+        max?: number;
+        samples?: Array<{ value: number; color: string; width: number; fraction?: number }>;
+      }
     | { type: 'categorical'; title?: string; entries: Array<{ label: string; color: string }>; interNote?: string };
 }
 
@@ -511,18 +518,87 @@ enhanceNodeSelection.each(function (d) {
       w = 36 + Math.max(above.length, below.length) * 6.5;
       h = 18 + 18;
     } else if ((config.legend as any).type === 'weight') {
-      const color = (config.legend as any).color as string;
+      const weightLegend = config.legend as {
+        color: string;
+        scale?: 'linear' | 'sqrt' | 'log';
+        min?: number;
+        max?: number;
+        samples?: Array<{ value: number; color: string; width: number; fraction?: number }>;
+      };
       const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
-      const gradId = `lg-grad-${Math.random().toString(36).slice(2)}`;
-      const defs2 = svg.append('defs');
-      const grad = defs2.append('linearGradient').attr('id', gradId);
-      grad.append('stop').attr('offset', '0%').attr('stop-color', `hsla(200, 70%, 80%, 1)`);
-      grad.append('stop').attr('offset', '100%').attr('stop-color', `hsla(200, 70%, 30%, 1)`);
-      group.append('rect').attr('x', 0).attr('y', 0).attr('width', 120).attr('height', 10).attr('fill', `url(#${gradId})`).attr('stroke', '#ccc');
-      group.append('text').attr('x', 0).attr('y', 24).attr('fill', '#333').attr('font-size', 11).text('Lower');
-      group.append('text').attr('x', 120).attr('y', 24).attr('text-anchor', 'end').attr('fill', '#333').attr('font-size', 11).text('Higher');
-      w = 120;
-      h = 30;
+      const formatValue = (value?: number) => {
+        if (value === undefined || !Number.isFinite(value)) return '—';
+        const formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+        return formatter.format(value);
+      };
+      const scaleLabel =
+        weightLegend.scale === 'sqrt'
+          ? 'Scale: square root'
+          : weightLegend.scale === 'log'
+            ? 'Scale: logarithmic'
+            : 'Scale: linear';
+      let cursorY = 0;
+      group
+        .append('text')
+        .attr('x', 0)
+        .attr('y', cursorY)
+        .attr('fill', '#333')
+        .attr('font-size', 12)
+        .attr('font-weight', 600)
+        .text('Edge weight intensity');
+      cursorY += 16;
+      group
+        .append('text')
+        .attr('x', 0)
+        .attr('y', cursorY)
+        .attr('fill', '#4b5563')
+        .attr('font-size', 10)
+        .text(scaleLabel);
+      cursorY += 14;
+      if (weightLegend.min !== undefined && weightLegend.max !== undefined) {
+        group
+          .append('text')
+          .attr('x', 0)
+          .attr('y', cursorY)
+          .attr('fill', '#4b5563')
+          .attr('font-size', 10)
+          .text(`Range: ${formatValue(weightLegend.min)} → ${formatValue(weightLegend.max)}`);
+        cursorY += 16;
+      }
+      const samples =
+        Array.isArray(weightLegend.samples) && weightLegend.samples.length > 0
+          ? weightLegend.samples
+          : [
+              { value: weightLegend.min ?? 0, color: weightLegend.color, width: 2, fraction: 0 },
+              { value: weightLegend.max ?? 0, color: weightLegend.color, width: 8, fraction: 1 },
+            ];
+      let maxLabelChars = 0;
+      samples.forEach((sample) => {
+        const fractionLabel =
+          sample.fraction !== undefined ? ` (${Math.round(sample.fraction * 100)}%)` : '';
+        const labelText = `${formatValue(sample.value)}${fractionLabel}`;
+        const lineY = cursorY + 4;
+        group
+          .append('line')
+          .attr('x1', 0)
+          .attr('y1', lineY)
+          .attr('x2', 64)
+          .attr('y2', lineY)
+          .attr('stroke', sample.color ?? weightLegend.color)
+          .attr('stroke-width', Math.max(1.5, sample.width ?? 2))
+          .attr('stroke-linecap', 'round');
+        group
+          .append('text')
+          .attr('x', 72)
+          .attr('y', cursorY + 8)
+          .attr('fill', '#333')
+          .attr('font-size', 11)
+          .text(labelText);
+        maxLabelChars = Math.max(maxLabelChars, labelText.length);
+        cursorY += 22;
+      });
+      w = 72 + maxLabelChars * 6.2;
+      h = cursorY;
     } else if ((config.legend as any).type === 'categorical') {
       const { entries, title, interNote } = (config.legend as any);
       const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);

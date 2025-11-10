@@ -41,3 +41,23 @@ describe('State migration CSV completeness', () => {
   }
 });
 
+describe('State migration self-flow coverage', () => {
+  it('2005 CSV includes same-state flows', async () => {
+    const file = tidyCsvFiles.find((entry) => entry.filePath.endsWith('state_to_state_migrations_table_2005_2005.csv'));
+    expect(file).toBeDefined();
+    const raw = await readFile(file!.filePath, 'utf8');
+    const parsed = parseStateMigrationCSV(raw);
+    const hasSelfFlow = parsed.edges.some((edge) => edge.source === edge.target);
+    expect(hasSelfFlow).toBe(true);
+  });
+
+  it('2015 CSV omits same-state flows in raw data', async () => {
+    const file = tidyCsvFiles.find((entry) => entry.filePath.endsWith('state_to_state_migrations_table_2015_2015.csv'));
+    expect(file).toBeDefined();
+    const raw = await readFile(file!.filePath, 'utf8');
+    const parsed = parseStateMigrationCSV(raw);
+    const hasSelfFlow = parsed.edges.some((edge) => edge.source === edge.target);
+    expect(hasSelfFlow).toBe(false);
+  });
+});
+

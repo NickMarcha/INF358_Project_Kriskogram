@@ -134,6 +134,31 @@ const explorerSearchSchema = z.object({
   minThreshold: safeCoerceNumber(0),
   maxThreshold: safeCoerceNumber(200000),
   maxEdges: safeCoerceNumber(500),
+  edgeWeightScale: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return 'linear'
+      const lowered = val.toLowerCase()
+      if (['linear', 'sqrt', 'log'].includes(lowered)) return lowered
+      return 'linear'
+    },
+    z.enum(['linear', 'sqrt', 'log']).default('linear'),
+  ),
+  egoNodeId: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '' || val === 'null') return null
+      return typeof val === 'string' ? val : undefined
+    },
+    z.string().nullable().optional(),
+  ),
+  egoNeighborSteps: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+      if (Number.isNaN(num) || num < 1) return 1
+      return Math.max(1, Math.round(num))
+    },
+    z.number().min(1).default(1),
+  ),
   edgeType: z.preprocess(
     (val) => {
       if (val === 'null' || val === '') return null
@@ -192,6 +217,34 @@ export const Route = createFileRoute('/explorer')({
       return typeof search.edgeType === 'string' ? search.edgeType : undefined
     })()
     
+    const safeEgoNodeId = (() => {
+      if (search.egoNodeId === undefined || search.egoNodeId === null || search.egoNodeId === '' || search.egoNodeId === 'null') {
+        return null
+      }
+      return typeof search.egoNodeId === 'string' ? search.egoNodeId : null
+    })()
+
+    const safeEgoNeighborSteps = (() => {
+      if (search.egoNeighborSteps === undefined || search.egoNeighborSteps === null || search.egoNeighborSteps === '') {
+        return 1
+      }
+      const num = typeof search.egoNeighborSteps === 'string'
+        ? parseInt(search.egoNeighborSteps, 10)
+        : Number(search.egoNeighborSteps)
+      if (Number.isNaN(num) || num < 1) return 1
+      return Math.max(1, Math.round(num))
+    })()
+
+    const safeEdgeWeightScale = (() => {
+      if (typeof search.edgeWeightScale === 'string') {
+        const lowered = search.edgeWeightScale.toLowerCase()
+        if (['linear', 'sqrt', 'log'].includes(lowered)) {
+          return lowered as 'linear' | 'sqrt' | 'log'
+        }
+      }
+      return 'linear' as const
+    })()
+
     const safeShowAllNodes = (() => {
       if (typeof search.showAllNodes === 'boolean') return search.showAllNodes
       if (typeof search.showAllNodes === 'string') {
@@ -211,6 +264,9 @@ export const Route = createFileRoute('/explorer')({
       maxEdges: safeMaxEdges,
       edgeType: safeEdgeType,
       showAllNodes: safeShowAllNodes,
+      egoNodeId: safeEgoNodeId,
+      egoNeighborSteps: safeEgoNeighborSteps,
+      edgeWeightScale: safeEdgeWeightScale,
     }
   },
   search: {
@@ -236,6 +292,11 @@ function ExplorerPage() {
   const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const [showAllNodes, setShowAllNodes] = useState<boolean>(search.showAllNodes ?? false)
+  const [egoNodeId, setEgoNodeId] = useState<string | null>(search.egoNodeId ?? null)
+  const [egoNeighborSteps, setEgoNeighborSteps] = useState<number>(search.egoNeighborSteps ?? 1)
+  const [edgeWeightScale, setEdgeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
+    search.edgeWeightScale ?? 'linear',
+  )
   const krRef = useRef<KriskogramRef>(null)
   
   // Sidebar state for right panel
@@ -318,6 +379,7 @@ function ExplorerPage() {
     | 'net_year'
     | 'outgoing'
     | 'incoming'
+    | 'self_year'
   >('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [nodeSizeMode, setNodeSizeMode] = useState<
@@ -331,6 +393,7 @@ function ExplorerPage() {
     | 'net_year'
     | 'outgoing'
     | 'incoming'
+    | 'self_year'
   >('fixed')
   const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>('pan')
@@ -418,15 +481,20 @@ function ExplorerPage() {
 
     dataset.snapshots.forEach((snapshot: any) => {
       const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
-      if (edges.length > maxEdgesCount) {
-        maxEdgesCount = edges.length
-      }
+      let nonSelfCount = 0
       edges.forEach((edge: any) => {
+        if (edge?.source && edge.source === edge.target) {
+          return
+        }
         const value = Number(edge?.value)
         if (!Number.isFinite(value)) return
+        nonSelfCount += 1
         if (value < min) min = value
         if (value > max) max = value
       })
+      if (nonSelfCount > maxEdgesCount) {
+        maxEdgesCount = nonSelfCount
+      }
     })
 
     if (min === Infinity || max === -Infinity) {
@@ -512,6 +580,30 @@ function ExplorerPage() {
     }
   }, [dataset])
 
+  const datasetNodeSelfFlowStats = useMemo(() => {
+    if (!dataset) return null
+
+    let maxSelf = 0
+
+    dataset.snapshots.forEach((snapshot: any) => {
+      const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
+      const totals = new Map<string, number>()
+      edges.forEach((edge: any) => {
+        if (edge?.source && edge.source === edge.target) {
+          const val = Number(edge.value)
+          if (!Number.isFinite(val) || val <= 0) return
+          const current = totals.get(edge.source) || 0
+          totals.set(edge.source, current + val)
+        }
+      })
+      totals.forEach((total) => {
+        if (total > maxSelf) maxSelf = total
+      })
+    })
+
+    return { max: maxSelf }
+  }, [dataset])
+
   // Auto-adjust thresholds to stay within dataset-wide bounds
   useEffect(() => {
     if (!datasetEdgeStats) return
@@ -569,6 +661,18 @@ function ExplorerPage() {
     setEdgeTypeFilter(null)
   }, [selectedId])
 
+  // Reset ego focus if the selected node is not present in the current snapshot
+  useEffect(() => {
+    if (!currentSnapshot) return
+    if (egoNodeId) {
+      const exists = (currentSnapshot.nodes as any[]).some((n: any) => n.id === egoNodeId)
+      if (!exists) {
+        setEgoNodeId(null)
+        updateSearchParams({ egoNodeId: null })
+      }
+    }
+  }, [currentSnapshot, egoNodeId, updateSearchParams])
+
   // Calculate filtered edges and nodes
   const filteredData = useMemo(() => {
     if (!currentSnapshot) return { nodes: [], edges: [] }
@@ -576,12 +680,18 @@ function ExplorerPage() {
     // Precompute totals across all edges (unfiltered) for full-year stats
     const totalIncomingAll = new Map<string, number>()
     const totalOutgoingAll = new Map<string, number>()
+    const totalSelfFlowAll = new Map<string, number>()
     ;(currentSnapshot.edges as any[]).forEach((edge: any) => {
       const outgoing = totalOutgoingAll.get(edge.source) || 0
       totalOutgoingAll.set(edge.source, outgoing + edge.value)
 
       const incoming = totalIncomingAll.get(edge.target) || 0
       totalIncomingAll.set(edge.target, incoming + edge.value)
+
+      if (edge.source === edge.target) {
+        const currentSelf = totalSelfFlowAll.get(edge.source) || 0
+        totalSelfFlowAll.set(edge.source, currentSelf + edge.value)
+      }
     })
 
     // First filter by edge type if selected
@@ -590,6 +700,8 @@ function ExplorerPage() {
       edgeTypeInfo?.property || '',
       edgeTypeFilter
     )
+
+    edgesToFilter = edgesToFilter.filter((edge: any) => edge?.source !== edge?.target)
 
     // Intra-only filter by region/division
     if (intraFilter !== 'none') {
@@ -626,17 +738,56 @@ function ExplorerPage() {
       .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
       .sort((a: any, b: any) => b.value - a.value)
       .slice(0, maxEdges)
+
+    let visibleEdges = filteredEdges
+
+    if (viewType === 'kriskogram' && egoNodeId) {
+      const normalizedSteps = Math.max(1, Math.round(egoNeighborSteps))
+      const allowedEdgeIndexes = new Set<number>()
+      let frontier = new Set<string>()
+      const visitedNodes = new Set<string>()
+
+      frontier.add(egoNodeId)
+      visitedNodes.add(egoNodeId)
+
+      for (let step = 1; step <= normalizedSteps && frontier.size > 0; step += 1) {
+        const nextFrontier = new Set<string>()
+
+        filteredEdges.forEach((edge: any, idx: number) => {
+          if (frontier.has(edge.source) || frontier.has(edge.target)) {
+            allowedEdgeIndexes.add(idx)
+
+            if (!visitedNodes.has(edge.source)) {
+              visitedNodes.add(edge.source)
+              nextFrontier.add(edge.source)
+            }
+            if (!visitedNodes.has(edge.target)) {
+              visitedNodes.add(edge.target)
+              nextFrontier.add(edge.target)
+            }
+          }
+        })
+
+        frontier = nextFrontier
+      }
+
+      visibleEdges = filteredEdges.filter((_, idx) => allowedEdgeIndexes.has(idx))
+    }
     
     const activeNodeIds = new Set<string>()
-    filteredEdges.forEach((e: any) => {
+    visibleEdges.forEach((e: any) => {
       activeNodeIds.add(e.source)
       activeNodeIds.add(e.target)
     })
+
+    if (egoNodeId) {
+      activeNodeIds.add(egoNodeId)
+    }
     
     const nodeIncoming = new Map<string, number>()
     const nodeOutgoing = new Map<string, number>()
 
-    filteredEdges.forEach((e: any) => {
+    visibleEdges.forEach((e: any) => {
       const outgoing = nodeOutgoing.get(e.source) || 0
       nodeOutgoing.set(e.source, outgoing + e.value)
 
@@ -674,6 +825,7 @@ function ExplorerPage() {
       const totalOutgoingYear = totalOutgoingAll.get(n.id) || 0
       const netVisible = visibleIncoming - visibleOutgoing
       const netYear = totalIncomingYear - totalOutgoingYear
+      const selfFlowYear = totalSelfFlowAll.get(n.id) || 0
 
       return {
         ...n,
@@ -685,10 +837,11 @@ function ExplorerPage() {
         total_outgoing_year: totalOutgoingYear,
         net_flow_visible: netVisible,
         net_flow_year: netYear,
+        self_flow_year: selfFlowYear,
       }
     })
     
-    return { nodes: nodesWithDynamicAttrs, edges: filteredEdges }
+    return { nodes: nodesWithDynamicAttrs, edges: visibleEdges }
   }, [
     currentSnapshot,
     minThreshold,
@@ -699,6 +852,9 @@ function ExplorerPage() {
     intraFilter,
     showAllNodes,
     viewType,
+    egoNodeId,
+    egoNeighborSteps,
+    edgeWeightScale,
   ])
 
   // Calculate statistics
@@ -858,13 +1014,53 @@ function ExplorerPage() {
                               const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
                               const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
                               const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
-                              const globalEdgeWeightRange = globalMaxEdgeWeight - globalMinEdgeWeight || 1
+                              const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0)
 
                               const normalizeEdgeWeight = (value: number) => {
-                                if (!Number.isFinite(value)) return 0
-                                const normalized = (value - globalMinEdgeWeight) / globalEdgeWeightRange
-                                if (!Number.isFinite(normalized)) return 0
-                                return Math.max(0, Math.min(1, normalized))
+                                if (!Number.isFinite(value) || weightSpan <= 0) return 0
+                                const clamped = Math.min(
+                                  Math.max(value, globalMinEdgeWeight),
+                                  globalMaxEdgeWeight,
+                                )
+                                const shifted = clamped - globalMinEdgeWeight
+                                switch (edgeWeightScale) {
+                                  case 'sqrt': {
+                                    const denom = Math.sqrt(weightSpan)
+                                    if (denom <= 0) return 0
+                                    return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom))
+                                  }
+                                  case 'log': {
+                                    const denom = Math.log10(weightSpan + 1)
+                                    if (!Number.isFinite(denom) || denom <= 0) return 0
+                                    return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom))
+                                  }
+                                  case 'linear':
+                                  default: {
+                                    const denom = weightSpan
+                                    if (denom <= 0) return 0
+                                    return Math.max(0, Math.min(1, shifted / denom))
+                                  }
+                                }
+                              }
+
+                              const valueForFraction = (fraction: number) => {
+                                if (weightSpan <= 0) return globalMinEdgeWeight
+                                const clampedF = Math.max(0, Math.min(1, fraction))
+                                switch (edgeWeightScale) {
+                                  case 'sqrt': {
+                                    return globalMinEdgeWeight + Math.pow(clampedF, 2) * weightSpan
+                                  }
+                                  case 'log': {
+                                    const denom = Math.log10(weightSpan + 1)
+                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinEdgeWeight
+                                    const increment = Math.pow(10, clampedF * denom) - 1
+                                    return globalMinEdgeWeight + increment
+                                  }
+                                  case 'linear':
+                                  default: {
+                                    return globalMinEdgeWeight + clampedF * weightSpan
+                                  }
+                                }
                               }
                               
                               // Compute node attribute ranges for color/size scaling
@@ -970,6 +1166,10 @@ function ExplorerPage() {
                                     }
                                     case 'net_year':
                                       return netColor(d.net_flow_year || 0)
+                                case 'self_year': {
+                                  const ratio = normalizedRatio(d.self_flow_year || 0, datasetNodeSelfFlowStats?.max ?? 0)
+                                  return gradientColor(280, 70, ratio)
+                                }
                                     case 'attribute': {
                                       if (!nodeColorAttribute) return '#2563eb'
                                       const propValue = d[nodeColorAttribute]
@@ -1004,6 +1204,7 @@ function ExplorerPage() {
                                   const yearIncoming = d.total_incoming_year || 0
                                   const netVisible = Math.abs(d.net_flow_visible || 0)
                                   const netYear = Math.abs(d.net_flow_year || 0)
+                                  const selfYear = d.self_flow_year || 0
 
                                   const sizeFromRatio = (ratio: number) => 3 + (Math.max(0, Math.min(1, ratio)) * 9)
 
@@ -1051,6 +1252,12 @@ function ExplorerPage() {
                                     const range = maxVal - minVal || 1
                                     const normalized = (propValue - minVal) / range
                                     return sizeFromRatio(normalized)
+                                  }
+                                  
+                                  if (nodeSizeMode === 'self_year') {
+                                    const maxSelf = datasetNodeSelfFlowStats?.max ?? 0
+                                    const ratio = maxSelf > 0 ? selfYear / maxSelf : 0
+                                    return sizeFromRatio(ratio)
                                   }
                                   
                                   return 6
@@ -1164,12 +1371,88 @@ function ExplorerPage() {
                             })()}
                             legend={(() => {
                               // Build legend from current color settings
+                              const edgeWeights = filteredData.edges.map((e: any) => e.value)
+                              const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
+                              const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
+                              const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
+                              const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
+                              const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0)
+
+                              const normalizeEdgeWeightForLegend = (value: number) => {
+                                if (!Number.isFinite(value) || weightSpan <= 0) return 0
+                                const clamped = Math.min(
+                                  Math.max(value, globalMinEdgeWeight),
+                                  globalMaxEdgeWeight,
+                                )
+                                const shifted = clamped - globalMinEdgeWeight
+                                switch (edgeWeightScale) {
+                                  case 'sqrt': {
+                                    const denom = Math.sqrt(weightSpan)
+                                    if (denom <= 0) return 0
+                                    return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom))
+                                  }
+                                  case 'log': {
+                                    const denom = Math.log10(weightSpan + 1)
+                                    if (!Number.isFinite(denom) || denom <= 0) return 0
+                                    return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom))
+                                  }
+                                  case 'linear':
+                                  default: {
+                                    if (weightSpan <= 0) return 0
+                                    return Math.max(0, Math.min(1, shifted / weightSpan))
+                                  }
+                                }
+                              }
+
+                              const valueForFractionForLegend = (fraction: number) => {
+                                if (weightSpan <= 0) return globalMinEdgeWeight
+                                const clampedF = Math.max(0, Math.min(1, fraction))
+                                switch (edgeWeightScale) {
+                                  case 'sqrt':
+                                    return globalMinEdgeWeight + Math.pow(clampedF, 2) * weightSpan
+                                  case 'log': {
+                                    const denom = Math.log10(weightSpan + 1)
+                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinEdgeWeight
+                                    const increment = Math.pow(10, clampedF * denom) - 1
+                                    return globalMinEdgeWeight + increment
+                                  }
+                                  case 'linear':
+                                  default:
+                                    return globalMinEdgeWeight + clampedF * weightSpan
+                                }
+                              }
+
                               if (!edgeColorAdvanced) {
                                 if (edgeColorHue === 'direction') {
                                   return { type: 'direction' as const };
                                 }
                                 if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
-                                  return { type: 'weight' as const, color: '#1f77b4' };
+                                  const sampleFractions = [0, 0.5, 1]
+                                  const samples = sampleFractions.map((fraction) => {
+                                    const value = valueForFractionForLegend(fraction)
+                                    const normalized = normalizeEdgeWeightForLegend(value)
+                                    const intensity = normalized
+                                    const light = 80 - (intensity * 55)
+                                    const color = `hsl(210, 70%, ${Math.round(light)}%)`
+                                    const width =
+                                      edgeWidthMode === 'weight'
+                                        ? 0.5 + normalized * 15
+                                        : baseEdgeWidth
+                                    return {
+                                      fraction: normalized,
+                                      value,
+                                      color,
+                                      width,
+                                    }
+                                  })
+                                  return {
+                                    type: 'weight' as const,
+                                    color: '#1f77b4',
+                                    scale: edgeWeightScale,
+                                    min: globalMinEdgeWeight,
+                                    max: globalMaxEdgeWeight,
+                                    samples,
+                                  }
                                 }
                               } else {
                                 if (edgeColorHue === 'region' && hasRegionData) {
@@ -1185,7 +1468,32 @@ function ExplorerPage() {
                                   return { type: 'categorical' as const, title: 'Divisions', entries, interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined }
                                 }
                                 if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
-                                  return { type: 'weight' as const, color: '#1f77b4' }
+                                  const sampleFractions = [0, 0.5, 1]
+                                  const samples = sampleFractions.map((fraction) => {
+                                    const value = valueForFractionForLegend(fraction)
+                                    const normalized = normalizeEdgeWeightForLegend(value)
+                                    const intensity = normalized
+                                    const light = 80 - (intensity * 55)
+                                    const color = `hsl(210, 70%, ${Math.round(light)}%)`
+                                    const width =
+                                      edgeWidthMode === 'weight'
+                                        ? 0.5 + normalized * 15
+                                        : baseEdgeWidth
+                                    return {
+                                      fraction: normalized,
+                                      value,
+                                      color,
+                                      width,
+                                    }
+                                  })
+                                  return {
+                                    type: 'weight' as const,
+                                    color: '#1f77b4',
+                                    scale: edgeWeightScale,
+                                    min: globalMinEdgeWeight,
+                                    max: globalMaxEdgeWeight,
+                                    samples,
+                                  }
                                 }
                               }
                               return undefined
@@ -1666,7 +1974,15 @@ function ExplorerPage() {
                       setInteractionMode('pan')
                       setLensRadius(80)
                       setLensPos({ x: 0, y: 0 })
-                      updateSearchParams({ showAllNodes: false })
+                      setEgoNodeId(null)
+                      setEgoNeighborSteps(1)
+                      setEdgeWeightScale('linear')
+                      updateSearchParams({
+                        showAllNodes: false,
+                        egoNodeId: null,
+                        egoNeighborSteps: 1,
+                        edgeWeightScale: 'linear',
+                      })
                     }}
                   >
                     {dataset?.metadata ? (
@@ -1691,6 +2007,62 @@ function ExplorerPage() {
                               updateSearchParams({ showAllNodes: checked })
                             }}
                           />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label htmlFor="kriskogram-ego-node" className="text-xs font-medium text-gray-700">
+                              Ego focus (optional)
+                            </label>
+                            <select
+                              id="kriskogram-ego-node"
+                              value={egoNodeId ?? ''}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                const nextValue = value === '' ? null : value
+                                setEgoNodeId(nextValue)
+                                updateSearchParams({ egoNodeId: nextValue })
+                              }}
+                              className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">No ego focus (show all eligible edges)</option>
+                              {((currentSnapshot?.nodes ?? []) as any[]).map((node: any) => (
+                                <option key={node.id} value={node.id}>
+                                  {node.label || node.id}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-1 text-[11px] text-gray-500">
+                              Limit the visualization to flows centered on a selected node.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label htmlFor="kriskogram-ego-steps" className="text-xs font-medium text-gray-700">
+                              Neighbor steps
+                            </label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                id="kriskogram-ego-steps"
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={egoNeighborSteps}
+                                disabled={!egoNodeId}
+                                onChange={(e) => {
+                                  const raw = Number.parseInt(e.target.value, 10)
+                                  if (Number.isNaN(raw)) return
+                                  const clamped = Math.max(1, Math.min(raw, 10))
+                                  setEgoNeighborSteps(clamped)
+                                  updateSearchParams({ egoNeighborSteps: clamped })
+                                }}
+                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                              />
+                              <span className="text-[11px] text-gray-500">
+                                How many hops from the ego node to include (based on currently visible edges).
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Node Ordering */}
@@ -1772,6 +2144,25 @@ function ExplorerPage() {
                           />
                         </div>
                       )}
+                      <div className="mt-2 space-y-1">
+                        <label className="text-xs font-medium text-gray-700">Weight scaling</label>
+                        <select
+                          value={edgeWeightScale}
+                          onChange={(e) => {
+                            const value = e.target.value as 'linear' | 'sqrt' | 'log'
+                            setEdgeWeightScale(value)
+                            updateSearchParams({ edgeWeightScale: value })
+                          }}
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="linear">Linear (use raw weight differences)</option>
+                          <option value="sqrt">Square root (compress extremes)</option>
+                          <option value="log">Logarithmic (highlight small flows)</option>
+                        </select>
+                        <p className="text-[11px] text-gray-500">
+                          Applies to both edge widths and weight-based color intensity.
+                        </p>
+                      </div>
                     </div>
 
                     {/* Edge Color */}
@@ -1906,6 +2297,7 @@ function ExplorerPage() {
                         <option value="year_outgoing">Year Outgoing Flow</option>
                         <option value="year_incoming">Year Incoming Flow</option>
                         <option value="net_year">Net Flow (year)</option>
+                        <option value="self_year">Self Flow (year)</option>
                         <option value="attribute">By Attribute</option>
                       </select>
                       {nodeColorMode === 'attribute' && (
@@ -1944,6 +2336,7 @@ function ExplorerPage() {
                         <option value="year_incoming">Year Incoming Flow</option>
                         <option value="net_visible">Net Flow (visible)</option>
                         <option value="net_year">Net Flow (year)</option>
+                        <option value="self_year">Self Flow (year)</option>
                         <option value="attribute">By Attribute</option>
                       </select>
                       {nodeSizeMode === 'attribute' && (

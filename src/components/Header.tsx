@@ -26,6 +26,9 @@ export default function Header() {
               maxThreshold: 200000,
               maxEdges: 500,
               showAllNodes: false,
+              egoNodeId: null,
+              egoNeighborSteps: 1,
+              edgeWeightScale: 'linear',
             }}
           >
             Explorer

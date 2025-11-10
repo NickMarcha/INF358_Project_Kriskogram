@@ -240,6 +240,9 @@ function DatasetsPage() {
                   maxThreshold: 200000,
                   maxEdges: 500,
                   showAllNodes: false,
+                  egoNodeId: null,
+                  egoNeighborSteps: 1,
+                  edgeWeightScale: 'linear',
                 }}
                 className="text-blue-600 hover:text-blue-800 underline"
               >
@@ -278,6 +281,9 @@ function DatasetsPage() {
               maxThreshold: 200000,
               maxEdges: 500,
               showAllNodes: false,
+              egoNodeId: null,
+              egoNeighborSteps: 1,
+              edgeWeightScale: 'linear',
             }}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
