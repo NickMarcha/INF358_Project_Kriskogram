@@ -119,6 +119,40 @@ const safeCoerceBoolean = (defaultValue: boolean) =>
     z.boolean().default(defaultValue),
   )
 
+function safeCoerceEnum<T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) {
+  return z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const lowered = val.toLowerCase()
+        const match = values.find((option) => option.toLowerCase() === lowered)
+        if (match) return match
+      }
+      return fallback
+    },
+    z.enum(values).default(fallback),
+  )
+}
+
+function safeCoerceString(fallback: string) {
+  return z.preprocess(
+    (val) => {
+      if (typeof val === 'string' && val.trim() !== '') return val
+      return fallback
+    },
+    z.string().default(fallback),
+  )
+}
+
+function safeCoerceNullableString() {
+  return z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return null
+      return typeof val === 'string' ? val : null
+    },
+    z.string().nullable().default(null),
+  )
+}
+
 const explorerSearchSchema = z.object({
   dataset: z.string().optional(),
   view: z.preprocess(
@@ -201,6 +235,62 @@ const explorerSearchSchema = z.object({
       return Math.max(1, Math.round(num))
     },
     z.number().min(1).default(1),
+  ),
+  nodeOrderMode: safeCoerceString('alphabetical'),
+  arcOpacity: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 0.85
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 0.85
+      return Math.max(0, Math.min(1, num))
+    },
+    z.number().min(0).max(1).default(0.85),
+  ),
+  edgeWidthMode: safeCoerceEnum(['fixed', 'weight'] as const, 'weight'),
+  edgeColorAdvanced: safeCoerceBoolean(false),
+  edgeColorHue: safeCoerceEnum(['direction', 'region', 'division', 'attribute', 'single'] as const, 'direction'),
+  edgeColorHueAttribute: safeCoerceNullableString(),
+  edgeColorIntensity: safeCoerceEnum(['constant', 'weight', 'attribute'] as const, 'weight'),
+  edgeColorIntensityAttribute: safeCoerceNullableString(),
+  edgeColorIntensityConst: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 0.6
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 0.6
+      return Math.max(0, Math.min(1, num))
+    },
+    z.number().min(0).max(1).default(0.6),
+  ),
+  edgeColorInterGrayscale: safeCoerceBoolean(true),
+  intraFilter: safeCoerceEnum(['none', 'region', 'division', 'interRegion', 'interDivision'] as const, 'none'),
+  baseEdgeWidth: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 2
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 2
+      return Math.max(0.5, Math.min(12, num))
+    },
+    z.number().min(0.5).max(12).default(2),
+  ),
+  nodeColorMode: safeCoerceEnum(
+    ['single', 'attribute', 'visible_outgoing', 'visible_incoming', 'year_outgoing', 'year_incoming', 'net_year', 'outgoing', 'incoming', 'self_year'] as const,
+    'single',
+  ),
+  nodeColorAttribute: safeCoerceNullableString(),
+  nodeSizeMode: safeCoerceEnum(
+    ['fixed', 'attribute', 'visible_outgoing', 'visible_incoming', 'year_outgoing', 'year_incoming', 'net_visible', 'net_year', 'outgoing', 'incoming', 'self_year'] as const,
+    'fixed',
+  ),
+  nodeSizeAttribute: safeCoerceNullableString(),
+  interactionMode: safeCoerceEnum(['pan', 'lens'] as const, 'pan'),
+  lensRadius: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 80
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 80
+      return Math.max(20, Math.min(300, num))
+    },
+    z.number().min(20).max(300).default(80),
   ),
   edgeSegmentLength: safeCoerceNumber(8),
   edgeSegmentGap: safeCoerceNumber(4),
@@ -428,6 +518,161 @@ export const Route = createFileRoute('/explorer')({
       return Number.isNaN(num) ? 3 : Math.max(0.5, num)
     })()
 
+    const safeNodeOrderMode = (() => {
+      if (typeof search.nodeOrderMode === 'string' && search.nodeOrderMode.trim() !== '') {
+        return search.nodeOrderMode
+      }
+      return 'alphabetical'
+    })()
+
+    const safeArcOpacity = (() => {
+      if (search.arcOpacity === undefined || search.arcOpacity === null || search.arcOpacity === '') return 0.85
+      const num = typeof search.arcOpacity === 'string' ? parseFloat(search.arcOpacity) : Number(search.arcOpacity)
+      if (Number.isNaN(num)) return 0.85
+      return Math.max(0, Math.min(1, num))
+    })()
+
+    const safeEdgeWidthMode = (() => {
+      if (typeof search.edgeWidthMode === 'string') {
+        const lowered = search.edgeWidthMode.toLowerCase()
+        if (lowered === 'fixed' || lowered === 'weight') {
+          return lowered as 'fixed' | 'weight'
+        }
+      }
+      return 'weight' as const
+    })()
+
+    const safeEdgeColorAdvanced = (() => {
+      if (typeof search.edgeColorAdvanced === 'boolean') return search.edgeColorAdvanced
+      if (typeof search.edgeColorAdvanced === 'string') {
+        const lowered = search.edgeColorAdvanced.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
+    })()
+
+    const safeEdgeColorHue = (() => {
+      if (typeof search.edgeColorHue === 'string') {
+        const lowered = search.edgeColorHue.toLowerCase()
+        if (['direction', 'region', 'division', 'attribute', 'single'].includes(lowered)) {
+          return lowered as 'direction' | 'region' | 'division' | 'attribute' | 'single'
+        }
+      }
+      return 'direction' as const
+    })()
+
+    const safeEdgeColorHueAttribute = (() => {
+      if (typeof search.edgeColorHueAttribute === 'string' && search.edgeColorHueAttribute !== '') {
+        return search.edgeColorHueAttribute
+      }
+      return null
+    })()
+
+    const safeEdgeColorIntensity = (() => {
+      if (typeof search.edgeColorIntensity === 'string') {
+        const lowered = search.edgeColorIntensity.toLowerCase()
+        if (['weight', 'constant', 'attribute'].includes(lowered)) {
+          return lowered as 'weight' | 'constant' | 'attribute'
+        }
+      }
+      return 'weight' as const
+    })()
+
+    const safeEdgeColorIntensityAttribute = (() => {
+      if (typeof search.edgeColorIntensityAttribute === 'string' && search.edgeColorIntensityAttribute !== '') {
+        return search.edgeColorIntensityAttribute
+      }
+      return null
+    })()
+
+    const safeEdgeColorIntensityConst = (() => {
+      if (search.edgeColorIntensityConst === undefined || search.edgeColorIntensityConst === null || search.edgeColorIntensityConst === '') return 0.6
+      const num = typeof search.edgeColorIntensityConst === 'string' ? parseFloat(search.edgeColorIntensityConst) : Number(search.edgeColorIntensityConst)
+      if (Number.isNaN(num)) return 0.6
+      return Math.max(0, Math.min(1, num))
+    })()
+
+    const safeEdgeColorInterGrayscale = (() => {
+      if (typeof search.edgeColorInterGrayscale === 'boolean') return search.edgeColorInterGrayscale
+      if (typeof search.edgeColorInterGrayscale === 'string') {
+        const lowered = search.edgeColorInterGrayscale.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return true
+    })()
+
+    const safeIntraFilter = (() => {
+      if (typeof search.intraFilter === 'string') {
+        const lowered = search.intraFilter
+        if (['none', 'region', 'division', 'interRegion', 'interDivision'].includes(lowered)) {
+          return lowered as 'none' | 'region' | 'division' | 'interRegion' | 'interDivision'
+        }
+      }
+      return 'none' as const
+    })()
+
+    const safeBaseEdgeWidth = (() => {
+      if (search.baseEdgeWidth === undefined || search.baseEdgeWidth === null || search.baseEdgeWidth === '') return 2
+      const num = typeof search.baseEdgeWidth === 'string' ? parseFloat(search.baseEdgeWidth) : Number(search.baseEdgeWidth)
+      if (Number.isNaN(num)) return 2
+      return Math.max(0.5, Math.min(12, num))
+    })()
+
+    const safeNodeColorMode = (() => {
+      if (typeof search.nodeColorMode === 'string') {
+        const lowered = search.nodeColorMode
+        const allowed = ['single', 'attribute', 'visible_outgoing', 'visible_incoming', 'year_outgoing', 'year_incoming', 'net_year', 'outgoing', 'incoming', 'self_year'] as const
+        if (allowed.includes(lowered as (typeof allowed)[number])) {
+          return lowered as (typeof allowed)[number]
+        }
+      }
+      return 'single' as const
+    })()
+
+    const safeNodeColorAttribute = (() => {
+      if (typeof search.nodeColorAttribute === 'string' && search.nodeColorAttribute !== '') {
+        return search.nodeColorAttribute
+      }
+      return null
+    })()
+
+    const safeNodeSizeMode = (() => {
+      if (typeof search.nodeSizeMode === 'string') {
+        const lowered = search.nodeSizeMode
+        const allowed = ['fixed', 'attribute', 'visible_outgoing', 'visible_incoming', 'year_outgoing', 'year_incoming', 'net_visible', 'net_year', 'outgoing', 'incoming', 'self_year'] as const
+        if (allowed.includes(lowered as (typeof allowed)[number])) {
+          return lowered as (typeof allowed)[number]
+        }
+      }
+      return 'fixed' as const
+    })()
+
+    const safeNodeSizeAttribute = (() => {
+      if (typeof search.nodeSizeAttribute === 'string' && search.nodeSizeAttribute !== '') {
+        return search.nodeSizeAttribute
+      }
+      return null
+    })()
+
+    const safeInteractionMode = (() => {
+      if (typeof search.interactionMode === 'string') {
+        const lowered = search.interactionMode.toLowerCase()
+        if (lowered === 'pan' || lowered === 'lens') {
+          return lowered as 'pan' | 'lens'
+        }
+      }
+      return 'pan' as const
+    })()
+
+    const safeLensRadius = (() => {
+      if (search.lensRadius === undefined || search.lensRadius === null || search.lensRadius === '') return 80
+      const num = typeof search.lensRadius === 'string' ? parseFloat(search.lensRadius) : Number(search.lensRadius)
+      if (Number.isNaN(num)) return 80
+      return Math.max(20, Math.min(300, num))
+    })()
+
     return {
       dataset: typeof search.dataset === 'string' ? search.dataset : undefined,
       view: safeView,
@@ -453,6 +698,24 @@ export const Route = createFileRoute('/explorer')({
       edgeSegmentScaleByWeight: safeEdgeSegmentScaleByWeight,
       edgeSegmentCap: safeEdgeSegmentCap,
       edgeOutlineGap: safeEdgeOutlineGap,
+      nodeOrderMode: safeNodeOrderMode,
+      arcOpacity: safeArcOpacity,
+      edgeWidthMode: safeEdgeWidthMode,
+      edgeColorAdvanced: safeEdgeColorAdvanced,
+      edgeColorHue: safeEdgeColorHue,
+      edgeColorHueAttribute: safeEdgeColorHueAttribute,
+      edgeColorIntensity: safeEdgeColorIntensity,
+      edgeColorIntensityAttribute: safeEdgeColorIntensityAttribute,
+      edgeColorIntensityConst: safeEdgeColorIntensityConst,
+      edgeColorInterGrayscale: safeEdgeColorInterGrayscale,
+      intraFilter: safeIntraFilter,
+      baseEdgeWidth: safeBaseEdgeWidth,
+      nodeColorMode: safeNodeColorMode,
+      nodeColorAttribute: safeNodeColorAttribute,
+      nodeSizeMode: safeNodeSizeMode,
+      nodeSizeAttribute: safeNodeSizeAttribute,
+      interactionMode: safeInteractionMode,
+      lensRadius: safeLensRadius,
     }
   },
   search: {
@@ -557,21 +820,21 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
   }, [leftSidebarCollapsed, rightSidebarCollapsed, leftSidebarWidth, rightSidebarWidth])
   
   // Kriskogram visualization controls (only used when viewType === 'kriskogram')
-  const [nodeOrderMode, setNodeOrderMode] = useState<'alphabetical' | string>('alphabetical') // 'alphabetical' or property name
-  const [arcOpacity, setArcOpacity] = useState(0.85)
+  const [nodeOrderMode, setNodeOrderMode] = useState<string>(search.nodeOrderMode ?? 'alphabetical') // 'alphabetical' or property name
+  const [arcOpacity, setArcOpacity] = useState(search.arcOpacity ?? 0.85)
   // Edge styling controls (inverted: independent width and color selectors)
-  const [edgeWidthMode, setEdgeWidthMode] = useState<'fixed' | 'weight'>('weight')
+  const [edgeWidthMode, setEdgeWidthMode] = useState<'fixed' | 'weight'>(search.edgeWidthMode ?? 'weight')
   // Edge color (advanced: separate hue and intensity sources)
-  const [edgeColorAdvanced, setEdgeColorAdvanced] = useState<boolean>(false)
-  const [edgeColorHue, setEdgeColorHue] = useState<'direction' | 'region' | 'division' | 'attribute' | 'single'>('direction')
-  const [edgeColorHueAttribute, setEdgeColorHueAttribute] = useState<string | null>(null)
-  const [edgeColorIntensity, setEdgeColorIntensity] = useState<'constant' | 'weight' | 'attribute'>('weight')
-  const [edgeColorIntensityAttribute, setEdgeColorIntensityAttribute] = useState<string | null>(null)
-  const [edgeColorIntensityConst, setEdgeColorIntensityConst] = useState<number>(0.6)
-  const [edgeColorInterGrayscale, setEdgeColorInterGrayscale] = useState<boolean>(true)
+  const [edgeColorAdvanced, setEdgeColorAdvanced] = useState<boolean>(search.edgeColorAdvanced ?? false)
+  const [edgeColorHue, setEdgeColorHue] = useState<'direction' | 'region' | 'division' | 'attribute' | 'single'>(search.edgeColorHue ?? 'direction')
+  const [edgeColorHueAttribute, setEdgeColorHueAttribute] = useState<string | null>(search.edgeColorHueAttribute ?? null)
+  const [edgeColorIntensity, setEdgeColorIntensity] = useState<'constant' | 'weight' | 'attribute'>(search.edgeColorIntensity ?? 'weight')
+  const [edgeColorIntensityAttribute, setEdgeColorIntensityAttribute] = useState<string | null>(search.edgeColorIntensityAttribute ?? null)
+  const [edgeColorIntensityConst, setEdgeColorIntensityConst] = useState<number>(search.edgeColorIntensityConst ?? 0.6)
+  const [edgeColorInterGrayscale, setEdgeColorInterGrayscale] = useState<boolean>(search.edgeColorInterGrayscale ?? true)
   // Intra/Inter filters
-  const [intraFilter, setIntraFilter] = useState<'none' | 'region' | 'division' | 'interRegion' | 'interDivision'>('none')
-  const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
+  const [intraFilter, setIntraFilter] = useState<'none' | 'region' | 'division' | 'interRegion' | 'interDivision'>(search.intraFilter ?? 'none')
+  const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(search.baseEdgeWidth ?? 2)
   const [nodeColorMode, setNodeColorMode] = useState<
     | 'single'
     | 'attribute'
@@ -583,8 +846,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     | 'outgoing'
     | 'incoming'
     | 'self_year'
-  >('single')
-  const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
+  >(search.nodeColorMode ?? 'single')
+  const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(search.nodeColorAttribute ?? null) // Property name when mode is 'attribute'
   const [nodeSizeMode, setNodeSizeMode] = useState<
     | 'fixed'
     | 'attribute'
@@ -597,10 +860,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     | 'outgoing'
     | 'incoming'
     | 'self_year'
-  >('fixed')
-  const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
-  const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>('pan')
-  const [lensRadius, setLensRadius] = useState(80)
+  >(search.nodeSizeMode ?? 'fixed')
+  const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(search.nodeSizeAttribute ?? null) // Property name when mode is 'attribute'
+  const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>(search.interactionMode ?? 'pan')
+  const [lensRadius, setLensRadius] = useState(search.lensRadius ?? 80)
   const [lensPos, setLensPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   
   // Function to update search params when state changes
@@ -663,16 +926,34 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       .then((d) => {
         setDataset(d)
         if (d) {
-          setCurrentYear(d.timeRange.start)
-          // Reset filters when switching datasets
-          setMinThreshold(0)
-          setMaxEdges(500)
-          // Max threshold will be adjusted when snapshot loads
+          const { start, end } = d.timeRange ?? {}
+          setCurrentYear((prev) => {
+            const isWithinRange = (year: number | undefined) =>
+              typeof year === 'number' &&
+              typeof start === 'number' &&
+              typeof end === 'number' &&
+              year >= start &&
+              year <= end
+
+          if (isWithinRange(prev)) {
+            return prev as number
+          }
+
+          if (isWithinRange(search.year as number | undefined)) {
+            return search.year as number
+          }
+
+          if (typeof start === 'number') {
+            return start
+          }
+
+          return prev ?? start ?? undefined
+        })
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load dataset'))
       .finally(() => setLoading(false))
-  }, [selectedId, refreshKey]) // Include refreshKey to force reload
+  }, [selectedId, refreshKey, search.year]) // Include refreshKey to force reload
 
   const currentSnapshot: KriskogramSnapshot | undefined = useMemo(() => {
     if (!dataset || currentYear === undefined) return undefined
@@ -1443,7 +1724,17 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
   }, [currentSnapshot, egoNodeId, egoStepColoring, updateSearchParams])
 
   useEffect(() => {
-    if (!dataset || dataset.timeRange.start === dataset.timeRange.end || typeof currentYear !== 'number') {
+    if (!dataset) return;
+
+    const hasTemporalRange =
+      dataset.timeRange &&
+      typeof dataset.timeRange.start === 'number' &&
+      typeof dataset.timeRange.end === 'number' &&
+      dataset.timeRange.start !== dataset.timeRange.end;
+
+    const hasValidYear = typeof currentYear === 'number' && hasTemporalRange;
+
+    if (!hasTemporalRange || !hasValidYear) {
       if (temporalOverlayEnabled) {
         setTemporalOverlayEnabled(false)
         updateSearchParams({
@@ -1456,23 +1747,23 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           edgeSegmentCap,
           edgeSegmentAnimate,
           edgeOutlineGap,
-         })
-       }
-     }
-   }, [
-     dataset,
-     currentYear,
-     temporalOverlayEnabled,
-     temporalOverlayEdgeStyle,
-     temporalOverlayNodeStyle,
-     edgeSegmentLength,
-     edgeSegmentGap,
-     edgeSegmentOffset,
-     edgeSegmentCap,
-     edgeSegmentAnimate,
-     edgeOutlineGap,
-     updateSearchParams,
-   ])
+        })
+      }
+    }
+  }, [
+    dataset,
+    currentYear,
+    temporalOverlayEnabled,
+    temporalOverlayEdgeStyle,
+    temporalOverlayNodeStyle,
+    edgeSegmentLength,
+    edgeSegmentGap,
+    edgeSegmentOffset,
+    edgeSegmentCap,
+    edgeSegmentAnimate,
+    edgeOutlineGap,
+    updateSearchParams,
+  ])
 
   useEffect(() => {
     if (!isInitialMount.current) {
@@ -2156,7 +2447,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             }}
                             onWheelInCanvas={(deltaY) => {
                               if (interactionMode === 'lens') {
-                                setLensRadius((r) => Math.max(20, Math.min(300, r + (deltaY > 0 ? -10 : 10))))
+                                setLensRadius((r) => {
+                                  const next = Math.max(20, Math.min(300, r + (deltaY > 0 ? -10 : 10)))
+                                  updateSearchParams({ lensRadius: next })
+                                  return next
+                                })
                               }
                             }}
                           />
@@ -2241,7 +2536,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                   <label className="text-xs font-medium text-gray-700">Mode:</label>
                   <button
                     type="button"
-                    onClick={() => setInteractionMode("pan")}
+                    onClick={() => {
+                      setInteractionMode('pan')
+                      updateSearchParams({ interactionMode: 'pan' })
+                    }}
                     className={[
                       'text-xs px-2 py-1 rounded border',
                       interactionMode === 'pan'
@@ -2253,7 +2551,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                   </button>
                   <button
                     type="button"
-                    onClick={() => setInteractionMode("lens")}
+                    onClick={() => {
+                      setInteractionMode('lens')
+                      updateSearchParams({ interactionMode: 'lens' })
+                    }}
                     className={[
                       'text-xs px-2 py-1 rounded border',
                       interactionMode === 'lens'
@@ -2390,6 +2691,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                     setMaxEdges(edgesUpperBound)
                     updateSearchParams({
                       edgeType: null,
+                      intraFilter: 'none',
                       minThreshold: datasetMinEdgeValue,
                       maxThreshold: datasetMaxEdgeValue,
                       maxEdges: edgesUpperBound,
@@ -2443,7 +2745,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         <label className="text-sm font-medium">Edge Scope</label>
                         <select
                           value={intraFilter}
-                          onChange={(e) => setIntraFilter(e.target.value as typeof intraFilter)}
+                          onChange={(e) => {
+                            const value = e.target.value as typeof intraFilter
+                            setIntraFilter(value)
+                            updateSearchParams({ intraFilter: value })
+                          }}
                           className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="none">All</option>
@@ -2644,6 +2950,23 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setEdgeOutlineGap(3)
                       updateSearchParams({
                         showAllNodes: false,
+                        nodeOrderMode: 'alphabetical',
+                        arcOpacity: 0.85,
+                        edgeWidthMode: 'weight',
+                        baseEdgeWidth: 2,
+                        nodeColorMode: 'single',
+                        nodeColorAttribute: null,
+                        nodeSizeMode: 'fixed',
+                        nodeSizeAttribute: null,
+                        edgeColorAdvanced: false,
+                        edgeColorHue: 'direction',
+                        edgeColorHueAttribute: null,
+                        edgeColorInterGrayscale: true,
+                        edgeColorIntensity: 'weight',
+                        edgeColorIntensityAttribute: null,
+                        edgeColorIntensityConst: 0.6,
+                        interactionMode: 'pan',
+                        lensRadius: 80,
                         egoNodeId: null,
                         egoNeighborSteps: 1,
                         egoStepColoring: false,
@@ -2842,7 +3165,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <label className="text-xs font-medium text-gray-700">Node Ordering</label>
                             <select
                               value={nodeOrderMode}
-                              onChange={(e) => setNodeOrderMode(e.target.value)}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                setNodeOrderMode(value)
+                                updateSearchParams({ nodeOrderMode: value })
+                              }}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="alphabetical">Alphabetical</option>
@@ -2864,7 +3191,16 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <label className="text-xs font-medium text-gray-700">Node Color</label>
                             <select
                               value={nodeColorMode}
-                              onChange={(e) => setNodeColorMode(e.target.value as typeof nodeColorMode)}
+                              onChange={(e) => {
+                                const mode = e.target.value as typeof nodeColorMode
+                                setNodeColorMode(mode)
+                                const updates: Partial<ExplorerSearchParams> = { nodeColorMode: mode }
+                                if (mode !== 'attribute') {
+                                  setNodeColorAttribute(null)
+                                  updates.nodeColorAttribute = null
+                                }
+                                updateSearchParams(updates)
+                              }}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="single">Single Color</option>
@@ -2879,7 +3215,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             {nodeColorMode === 'attribute' && (
                               <select
                                 value={nodeColorAttribute || ''}
-                                onChange={(e) => setNodeColorAttribute(e.target.value || null)}
+                                onChange={(e) => {
+                                  const attribute = e.target.value || null
+                                  setNodeColorAttribute(attribute)
+                                  updateSearchParams({ nodeColorAttribute: attribute })
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
                                 <option value="">Select...</option>
@@ -2902,7 +3242,16 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <label className="text-xs font-medium text-gray-700">Node Size</label>
                             <select
                               value={nodeSizeMode}
-                              onChange={(e) => setNodeSizeMode(e.target.value as typeof nodeSizeMode)}
+                              onChange={(e) => {
+                                const mode = e.target.value as typeof nodeSizeMode
+                                setNodeSizeMode(mode)
+                                const updates: Partial<ExplorerSearchParams> = { nodeSizeMode: mode }
+                                if (mode !== 'attribute') {
+                                  setNodeSizeAttribute(null)
+                                  updates.nodeSizeAttribute = null
+                                }
+                                updateSearchParams(updates)
+                              }}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="fixed">Fixed</option>
@@ -2918,7 +3267,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             {nodeSizeMode === 'attribute' && (
                               <select
                                 value={nodeSizeAttribute || ''}
-                                onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
+                                onChange={(e) => {
+                                  const attribute = e.target.value || null
+                                  setNodeSizeAttribute(attribute)
+                                  updateSearchParams({ nodeSizeAttribute: attribute })
+                                }}
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
                                 <option value="">Select...</option>
@@ -2967,7 +3320,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               max={1}
                               step={0.05}
                               value={arcOpacity}
-                              onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
+                              onChange={(e) => {
+                                const value = Number.parseFloat(e.target.value)
+                                if (Number.isNaN(value)) return
+                                setArcOpacity(value)
+                                updateSearchParams({ arcOpacity: value })
+                              }}
                               className="w-full"
                             />
                           </div>
@@ -2982,7 +3340,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   name="edgeWidthMode"
                                   value="weight"
                                   checked={edgeWidthMode === 'weight'}
-                                  onChange={() => setEdgeWidthMode('weight')}
+                                  onChange={() => {
+                                    setEdgeWidthMode('weight')
+                                    updateSearchParams({ edgeWidthMode: 'weight' })
+                                  }}
                                   className="w-3.5 h-3.5"
                                 />
                                 <span>By Weight</span>
@@ -2993,7 +3354,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   name="edgeWidthMode"
                                   value="fixed"
                                   checked={edgeWidthMode === 'fixed'}
-                                  onChange={() => setEdgeWidthMode('fixed')}
+                                  onChange={() => {
+                                    setEdgeWidthMode('fixed')
+                                    updateSearchParams({ edgeWidthMode: 'fixed' })
+                                  }}
                                   className="w-3.5 h-3.5"
                                 />
                                 <span>Fixed</span>
@@ -3008,7 +3372,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   max={8}
                                   step={0.1}
                                   value={baseEdgeWidth}
-                                  onChange={(e) => setBaseEdgeWidth(parseFloat(e.target.value))}
+                                  onChange={(e) => {
+                                    const value = Number.parseFloat(e.target.value)
+                                    if (Number.isNaN(value)) return
+                                    setBaseEdgeWidth(value)
+                                    updateSearchParams({ baseEdgeWidth: value })
+                                  }}
                                   className="w-full"
                                 />
                               </div>
@@ -3252,6 +3621,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                       return
                                     }
                                     setEdgeColorAdvanced(checked)
+                                    updateSearchParams({ edgeColorAdvanced: checked })
                                     if (!checked) {
                                       setEdgeColorHue('direction')
                                       setEdgeColorHueAttribute(null)
@@ -3259,6 +3629,14 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                       setEdgeColorIntensity('weight')
                                       setEdgeColorIntensityAttribute(null)
                                       setEdgeColorIntensityConst(0.6)
+                                      updateSearchParams({
+                                        edgeColorHue: 'direction',
+                                        edgeColorHueAttribute: null,
+                                        edgeColorInterGrayscale: true,
+                                        edgeColorIntensity: 'weight',
+                                        edgeColorIntensityAttribute: null,
+                                        edgeColorIntensityConst: 0.6,
+                                      })
                                     }
                                   }}
                                 />
@@ -3273,7 +3651,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                     name="edgeColorHueSimple"
                                     value="direction"
                                     checked={edgeColorHue === 'direction'}
-                                    onChange={() => setEdgeColorHue('direction')}
+                                    onChange={() => {
+                                      setEdgeColorHue('direction')
+                                      updateSearchParams({ edgeColorHue: 'direction' })
+                                    }}
                                     className="w-3.5 h-3.5"
                                   />
                                   <span>By Direction (Above/Below)</span>
@@ -3284,7 +3665,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                     name="edgeColorHueSimple"
                                     value="single"
                                     checked={edgeColorHue === 'single'}
-                                    onChange={() => setEdgeColorHue('single')}
+                                    onChange={() => {
+                                      setEdgeColorHue('single')
+                                      updateSearchParams({ edgeColorHue: 'single' })
+                                    }}
                                     className="w-3.5 h-3.5"
                                   />
                                   <span>Single Color</span>
@@ -3300,7 +3684,15 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   </label>
                                   <select
                                     value={edgeColorHue}
-                                    onChange={(e) => setEdgeColorHue(e.target.value as typeof edgeColorHue)}
+                                    onChange={(e) => {
+                                      const next = e.target.value as typeof edgeColorHue
+                                      setEdgeColorHue(next)
+                                      updateSearchParams({ edgeColorHue: next })
+                                      if (next !== 'attribute') {
+                                        setEdgeColorHueAttribute(null)
+                                        updateSearchParams({ edgeColorHueAttribute: null })
+                                      }
+                                    }}
                                     className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   >
                                     <option value="direction">Direction (Above/Below)</option>
@@ -3315,7 +3707,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                       <select
                                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={edgeColorHueAttribute || ''}
-                                        onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}
+                                        onChange={(e) => {
+                                          const attribute = e.target.value || null
+                                          setEdgeColorHueAttribute(attribute)
+                                          updateSearchParams({ edgeColorHueAttribute: attribute })
+                                        }}
                                       >
                                         <option value="">Select attribute…</option>
                                         {dataset.metadata.hasCategoricalProperties.edges.concat(dataset.metadata.hasNumericProperties.edges).map((prop) => (
@@ -3332,7 +3728,15 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   <label className="text-xs font-medium text-gray-700">Intensity Source</label>
                                   <select
                                     value={edgeColorIntensity}
-                                    onChange={(e) => setEdgeColorIntensity(e.target.value as typeof edgeColorIntensity)}
+                                    onChange={(e) => {
+                                      const next = e.target.value as typeof edgeColorIntensity
+                                      setEdgeColorIntensity(next)
+                                      updateSearchParams({ edgeColorIntensity: next })
+                                      if (next !== 'attribute') {
+                                        setEdgeColorIntensityAttribute(null)
+                                        updateSearchParams({ edgeColorIntensityAttribute: null })
+                                      }
+                                    }}
                                     className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   >
                                     <option value="weight">Weight</option>
@@ -3342,13 +3746,34 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   {edgeColorIntensity === 'constant' && (
                                     <div className="mt-2">
                                       <label className="text-xs text-gray-600">Constant Intensity: {(edgeColorIntensityConst*100).toFixed(0)}%</label>
-                                      <input type="range" min={0} max={1} step={0.01} value={edgeColorIntensityConst} onChange={(e) => setEdgeColorIntensityConst(parseFloat(e.target.value))} className="w-full" />
+                                      <input
+                                        type="range"
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={edgeColorIntensityConst}
+                                        onChange={(e) => {
+                                          const value = Number.parseFloat(e.target.value)
+                                          if (Number.isNaN(value)) return
+                                          setEdgeColorIntensityConst(value)
+                                          updateSearchParams({ edgeColorIntensityConst: value })
+                                        }}
+                                        className="w-full"
+                                      />
                                     </div>
                                   )}
                                   {edgeColorIntensity === 'attribute' && dataset?.metadata && (
                                     <div className="mt-2">
                                       <label className="text-xs text-gray-600">Intensity Attribute</label>
-                                      <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorIntensityAttribute || ''} onChange={(e) => setEdgeColorIntensityAttribute(e.target.value || null)}>
+                                      <select
+                                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={edgeColorIntensityAttribute || ''}
+                                        onChange={(e) => {
+                                          const attribute = e.target.value || null
+                                          setEdgeColorIntensityAttribute(attribute)
+                                          updateSearchParams({ edgeColorIntensityAttribute: attribute })
+                                        }}
+                                      >
                                         <option value="">Select attribute…</option>
                                         {dataset.metadata.hasNumericProperties.edges.map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
                                       </select>
