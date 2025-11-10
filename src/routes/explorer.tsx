@@ -1297,20 +1297,36 @@ function ExplorerPage() {
                           )
                         })()}
                       </div>
-                      <input
-                        type="range"
-                        min={datasetMinEdgeValue}
-                        max={sliderMaxValue || 1}
-                        step={sliderStep}
-                        value={minThreshold}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value)
-                          const newMin = Math.min(val, maxThreshold)
-                          setMinThreshold(newMin)
-                          updateSearchParams({ minThreshold: newMin })
-                        }}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={datasetMinEdgeValue}
+                          max={sliderMaxValue || 1}
+                          step={sliderStep}
+                          value={minThreshold}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            const newMin = Math.min(val, maxThreshold)
+                            setMinThreshold(newMin)
+                            updateSearchParams({ minThreshold: newMin })
+                          }}
+                          className="w-full"
+                        />
+                        <input
+                          type="number"
+                          min={datasetMinEdgeValue}
+                          max={sliderMaxValue || 1}
+                          value={minThreshold}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value)
+                            if (Number.isNaN(val)) return
+                            const clamped = Math.max(datasetMinEdgeValue, Math.min(val, maxThreshold))
+                            setMinThreshold(clamped)
+                            updateSearchParams({ minThreshold: clamped })
+                          }}
+                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -1320,39 +1336,71 @@ function ExplorerPage() {
                           <span className="text-xs text-gray-400">(actual {effectiveMaxEdgeValue.toLocaleString()})</span>
                         )}
                       </label>
-                      <input
-                        type="range"
-                        min={datasetMinEdgeValue}
-                        max={sliderMaxValue || 1}
-                        step={sliderStep}
-                        value={maxThreshold}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value)
-                          const newMax = Math.max(val, minThreshold)
-                          setMaxThreshold(newMax)
-                          updateSearchParams({ maxThreshold: newMax })
-                        }}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={datasetMinEdgeValue}
+                          max={sliderMaxValue || 1}
+                          step={sliderStep}
+                          value={maxThreshold}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value)
+                            const newMax = Math.max(val, minThreshold)
+                            setMaxThreshold(newMax)
+                            updateSearchParams({ maxThreshold: newMax })
+                          }}
+                          className="w-full"
+                        />
+                        <input
+                          type="number"
+                          min={datasetMinEdgeValue}
+                          max={sliderMaxValue || 1}
+                          value={maxThreshold}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value)
+                            if (Number.isNaN(val)) return
+                            const clamped = Math.min(sliderMaxValue || 1, Math.max(val, minThreshold))
+                            setMaxThreshold(clamped)
+                            updateSearchParams({ maxThreshold: clamped })
+                          }}
+                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         Max Edges: {maxEdges}
                       </label>
-                      <input
-                        type="range"
-                        min={10}
-                        max={maxEdgesUpperBound}
-                        step={10}
-                        value={maxEdges}
-                        onChange={(e) => {
-                          const newMaxEdges = parseInt(e.target.value)
-                          setMaxEdges(newMaxEdges)
-                          updateSearchParams({ maxEdges: newMaxEdges })
-                        }}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={10}
+                          max={maxEdgesUpperBound}
+                          step={10}
+                          value={maxEdges}
+                          onChange={(e) => {
+                            const newMaxEdges = parseInt(e.target.value)
+                            setMaxEdges(newMaxEdges)
+                            updateSearchParams({ maxEdges: newMaxEdges })
+                          }}
+                          className="w-full"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxEdgesUpperBound}
+                          value={maxEdges}
+                          onChange={(e) => {
+                            const val = Number.parseInt(e.target.value)
+                            if (Number.isNaN(val)) return
+                            const clamped = Math.max(1, Math.min(val, maxEdgesUpperBound))
+                            setMaxEdges(clamped)
+                            updateSearchParams({ maxEdges: clamped })
+                          }}
+                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md"
+                        />
+                      </div>
                       <p className="text-xs text-gray-600 italic">
                         After filtering by thresholds and edge type, edges are sorted by value (highest first) and the top {maxEdges} edges are displayed.
                       </p>
