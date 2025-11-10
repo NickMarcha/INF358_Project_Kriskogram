@@ -159,6 +159,7 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(1).default(1),
   ),
+  egoStepColoring: safeCoerceBoolean(false),
   edgeType: z.preprocess(
     (val) => {
       if (val === 'null' || val === '') return null
@@ -235,6 +236,18 @@ export const Route = createFileRoute('/explorer')({
       return Math.max(1, Math.round(num))
     })()
 
+    const safeEgoStepColoring = (() => {
+      if (typeof search.egoStepColoring === 'boolean') {
+        return search.egoStepColoring
+      }
+      if (typeof search.egoStepColoring === 'string') {
+        const lowered = search.egoStepColoring.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
+    })()
+
     const safeEdgeWeightScale = (() => {
       if (typeof search.edgeWeightScale === 'string') {
         const lowered = search.edgeWeightScale.toLowerCase()
@@ -266,6 +279,7 @@ export const Route = createFileRoute('/explorer')({
       showAllNodes: safeShowAllNodes,
       egoNodeId: safeEgoNodeId,
       egoNeighborSteps: safeEgoNeighborSteps,
+      egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
       edgeWeightScale: safeEdgeWeightScale,
     }
   },
@@ -294,6 +308,7 @@ function ExplorerPage() {
   const [showAllNodes, setShowAllNodes] = useState<boolean>(search.showAllNodes ?? false)
   const [egoNodeId, setEgoNodeId] = useState<string | null>(search.egoNodeId ?? null)
   const [egoNeighborSteps, setEgoNeighborSteps] = useState<number>(search.egoNeighborSteps ?? 1)
+  const [egoStepColoring, setEgoStepColoring] = useState<boolean>(search.egoStepColoring ?? false)
   const [edgeWeightScale, setEdgeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
     search.edgeWeightScale ?? 'linear',
   )
@@ -668,10 +683,13 @@ function ExplorerPage() {
       const exists = (currentSnapshot.nodes as any[]).some((n: any) => n.id === egoNodeId)
       if (!exists) {
         setEgoNodeId(null)
-        updateSearchParams({ egoNodeId: null })
+        if (egoStepColoring) {
+          setEgoStepColoring(false)
+        }
+        updateSearchParams({ egoNodeId: null, egoStepColoring: false })
       }
     }
-  }, [currentSnapshot, egoNodeId, updateSearchParams])
+  }, [currentSnapshot, egoNodeId, egoStepColoring, updateSearchParams])
 
   // Calculate filtered edges and nodes
   const filteredData = useMemo(() => {
@@ -739,7 +757,10 @@ function ExplorerPage() {
       .sort((a: any, b: any) => b.value - a.value)
       .slice(0, maxEdges)
 
-    let visibleEdges = filteredEdges
+    const filteredEdgeInfos = filteredEdges.map((edge: any, idx: number) => ({ edge, idx }))
+    let visibleEdgeInfos = filteredEdgeInfos
+    const edgeStepMap = new Map<number, number>()
+    let maxEgoStepUsed = 0
 
     if (viewType === 'kriskogram' && egoNodeId) {
       const normalizedSteps = Math.max(1, Math.round(egoNeighborSteps))
@@ -753,9 +774,13 @@ function ExplorerPage() {
       for (let step = 1; step <= normalizedSteps && frontier.size > 0; step += 1) {
         const nextFrontier = new Set<string>()
 
-        filteredEdges.forEach((edge: any, idx: number) => {
+        filteredEdgeInfos.forEach(({ edge, idx }) => {
           if (frontier.has(edge.source) || frontier.has(edge.target)) {
             allowedEdgeIndexes.add(idx)
+            const existing = edgeStepMap.get(idx)
+            if (existing === undefined || step < existing) {
+              edgeStepMap.set(idx, step)
+            }
 
             if (!visitedNodes.has(edge.source)) {
               visitedNodes.add(edge.source)
@@ -771,8 +796,21 @@ function ExplorerPage() {
         frontier = nextFrontier
       }
 
-      visibleEdges = filteredEdges.filter((_, idx) => allowedEdgeIndexes.has(idx))
+      visibleEdgeInfos = filteredEdgeInfos.filter(({ idx }) => allowedEdgeIndexes.has(idx))
+      edgeStepMap.forEach((step) => {
+        if (step > maxEgoStepUsed) {
+          maxEgoStepUsed = step
+        }
+      })
     }
+
+    const visibleEdges = visibleEdgeInfos.map(({ edge, idx }) => {
+      const step = edgeStepMap.get(idx)
+      if (step !== undefined) {
+        return { ...edge, _egoStep: step }
+      }
+      return edge
+    })
     
     const activeNodeIds = new Set<string>()
     visibleEdges.forEach((e: any) => {
@@ -841,7 +879,11 @@ function ExplorerPage() {
       }
     })
     
-    return { nodes: nodesWithDynamicAttrs, edges: visibleEdges }
+    return {
+      nodes: nodesWithDynamicAttrs,
+      edges: visibleEdges,
+      egoStepMax: maxEgoStepUsed,
+    }
   }, [
     currentSnapshot,
     minThreshold,
@@ -1015,6 +1057,19 @@ function ExplorerPage() {
                               const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
                               const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
                               const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0)
+
+                              const egoStepMax = filteredData.egoStepMax ?? 0
+                              const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && egoStepMax > 0)
+                              const computeEgoStepColor = (step: number) => {
+                                if (egoStepMax <= 1) {
+                                  return 'hsl(210, 80%, 55%)'
+                                }
+                                const clamped = Math.max(1, Math.min(step, egoStepMax))
+                                const ratio = egoStepMax <= 1 ? 0 : (clamped - 1) / (egoStepMax - 1)
+                                const hue = 210 - ratio * 150
+                                const lightness = 60 - ratio * 20
+                                return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`
+                              }
 
                               const normalizeEdgeWeight = (value: number) => {
                                 if (!Number.isFinite(value) || weightSpan <= 0) return 0
@@ -1274,6 +1329,13 @@ function ExplorerPage() {
                                 
                                 // Edge color (supports advanced hue/intensity sources)
                                 edgeColor: (e: any, isAbove: boolean) => {
+                                  if (shouldColorEdgesByEgoStep) {
+                                    const step = (e as any)?._egoStep
+                                    if (typeof step === 'number' && step > 0) {
+                                      return computeEgoStepColor(step)
+                                    }
+                                  }
+
                                   const weightNorm = normalizeEdgeWeight(e.value)
 
                                   // Helper: categorical palette
@@ -1371,6 +1433,25 @@ function ExplorerPage() {
                             })()}
                             legend={(() => {
                               // Build legend from current color settings
+                              const egoLegendMax = filteredData.egoStepMax ?? 0
+                              if (egoNodeId && egoStepColoring && egoLegendMax > 0) {
+                                const legendStepColor = (step: number) => {
+                                  if (egoLegendMax <= 1) {
+                                    return 'hsl(210, 80%, 55%)'
+                                  }
+                                  const clamped = Math.max(1, Math.min(step, egoLegendMax))
+                                  const ratio = egoLegendMax <= 1 ? 0 : (clamped - 1) / (egoLegendMax - 1)
+                                  const hue = 210 - ratio * 150
+                                  const lightness = 60 - ratio * 20
+                                  return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`
+                                }
+                                const entries = Array.from({ length: egoLegendMax }, (_, index) => ({
+                                  step: index + 1,
+                                  color: legendStepColor(index + 1),
+                                }))
+                                return { type: 'egoSteps' as const, entries }
+                              }
+
                               const edgeWeights = filteredData.edges.map((e: any) => e.value)
                               const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
                               const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
@@ -1976,11 +2057,13 @@ function ExplorerPage() {
                       setLensPos({ x: 0, y: 0 })
                       setEgoNodeId(null)
                       setEgoNeighborSteps(1)
+                      setEgoStepColoring(false)
                       setEdgeWeightScale('linear')
                       updateSearchParams({
                         showAllNodes: false,
                         egoNodeId: null,
                         egoNeighborSteps: 1,
+                        egoStepColoring: false,
                         edgeWeightScale: 'linear',
                       })
                     }}
@@ -2020,8 +2103,16 @@ function ExplorerPage() {
                               onChange={(e) => {
                                 const value = e.target.value
                                 const nextValue = value === '' ? null : value
-                                setEgoNodeId(nextValue)
-                                updateSearchParams({ egoNodeId: nextValue })
+                                if (nextValue === null) {
+                                  setEgoNodeId(null)
+                                  if (egoStepColoring) {
+                                    setEgoStepColoring(false)
+                                  }
+                                  updateSearchParams({ egoNodeId: null, egoStepColoring: false })
+                                } else {
+                                  setEgoNodeId(nextValue)
+                                  updateSearchParams({ egoNodeId: nextValue })
+                                }
                               }}
                               className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -2062,6 +2153,29 @@ function ExplorerPage() {
                                 How many hops from the ego node to include (based on currently visible edges).
                               </span>
                             </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label htmlFor="kriskogram-ego-step-coloring" className="text-xs font-medium text-gray-700">
+                                Color edges by neighbor step
+                              </label>
+                              <p className="text-[11px] text-gray-500">
+                                Apply a step-based gradient for ego flows and show it in the legend.
+                              </p>
+                            </div>
+                            <input
+                              id="kriskogram-ego-step-coloring"
+                              type="checkbox"
+                              className="w-4 h-4"
+                              disabled={!egoNodeId}
+                              checked={egoStepColoring && Boolean(egoNodeId)}
+                              onChange={(e) => {
+                                const checked = e.target.checked && Boolean(egoNodeId)
+                                setEgoStepColoring(checked)
+                                updateSearchParams({ egoStepColoring: checked })
+                              }}
+                            />
                           </div>
                         </div>
 

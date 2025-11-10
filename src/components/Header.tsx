@@ -28,6 +28,7 @@ export default function Header() {
               showAllNodes: false,
               egoNodeId: null,
               egoNeighborSteps: 1,
+              egoStepColoring: false,
               edgeWeightScale: 'linear',
             }}
           >

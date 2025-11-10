@@ -32,6 +32,7 @@ function App() {
                 showAllNodes: false,
                 egoNodeId: null,
                 egoNeighborSteps: 1,
+              egoStepColoring: false,
                 edgeWeightScale: 'linear',
               }}
               className="explore-button relative inline-flex items-center gap-3 text-white text-lg md:text-xl font-bold px-10 md:px-12 py-5 md:py-6 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 overflow-hidden group"

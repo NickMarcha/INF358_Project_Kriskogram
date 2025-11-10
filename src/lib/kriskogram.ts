@@ -53,6 +53,7 @@ export interface KriskogramConfig {
         max?: number;
         samples?: Array<{ value: number; color: string; width: number; fraction?: number }>;
       }
+    | { type: 'egoSteps'; entries: Array<{ step: number; color: string }> }
     | { type: 'categorical'; title?: string; entries: Array<{ label: string; color: string }>; interNote?: string };
 }
 
@@ -598,6 +599,44 @@ enhanceNodeSelection.each(function (d) {
         cursorY += 22;
       });
       w = 72 + maxLabelChars * 6.2;
+      h = cursorY;
+    } else if ((config.legend as any).type === 'egoSteps') {
+      const egoLegend = config.legend as { entries: Array<{ step: number; color: string }> };
+      const group = lg.append('g').attr('transform', `translate(${x0 + padding}, ${y0 + padding})`);
+      let cursorY = 0;
+      group
+        .append('text')
+        .attr('x', 0)
+        .attr('y', cursorY)
+        .attr('fill', '#333')
+        .attr('font-size', 12)
+        .attr('font-weight', 600)
+        .text('Ego neighbor steps');
+      cursorY += 16;
+      let maxLabelChars = 0;
+      egoLegend.entries.forEach(({ step, color }) => {
+        const label =
+          step === 1 ? 'Step 1 (direct neighbors)' : `Step ${step}`;
+        group
+          .append('line')
+          .attr('x1', 0)
+          .attr('y1', cursorY + 4)
+          .attr('x2', 36)
+          .attr('y2', cursorY + 4)
+          .attr('stroke', color)
+          .attr('stroke-width', 5)
+          .attr('stroke-linecap', 'round');
+        group
+          .append('text')
+          .attr('x', 44)
+          .attr('y', cursorY + 8)
+          .attr('fill', '#333')
+          .attr('font-size', 11)
+          .text(label);
+        maxLabelChars = Math.max(maxLabelChars, label.length);
+        cursorY += 18;
+      });
+      w = 44 + maxLabelChars * 6.5;
       h = cursorY;
     } else if ((config.legend as any).type === 'categorical') {
       const { entries, title, interNote } = (config.legend as any);

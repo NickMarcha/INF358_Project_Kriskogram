@@ -242,6 +242,7 @@ function DatasetsPage() {
                   showAllNodes: false,
                   egoNodeId: null,
                   egoNeighborSteps: 1,
+                egoStepColoring: false,
                   edgeWeightScale: 'linear',
                 }}
                 className="text-blue-600 hover:text-blue-800 underline"
@@ -283,6 +284,7 @@ function DatasetsPage() {
               showAllNodes: false,
               egoNodeId: null,
               egoNeighborSteps: 1,
+            egoStepColoring: false,
               edgeWeightScale: 'linear',
             }}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
