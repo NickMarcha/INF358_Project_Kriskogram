@@ -2092,7 +2092,8 @@ function ExplorerPage() {
                           />
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-3 border border-gray-200 rounded-md p-3">
+                          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ego Focus</div>
                           <div>
                             <label htmlFor="kriskogram-ego-node" className="text-xs font-medium text-gray-700">
                               Ego focus (optional)
@@ -2180,334 +2181,310 @@ function ExplorerPage() {
                         </div>
 
                         {/* Node Ordering */}
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-gray-700">Node Ordering</label>
-                          <select
-                            value={nodeOrderMode}
-                            onChange={(e) => setNodeOrderMode(e.target.value)}
-                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="alphabetical">Alphabetical</option>
-                            {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
-                              <option key={prop} value={prop}>
-                                By {prop}
-                              </option>
-                            ))}
-                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                              <option key={prop} value={prop}>
-                                By {prop}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                    {/* Arc Opacity */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">
-                        Arc Opacity: {Math.round(arcOpacity * 100)}%
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={arcOpacity}
-                        onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    {/* Edge Width */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Edge Width</label>
-                      <div className="flex items-center gap-3 text-xs">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeWidthMode"
-                            value="weight"
-                            checked={edgeWidthMode === 'weight'}
-                            onChange={() => setEdgeWidthMode('weight')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Weight</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="edgeWidthMode"
-                            value="fixed"
-                            checked={edgeWidthMode === 'fixed'}
-                            onChange={() => setEdgeWidthMode('fixed')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Fixed</span>
-                        </label>
-                      </div>
-                      {edgeWidthMode === 'fixed' && (
-                        <div className="mt-2">
-                          <label className="text-xs font-medium text-gray-700">Base Edge Width: {baseEdgeWidth.toFixed(1)}px</label>
-                          <input
-                            type="range"
-                            min={0.5}
-                            max={8}
-                            step={0.1}
-                            value={baseEdgeWidth}
-                            onChange={(e) => setBaseEdgeWidth(parseFloat(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-                      )}
-                      <div className="mt-2 space-y-1">
-                        <label className="text-xs font-medium text-gray-700">Weight scaling</label>
-                        <select
-                          value={edgeWeightScale}
-                          onChange={(e) => {
-                            const value = e.target.value as 'linear' | 'sqrt' | 'log'
-                            setEdgeWeightScale(value)
-                            updateSearchParams({ edgeWeightScale: value })
-                          }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="linear">Linear (use raw weight differences)</option>
-                          <option value="sqrt">Square root (compress extremes)</option>
-                          <option value="log">Logarithmic (highlight small flows)</option>
-                        </select>
-                        <p className="text-[11px] text-gray-500">
-                          Applies to both edge widths and weight-based color intensity.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Edge Color */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-gray-700">Edge Color</label>
-                          {egoNodeId && egoStepColoring && (
-                            <span className="text-[11px] text-gray-400">(disabled by neighbor step coloring)</span>
-                          )}
-                        </div>
-                        <label className="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="w-3.5 h-3.5"
-                            disabled={Boolean(egoNodeId && egoStepColoring)}
-                            checked={edgeColorAdvanced}
-                            onChange={(e) => {
-                              const checked = e.target.checked
-                              if (egoNodeId && egoStepColoring) {
-                                return
-                              }
-                              setEdgeColorAdvanced(checked)
-                              if (!checked) {
-                                setEdgeColorHue('direction')
-                                setEdgeColorHueAttribute(null)
-                                setEdgeColorInterGrayscale(true)
-                                setEdgeColorIntensity('weight')
-                                setEdgeColorIntensityAttribute(null)
-                                setEdgeColorIntensityConst(0.6)
-                              }
-                            }}
-                          />
-                          Advanced
-                        </label>
-                      </div>
-                      {!edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
-                        <div className="flex flex-col gap-1.5 text-xs">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="edgeColorHueSimple"
-                              value="direction"
-                              checked={edgeColorHue === 'direction'}
-                              onChange={() => setEdgeColorHue('direction')}
-                              className="w-3.5 h-3.5"
-                            />
-                            <span>By Direction (Above/Below)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="edgeColorHueSimple"
-                              value="single"
-                              checked={edgeColorHue === 'single'}
-                              onChange={() => setEdgeColorHue('single')}
-                              className="w-3.5 h-3.5"
-                            />
-                            <span>Single Color</span>
-                          </label>
-                        </div>
-                      )}
-
-                      {edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
-                        <div className="mt-2 space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
-                          <div>
-                            <label className="text-xs font-medium text-gray-700">
-                              Hue Source
-                            </label>
+                        <div className="space-y-3 border border-gray-200 rounded-md p-3">
+                          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Node</div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Node Ordering</label>
                             <select
-                              value={edgeColorHue}
-                              onChange={(e) => setEdgeColorHue(e.target.value as typeof edgeColorHue)}
-                              className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="direction">Direction (Above/Below)</option>
-                              <option value="single">Single</option>
-                              <option value="region" disabled={!hasRegionData}>Region</option>
-                              <option value="division" disabled={!hasDivisionData}>Division</option>
-                              <option value="attribute">Attribute</option>
-                            </select>
-                            {edgeColorHue === 'attribute' && dataset?.metadata && (
-                              <div className="mt-2">
-                                <label className="text-xs text-gray-600">Hue Attribute</label>
-                                <select
-                                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  value={edgeColorHueAttribute || ''}
-                                  onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}
-                                >
-                                  <option value="">Select attribute…</option>
-                                  {dataset.metadata.hasCategoricalProperties.edges.concat(dataset.metadata.hasNumericProperties.edges).map((prop) => (
-                                    <option key={prop} value={prop}>
-                                      {prop}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-gray-700">Intensity Source</label>
-                            <select
-                              value={edgeColorIntensity}
-                              onChange={(e) => setEdgeColorIntensity(e.target.value as typeof edgeColorIntensity)}
+                              value={nodeOrderMode}
+                              onChange={(e) => setNodeOrderMode(e.target.value)}
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              <option value="weight">Weight</option>
-                              <option value="constant">Constant</option>
-                              <option value="attribute">Attribute</option>
+                              <option value="alphabetical">Alphabetical</option>
+                              {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                                <option key={prop} value={prop}>
+                                  By {prop}
+                                </option>
+                              ))}
+                              {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                                <option key={prop} value={prop}>
+                                  By {prop}
+                                </option>
+                              ))}
                             </select>
-                            {edgeColorIntensity === 'constant' && (
+                          </div>
+
+                          {/* Node Color */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Node Color</label>
+                            <select
+                              value={nodeColorMode}
+                              onChange={(e) => setNodeColorMode(e.target.value as typeof nodeColorMode)}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="single">Single Color</option>
+                              <option value="visible_outgoing">Visible Outgoing Flow</option>
+                              <option value="visible_incoming">Visible Incoming Flow</option>
+                              <option value="year_outgoing">Year Outgoing Flow</option>
+                              <option value="year_incoming">Year Incoming Flow</option>
+                              <option value="net_year">Net Flow (year)</option>
+                              <option value="self_year">Self Flow (year)</option>
+                              <option value="attribute">By Attribute</option>
+                            </select>
+                            {nodeColorMode === 'attribute' && (
+                              <select
+                                value={nodeColorAttribute || ''}
+                                onChange={(e) => setNodeColorAttribute(e.target.value || null)}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                                  <option key={prop} value={prop}>
+                                    {prop}
+                                  </option>
+                                ))}
+                                {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                                  <option key={prop} value={prop}>
+                                    {prop}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+
+                          {/* Node Size */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Node Size</label>
+                            <select
+                              value={nodeSizeMode}
+                              onChange={(e) => setNodeSizeMode(e.target.value as typeof nodeSizeMode)}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="fixed">Fixed</option>
+                              <option value="visible_outgoing">Visible Outgoing Flow</option>
+                              <option value="visible_incoming">Visible Incoming Flow</option>
+                              <option value="year_outgoing">Year Outgoing Flow</option>
+                              <option value="year_incoming">Year Incoming Flow</option>
+                              <option value="net_visible">Net Flow (visible)</option>
+                              <option value="net_year">Net Flow (year)</option>
+                              <option value="self_year">Self Flow (year)</option>
+                              <option value="attribute">By Attribute</option>
+                            </select>
+                            {nodeSizeMode === 'attribute' && (
+                              <select
+                                value={nodeSizeAttribute || ''}
+                                onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select...</option>
+                                {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                                  <option key={prop} value={prop}>
+                                    {prop}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Arc Opacity */}
+                        <div className="space-y-3 border border-gray-200 rounded-md p-3">
+                          <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Edge</div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">
+                              Arc Opacity: {Math.round(arcOpacity * 100)}%
+                            </label>
+                            <input
+                              type="range"
+                              min={0}
+                              max={1}
+                              step={0.05}
+                              value={arcOpacity}
+                              onChange={(e) => setArcOpacity(parseFloat(e.target.value))}
+                              className="w-full"
+                            />
+                          </div>
+
+                          {/* Edge Width */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-gray-700">Edge Width</label>
+                            <div className="flex items-center gap-3 text-xs">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="edgeWidthMode"
+                                  value="weight"
+                                  checked={edgeWidthMode === 'weight'}
+                                  onChange={() => setEdgeWidthMode('weight')}
+                                  className="w-3.5 h-3.5"
+                                />
+                                <span>By Weight</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="edgeWidthMode"
+                                  value="fixed"
+                                  checked={edgeWidthMode === 'fixed'}
+                                  onChange={() => setEdgeWidthMode('fixed')}
+                                  className="w-3.5 h-3.5"
+                                />
+                                <span>Fixed</span>
+                              </label>
+                            </div>
+                            {edgeWidthMode === 'fixed' && (
                               <div className="mt-2">
-                                <label className="text-xs text-gray-600">Constant Intensity: {(edgeColorIntensityConst*100).toFixed(0)}%</label>
-                                <input type="range" min={0} max={1} step={0.01} value={edgeColorIntensityConst} onChange={(e) => setEdgeColorIntensityConst(parseFloat(e.target.value))} className="w-full" />
+                                <label className="text-xs font-medium text-gray-700">Base Edge Width: {baseEdgeWidth.toFixed(1)}px</label>
+                                <input
+                                  type="range"
+                                  min={0.5}
+                                  max={8}
+                                  step={0.1}
+                                  value={baseEdgeWidth}
+                                  onChange={(e) => setBaseEdgeWidth(parseFloat(e.target.value))}
+                                  className="w-full"
+                                />
                               </div>
                             )}
-                            {edgeColorIntensity === 'attribute' && dataset?.metadata && (
-                              <div className="mt-2">
-                                <label className="text-xs text-gray-600">Intensity Attribute</label>
-                                <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorIntensityAttribute || ''} onChange={(e) => setEdgeColorIntensityAttribute(e.target.value || null)}>
-                                  <option value="">Select attribute…</option>
-                                  {dataset.metadata.hasNumericProperties.edges.map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
-                                </select>
+                            <div className="mt-2 space-y-1">
+                              <label className="text-xs font-medium text-gray-700">Weight scaling</label>
+                              <select
+                                value={edgeWeightScale}
+                                onChange={(e) => {
+                                  const value = e.target.value as 'linear' | 'sqrt' | 'log'
+                                  setEdgeWeightScale(value)
+                                  updateSearchParams({ edgeWeightScale: value })
+                                }}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="linear">Linear (use raw weight differences)</option>
+                                <option value="sqrt">Square root (compress extremes)</option>
+                                <option value="log">Logarithmic (highlight small flows)</option>
+                              </select>
+                              <p className="text-[11px] text-gray-500">
+                                Applies to both edge widths and weight-based color intensity.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Edge Color */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-gray-700">Edge Color</label>
+                                {egoNodeId && egoStepColoring && (
+                                  <span className="text-[11px] text-gray-400">(disabled by neighbor step coloring)</span>
+                                )}
+                              </div>
+                              <label className="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="w-3.5 h-3.5"
+                                  disabled={Boolean(egoNodeId && egoStepColoring)}
+                                  checked={edgeColorAdvanced}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked
+                                    if (egoNodeId && egoStepColoring) {
+                                      return
+                                    }
+                                    setEdgeColorAdvanced(checked)
+                                    if (!checked) {
+                                      setEdgeColorHue('direction')
+                                      setEdgeColorHueAttribute(null)
+                                      setEdgeColorInterGrayscale(true)
+                                      setEdgeColorIntensity('weight')
+                                      setEdgeColorIntensityAttribute(null)
+                                      setEdgeColorIntensityConst(0.6)
+                                    }
+                                  }}
+                                />
+                                Advanced
+                              </label>
+                            </div>
+                            {!edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
+                              <div className="flex flex-col gap-1.5 text-xs">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="edgeColorHueSimple"
+                                    value="direction"
+                                    checked={edgeColorHue === 'direction'}
+                                    onChange={() => setEdgeColorHue('direction')}
+                                    className="w-3.5 h-3.5"
+                                  />
+                                  <span>By Direction (Above/Below)</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="edgeColorHueSimple"
+                                    value="single"
+                                    checked={edgeColorHue === 'single'}
+                                    onChange={() => setEdgeColorHue('single')}
+                                    className="w-3.5 h-3.5"
+                                  />
+                                  <span>Single Color</span>
+                                </label>
+                              </div>
+                            )}
+
+                            {edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
+                              <div className="mt-2 space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-700">
+                                    Hue Source
+                                  </label>
+                                  <select
+                                    value={edgeColorHue}
+                                    onChange={(e) => setEdgeColorHue(e.target.value as typeof edgeColorHue)}
+                                    className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="direction">Direction (Above/Below)</option>
+                                    <option value="single">Single</option>
+                                    <option value="region" disabled={!hasRegionData}>Region</option>
+                                    <option value="division" disabled={!hasDivisionData}>Division</option>
+                                    <option value="attribute">Attribute</option>
+                                  </select>
+                                  {edgeColorHue === 'attribute' && dataset?.metadata && (
+                                    <div className="mt-2">
+                                      <label className="text-xs text-gray-600">Hue Attribute</label>
+                                      <select
+                                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={edgeColorHueAttribute || ''}
+                                        onChange={(e) => setEdgeColorHueAttribute(e.target.value || null)}
+                                      >
+                                        <option value="">Select attribute…</option>
+                                        {dataset.metadata.hasCategoricalProperties.edges.concat(dataset.metadata.hasNumericProperties.edges).map((prop) => (
+                                          <option key={prop} value={prop}>
+                                            {prop}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-xs font-medium text-gray-700">Intensity Source</label>
+                                  <select
+                                    value={edgeColorIntensity}
+                                    onChange={(e) => setEdgeColorIntensity(e.target.value as typeof edgeColorIntensity)}
+                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="weight">Weight</option>
+                                    <option value="constant">Constant</option>
+                                    <option value="attribute">Attribute</option>
+                                  </select>
+                                  {edgeColorIntensity === 'constant' && (
+                                    <div className="mt-2">
+                                      <label className="text-xs text-gray-600">Constant Intensity: {(edgeColorIntensityConst*100).toFixed(0)}%</label>
+                                      <input type="range" min={0} max={1} step={0.01} value={edgeColorIntensityConst} onChange={(e) => setEdgeColorIntensityConst(parseFloat(e.target.value))} className="w-full" />
+                                    </div>
+                                  )}
+                                  {edgeColorIntensity === 'attribute' && dataset?.metadata && (
+                                    <div className="mt-2">
+                                      <label className="text-xs text-gray-600">Intensity Attribute</label>
+                                      <select className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value={edgeColorIntensityAttribute || ''} onChange={(e) => setEdgeColorIntensityAttribute(e.target.value || null)}>
+                                        <option value="">Select attribute…</option>
+                                        {dataset.metadata.hasNumericProperties.edges.map((prop) => (<option key={prop} value={prop}>{prop}</option>))}
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Node Color */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Node Color</label>
-                      <select
-                        value={nodeColorMode}
-                        onChange={(e) => setNodeColorMode(e.target.value as typeof nodeColorMode)}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="single">Single Color</option>
-                        <option value="visible_outgoing">Visible Outgoing Flow</option>
-                        <option value="visible_incoming">Visible Incoming Flow</option>
-                        <option value="year_outgoing">Year Outgoing Flow</option>
-                        <option value="year_incoming">Year Incoming Flow</option>
-                        <option value="net_year">Net Flow (year)</option>
-                        <option value="self_year">Self Flow (year)</option>
-                        <option value="attribute">By Attribute</option>
-                      </select>
-                      {nodeColorMode === 'attribute' && (
-                        <select
-                          value={nodeColorAttribute || ''}
-                          onChange={(e) => setNodeColorAttribute(e.target.value || null)}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Select...</option>
-                          {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
-                            <option key={prop} value={prop}>
-                              {prop}
-                            </option>
-                          ))}
-                          {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                            <option key={prop} value={prop}>
-                              {prop}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-
-                    {/* Node Size */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Node Size</label>
-                      <select
-                        value={nodeSizeMode}
-                        onChange={(e) => setNodeSizeMode(e.target.value as typeof nodeSizeMode)}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="fixed">Fixed</option>
-                        <option value="visible_outgoing">Visible Outgoing Flow</option>
-                        <option value="visible_incoming">Visible Incoming Flow</option>
-                        <option value="year_outgoing">Year Outgoing Flow</option>
-                        <option value="year_incoming">Year Incoming Flow</option>
-                        <option value="net_visible">Net Flow (visible)</option>
-                        <option value="net_year">Net Flow (year)</option>
-                        <option value="self_year">Self Flow (year)</option>
-                        <option value="attribute">By Attribute</option>
-                      </select>
-                      {nodeSizeMode === 'attribute' && (
-                        <select
-                          value={nodeSizeAttribute || ''}
-                          onChange={(e) => setNodeSizeAttribute(e.target.value || null)}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Select...</option>
-                          {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                            <option key={prop} value={prop}>
-                              {prop}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Interaction Mode</label>
-                      <select
-                        value={interactionMode}
-                        onChange={(e) => setInteractionMode(e.target.value as typeof interactionMode)}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="pan">Pan</option>
-                        <option value="lens">Edge Lens</option>
-                      </select>
-                      {interactionMode === 'lens' && (
-                        <div className="space-y-1">
-                          <label className="text-[11px] text-gray-600">
-                            Lens Radius: {lensRadius}px
-                          </label>
-                          <input
-                            type="range"
-                            min={20}
-                            max={300}
-                            step={5}
-                            value={lensRadius}
-                            onChange={(e) => setLensRadius(parseInt(e.target.value))}
-                            className="w-full"
-                          />
-                          <p className="text-[10px] text-gray-500">
-                            Scroll over the visualization to adjust while lens mode is active.
-                          </p>
-                        </div>
-                      )}
-                    </div>
                       </div>
                     ) : (
                       <div className="text-xs text-gray-500 italic">No dataset metadata available</div>
