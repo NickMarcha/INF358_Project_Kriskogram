@@ -74,8 +74,10 @@ export function createKriskogram(config: KriskogramConfig) {
     title = "Migration Flow Visualization",
   } = config;
 
+  const containerSelection = d3.select(container);
+
   // Clear existing content and remove any orphaned tooltips
-  d3.select(container).selectAll("*").remove();
+  containerSelection.selectAll("*").remove();
   d3.selectAll(".kriskogram-tooltip").remove();
 
   // ---- Accessors with defaults ----
@@ -118,8 +120,7 @@ export function createKriskogram(config: KriskogramConfig) {
   );
 
   // ---- Setup SVG ----
-  const svg = d3
-    .select(container)
+  const svg = containerSelection
     .append("svg")
     .attr("width", "100%")
     .attr("height", "100%")
@@ -233,58 +234,141 @@ export function createKriskogram(config: KriskogramConfig) {
   }
 
   const edgeGroup = zoomGroup.append("g").attr("class", "edges");
+  const edgeOutlineGroup = zoomGroup.append("g").attr("class", "edges-outline");
 
-  edgeGroup
-    .selectAll("path.arc")
+  const edgeSelection = (edgeGroup
+    .selectAll<SVGPathElement, any>("path.arc")
     .data(edges, (d: any) => `${d.source}-${d.target}-${(d && d.__displayYear) ?? 'current'}`)
-    .enter()
-    .append("path")
-    .attr("class", "arc")
-    .attr("d", (d) => {
-      const x1 = xScale(d.source)!;
-      const x2 = xScale(d.target)!;
-      const isAbove = x1 > x2; // flip: rightward = below, leftward = above
-      return arcPath(x1, x2, isAbove);
-    })
-    .attr("fill", "none")
-    .attr("stroke", (d) => {
-      const x1 = xScale(d.source)!;
-      const x2 = xScale(d.target)!;
-      const isAbove = x1 > x2;
-      return getEdgeColor(d, isAbove);
-    })
-    .attr("stroke-width", (d) => getEdgeWidth(d))
-    .attr("stroke-linecap", (d: any) => ((d as any)?.__overlayLineCap) ?? "round")
-    .attr("stroke-dasharray", (d: any) => {
-      const dash = (d as any)?.__overlayDash;
-      return dash ? dash : null;
-    })
-    .attr("stroke-dashoffset", (d: any) => (d as any)?.__overlayDashOffset ?? 0)
-    .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
-    .style("cursor", "pointer")
-    .on("mouseover", function(_event, d) {
+    .join(
+      (enter) =>
+        enter
+          .append("path")
+          .attr("class", "arc")
+          .attr("fill", "none")
+          .style("cursor", "pointer"),
+      (update) => update,
+      (exit) => exit.remove(),
+    )) as d3.Selection<SVGPathElement, any, SVGGElement, unknown>;
+
+  const outlineSelection = (edgeOutlineGroup
+    .selectAll<SVGPathElement, any>("path.arc-outline")
+    .data(edges, (d: any) => `${d.source}-${d.target}-${(d && d.__displayYear) ?? 'current'}`)
+    .join(
+      (enter) =>
+        enter
+          .append("path")
+          .attr("class", "arc-outline")
+          .attr("fill", "none"),
+      (update) => update,
+      (exit) => exit.remove(),
+    )) as d3.Selection<SVGPathElement, any, SVGGElement, unknown>;
+
+  outlineSelection.style("pointer-events", "none");
+
+  let backgroundStroke = '#f8fafc';
+  if (typeof window !== 'undefined') {
+    const containerNode = containerSelection.node() as HTMLElement | null;
+    const computedBg = containerNode ? window.getComputedStyle(containerNode).backgroundColor : null;
+    if (computedBg && computedBg !== 'rgba(0, 0, 0, 0)') {
+      backgroundStroke = computedBg;
+    }
+  }
+
+  const applyEdgeGeometry = (selection: d3.Selection<SVGPathElement, any, SVGGElement, unknown>, forOutline = false) => {
+    selection
+      .attr("d", (d: any) => {
+        const x1 = xScale(d.source)!;
+        const x2 = xScale(d.target)!;
+        const isAbove = x1 > x2;
+        d.__isAbove = isAbove;
+        if ((d.__overlayStyle ?? 'filled') === 'segmented') {
+          d.__segmentDirection = -1;
+        }
+        return arcPath(x1, x2, isAbove);
+      })
+      .attr("stroke-linejoin", "round")
+      .attr("stroke", (d: any) => {
+        const x1 = xScale(d.source)!;
+        const x2 = xScale(d.target)!;
+        const isAbove = x1 > x2;
+        return forOutline ? backgroundStroke : getEdgeColor(d, isAbove);
+      })
+      .attr("stroke-width", (d: any) => {
+        const baseWidth = Math.max(getEdgeWidth(d), 0.75);
+        const outlineGap = Math.max(0, (d.__outlineGap ?? 3));
+        if (!forOutline) {
+          if ((d.__overlayStyle ?? 'filled') === 'outline') {
+            return Math.max(baseWidth, outlineGap > 0 ? outlineGap + 1 : baseWidth);
+          }
+          return baseWidth;
+        }
+        if ((d.__overlayStyle ?? 'filled') !== 'outline') {
+          return 0;
+        }
+        const innerWidth = Math.max(baseWidth - outlineGap, outlineGap > 0 ? 0.5 : baseWidth);
+        return innerWidth;
+      })
+      .attr("stroke-linecap", (d: any) => (d.__overlayStyle === 'segmented' ? d.__overlayLineCap ?? 'round' : 'round'))
+      .attr("stroke-dasharray", (d: any) => d.__overlayDash ?? null)
+      .attr("stroke-dashoffset", (d: any) => d.__overlayDashOffset ?? 0)
+      .attr("opacity", (d: any) => {
+        if (forOutline) {
+          return d.__overlayStyle === 'outline' ? 1 : 0;
+        }
+        return d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity;
+      });
+  };
+
+  applyEdgeGeometry(edgeSelection, false);
+  applyEdgeGeometry(outlineSelection, true);
+
+  const applySegmentAnimation = (selection: d3.Selection<SVGPathElement, any, SVGGElement, unknown>) => {
+    selection.each(function (d: any) {
+      const path = d3.select(this);
+      const animate = Boolean(d.__segmentAnimate);
+      const cycle = d.__segmentCycle ?? 0;
+      const baseOffset = d.__overlayDashOffset ?? 0;
+      const direction = d.__segmentDirection ?? -1;
+      path.interrupt();
+      if (!animate || !cycle) {
+        path.attr('stroke-dashoffset', baseOffset);
+        return;
+      }
+      const step = cycle;
+      const duration = Math.max(1500, step * 120);
+      const start = baseOffset;
+      const end = baseOffset + direction * -step;
+      const loop = () => {
+        path
+          .attr('stroke-dashoffset', start)
+          .transition()
+          .duration(duration)
+          .ease(d3.easeLinear)
+          .attr('stroke-dashoffset', end)
+          .on('end', loop);
+      };
+      loop();
+    });
+  };
+
+  applySegmentAnimation(edgeSelection);
+  applySegmentAnimation(outlineSelection);
+
+  edgeSelection
+    .on("mouseover", function (_event, d: any) {
       const currentStroke = d3.select(this).attr("stroke");
-      
-      // Highlight edge on hover with black outline
       d3.select(this)
         .attr("opacity", 1)
         .attr("stroke-width", getEdgeWidth(d) * 1.5)
         .style("filter", "drop-shadow(0 0 2px black)")
-        .attr("data-original-stroke", currentStroke); // Store original color
-      
-      // Find source and target nodes for region/division info
-      const sourceNode = sortedNodes.find(n => n.id === d.source);
-      const targetNode = sortedNodes.find(n => n.id === d.target);
-      
-      // Check if same region/division
+        .attr("data-original-stroke", currentStroke);
+      const sourceNode = sortedNodes.find((n) => n.id === d.source);
+      const targetNode = sortedNodes.find((n) => n.id === d.target);
       const sameRegion = sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region;
       const sameDivision = sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division;
-      
-      // Remove any existing tooltips first
       d3.selectAll(".kriskogram-tooltip").remove();
-      
-      // Show tooltip
-      const tooltip = d3.select("body")
+      const tooltip = d3
+        .select("body")
         .append("div")
         .attr("class", "kriskogram-tooltip")
         .style("position", "absolute")
@@ -296,11 +380,9 @@ export function createKriskogram(config: KriskogramConfig) {
         .style("pointer-events", "none")
         .style("z-index", "1000")
         .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
-      
-      const displayYear = (d as any)?.__displayYear;
-      const temporalDelta = (d as any)?.__temporalDelta ?? 0;
+      const displayYear = d.__displayYear;
+      const temporalDelta = d.__temporalDelta ?? 0;
       const temporalLabel = temporalDelta === 0 ? 'Current year' : temporalDelta < 0 ? 'Past overlay' : 'Future overlay';
-
       tooltip.html(`
         <strong>${sourceNode?.label || d.source} → ${targetNode?.label || d.target}</strong><br/>
         ${displayYear ? `<strong>Year:</strong> ${displayYear} (${temporalLabel})<br/>` : ''}
@@ -314,22 +396,21 @@ export function createKriskogram(config: KriskogramConfig) {
         <strong>Same Division:</strong> ${sameDivision ? '✓ Yes' : '✗ No'}
       `);
     })
-    .on("mousemove", function(event) {
-      // Select the first tooltip (should only be one) and update position
-      const tooltip = d3.select(".kriskogram-tooltip")
+    .on("mousemove", function (event) {
+      const tooltip = d3.select(".kriskogram-tooltip");
       if (!tooltip.empty()) {
-        tooltip
-          .style("left", (event.pageX + 10) + "px")
-          .style("top", (event.pageY - 10) + "px")
+        tooltip.style("left", event.pageX + 10 + "px").style("top", event.pageY - 10 + "px");
       }
     })
-    .on("mouseout", function() {
-      d3.select(this)
-        .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
-        .attr("stroke-width", (d: any) => getEdgeWidth(d))
-        .style("filter", null);
-      
-      // Remove all tooltips
+    .on("mouseout", function () {
+      const edge = d3.select(this);
+      const datum: any = edge.datum();
+      edge.style("filter", null);
+      applyEdgeGeometry(edge as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>, false);
+      const matchingOutline = outlineSelection.filter((outlineDatum: any) => outlineDatum === datum);
+      applyEdgeGeometry(matchingOutline as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>, true);
+      applySegmentAnimation(edge as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>);
+      applySegmentAnimation(matchingOutline as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>);
       d3.selectAll(".kriskogram-tooltip").remove();
     });
 

@@ -36,6 +36,8 @@ export default function Header() {
               edgeSegmentGap: 4,
               edgeSegmentOffset: 0,
               edgeSegmentCap: 'round',
+              edgeSegmentAnimate: false,
+              edgeOutlineGap: 3,
               temporalOverlayYears: 1,
               edgeWeightScale: 'linear',
             }}

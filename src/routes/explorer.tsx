@@ -202,21 +202,30 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(1).default(1),
   ),
+  edgeSegmentLength: safeCoerceNumber(8),
+  edgeSegmentGap: safeCoerceNumber(4),
+  edgeSegmentAnimate: safeCoerceBoolean(false),
   edgeSegmentOffset: safeCoerceNumber(0),
   edgeSegmentCap: z.preprocess(
     (val) => {
       if (typeof val === 'string') {
         const lowered = val.toLowerCase()
         if (['round', 'butt'].includes(lowered)) {
-          return lowered
+          return lowered as 'round' | 'butt'
         }
       }
-      return 'round'
+      return 'round' as const
     },
     z.enum(['round', 'butt']).default('round'),
   ),
-  edgeSegmentLength: safeCoerceNumber(8),
-  edgeSegmentGap: safeCoerceNumber(4),
+  edgeOutlineGap: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 3
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      return Number.isNaN(num) ? 3 : Math.max(0, num)
+    },
+    z.number().min(0).default(3),
+  ),
 })
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
@@ -369,6 +378,16 @@ export const Route = createFileRoute('/explorer')({
       return Number.isNaN(num) ? 4 : Math.max(0.5, num)
     })()
 
+    const safeEdgeSegmentAnimate = (() => {
+      if (typeof search.edgeSegmentAnimate === 'boolean') return search.edgeSegmentAnimate
+      if (typeof search.edgeSegmentAnimate === 'string') {
+        const lowered = search.edgeSegmentAnimate.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
+    })()
+
     const safeEdgeSegmentOffset = (() => {
       if (search.edgeSegmentOffset === undefined || search.edgeSegmentOffset === null || search.edgeSegmentOffset === '') return 0
       const num = typeof search.edgeSegmentOffset === 'string' ? parseFloat(search.edgeSegmentOffset) : Number(search.edgeSegmentOffset)
@@ -383,6 +402,12 @@ export const Route = createFileRoute('/explorer')({
         }
       }
       return 'round' as const
+    })()
+
+    const safeEdgeOutlineGap = (() => {
+      if (search.edgeOutlineGap === undefined || search.edgeOutlineGap === null || search.edgeOutlineGap === '') return 3
+      const num = typeof search.edgeOutlineGap === 'string' ? parseFloat(search.edgeOutlineGap) : Number(search.edgeOutlineGap)
+      return Number.isNaN(num) ? 3 : Math.max(0, num)
     })()
 
     return {
@@ -404,8 +429,10 @@ export const Route = createFileRoute('/explorer')({
       edgeWeightScale: safeEdgeWeightScale,
       edgeSegmentLength: safeEdgeSegmentLength,
       edgeSegmentGap: safeEdgeSegmentGap,
+      edgeSegmentAnimate: safeEdgeSegmentAnimate,
       edgeSegmentOffset: safeEdgeSegmentOffset,
       edgeSegmentCap: safeEdgeSegmentCap,
+      edgeOutlineGap: safeEdgeOutlineGap,
     }
   },
   search: {
@@ -446,8 +473,10 @@ const [temporalOverlayNodeStyle, setTemporalOverlayNodeStyle] = useState<'filled
 )
 const [edgeSegmentLength, setEdgeSegmentLength] = useState<number>(search.edgeSegmentLength ?? 8)
 const [edgeSegmentGap, setEdgeSegmentGap] = useState<number>(search.edgeSegmentGap ?? 4)
+const [edgeSegmentAnimate, setEdgeSegmentAnimate] = useState<boolean>(search.edgeSegmentAnimate ?? false)
 const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 0)
 const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
+const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(search.edgeOutlineGap ?? 3)
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
   
@@ -975,6 +1004,10 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
         __overlayDash: currentDashArray,
         __overlayDashOffset: currentDashOffset,
         __overlayLineCap: currentLineCap,
+        __segmentCycle:
+          temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
+        __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
+        __outlineGap: edgeOutlineGap,
       }
       if (step !== undefined) {
         decorated._egoStep = step
@@ -1086,6 +1119,10 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
             __overlayDash: overlayDashArray,
             __overlayDashOffset: overlayDashOffset,
             __overlayLineCap: overlayLineCap,
+            __segmentCycle:
+              temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
+            __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
+            __outlineGap: edgeOutlineGap,
           }))
 
         overlaySubset.forEach((edge: any) => {
@@ -1200,6 +1237,12 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
           hasFuture: overlayHasFuture,
           nodeDeltaAbsMax: overlayNodeAbsMax,
           style: temporalOverlayEdgeStyle,
+          edgeSegmentLength,
+          edgeSegmentGap,
+          edgeSegmentOffset,
+          edgeSegmentCap,
+          edgeSegmentAnimate,
+          edgeOutlineGap,
         }
       : null
 
@@ -1234,6 +1277,10 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
     temporalOverlayYears,
     edgeSegmentLength,
     edgeSegmentGap,
+    edgeSegmentOffset,
+    edgeSegmentCap,
+    edgeSegmentAnimate,
+    edgeOutlineGap,
     dataset,
   ])
 
@@ -1375,21 +1422,25 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
           edgeSegmentGap,
           edgeSegmentOffset,
           edgeSegmentCap,
-        })
-      }
-    }
-  }, [
-    dataset,
-    currentYear,
-    temporalOverlayEnabled,
-    temporalOverlayEdgeStyle,
-    temporalOverlayNodeStyle,
-    edgeSegmentLength,
-    edgeSegmentGap,
-    edgeSegmentOffset,
-    edgeSegmentCap,
-    updateSearchParams,
-  ])
+          edgeSegmentAnimate,
+          edgeOutlineGap,
+         })
+       }
+     }
+   }, [
+     dataset,
+     currentYear,
+     temporalOverlayEnabled,
+     temporalOverlayEdgeStyle,
+     temporalOverlayNodeStyle,
+     edgeSegmentLength,
+     edgeSegmentGap,
+     edgeSegmentOffset,
+     edgeSegmentCap,
+     edgeSegmentAnimate,
+     edgeOutlineGap,
+     updateSearchParams,
+   ])
 
   useEffect(() => {
     if (!isInitialMount.current) {
@@ -1402,6 +1453,8 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
         edgeSegmentGap,
         edgeSegmentOffset,
         edgeSegmentCap,
+        edgeSegmentAnimate,
+        edgeOutlineGap,
       })
     }
   }, [
@@ -1413,6 +1466,8 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
     edgeSegmentGap,
     edgeSegmentOffset,
     edgeSegmentCap,
+    edgeSegmentAnimate,
+    edgeOutlineGap,
     updateSearchParams,
   ])
 
@@ -2549,6 +2604,10 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
                       setTemporalOverlayYears(1)
                       setEdgeSegmentLength(8)
                       setEdgeSegmentGap(4)
+                      setEdgeSegmentOffset(0)
+                      setEdgeSegmentCap('round')
+                      setEdgeSegmentAnimate(false)
+                      setEdgeOutlineGap(3)
                       updateSearchParams({
                         showAllNodes: false,
                         egoNodeId: null,
@@ -2560,7 +2619,11 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
                         temporalOverlayNodeStyle: 'filled',
                         edgeSegmentLength: 8,
                         edgeSegmentGap: 4,
+                        edgeSegmentOffset: 0,
+                        edgeSegmentCap: 'round',
+                        edgeSegmentAnimate: false,
                         edgeWeightScale: 'linear',
+                        edgeOutlineGap: 3,
                       })
                     }}
                   >
@@ -3018,23 +3081,81 @@ const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.ed
                               </div>
                             )}
                             {temporalOverlayEdgeStyle === 'segmented' && (
-                              <div className="mt-2">
-                                <label className="text-[11px] font-medium text-gray-600" htmlFor="kriskogram-edge-cap">
-                                  Segment cap style
+                              <div className="mt-2 space-y-2">
+                                <div>
+                                  <label className="text-[11px] font-medium text-gray-600" htmlFor="kriskogram-edge-cap">
+                                    Segment cap style
+                                  </label>
+                                  <select
+                                    id="kriskogram-edge-cap"
+                                    value={edgeSegmentCap}
+                                    onChange={(e) => {
+                                      const next = e.target.value as 'round' | 'butt'
+                                      setEdgeSegmentCap(next)
+                                      updateSearchParams({ edgeSegmentCap: next })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="round">Rounded segment ends</option>
+                                    <option value="butt">Sharp segment ends</option>
+                                  </select>
+                                </div>
+                                <label className="flex items-center justify-between text-[11px] font-medium text-gray-600">
+                                  <span>Animate flow</span>
+                                  <input
+                                    type="checkbox"
+                                    className="w-3.5 h-3.5"
+                                    checked={edgeSegmentAnimate}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked
+                                      setEdgeSegmentAnimate(checked)
+                                      updateSearchParams({ edgeSegmentAnimate: checked })
+                                    }}
+                                  />
                                 </label>
-                                <select
-                                  id="kriskogram-edge-cap"
-                                  value={edgeSegmentCap}
-                                  onChange={(e) => {
-                                    const next = e.target.value as 'round' | 'butt'
-                                    setEdgeSegmentCap(next)
-                                    updateSearchParams({ edgeSegmentCap: next })
-                                  }}
-                                  className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="round">Rounded segment ends</option>
-                                  <option value="butt">Sharp segment ends</option>
-                                </select>
+                              </div>
+                            )}
+                            {temporalOverlayEdgeStyle === 'outline' && (
+                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Outline gap (px)
+                                  </label>
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={12}
+                                    step={0.5}
+                                    value={edgeOutlineGap}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(0, val)
+                                      setEdgeOutlineGap(clamped)
+                                      updateSearchParams({ edgeOutlineGap: clamped })
+                                    }}
+                                    className="mt-1 w-full"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Precise value
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={0.5}
+                                    value={edgeOutlineGap}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(0, val)
+                                      setEdgeOutlineGap(clamped)
+                                      updateSearchParams({ edgeOutlineGap: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
                               </div>
                             )}
                           </div>
