@@ -90,6 +90,19 @@ const safeCoerceNumber = (defaultValue?: number) => {
   )
 }
 
+const safeCoerceBoolean = (defaultValue: boolean) =>
+  z.preprocess(
+    (val) => {
+      if (typeof val === 'boolean') return val
+      if (typeof val === 'string') {
+        if (val.toLowerCase() === 'true') return true
+        if (val.toLowerCase() === 'false') return false
+      }
+      return defaultValue
+    },
+    z.boolean().default(defaultValue),
+  )
+
 const explorerSearchSchema = z.object({
   dataset: z.string().optional(),
   view: z.preprocess(
@@ -112,6 +125,7 @@ const explorerSearchSchema = z.object({
     },
     z.string().nullable().optional()
   ),
+  showAllNodes: safeCoerceBoolean(false),
 })
 
 type ExplorerSearchParams = z.infer<typeof explorerSearchSchema>
@@ -162,6 +176,16 @@ export const Route = createFileRoute('/explorer')({
       return typeof search.edgeType === 'string' ? search.edgeType : undefined
     })()
     
+    const safeShowAllNodes = (() => {
+      if (typeof search.showAllNodes === 'boolean') return search.showAllNodes
+      if (typeof search.showAllNodes === 'string') {
+        const lowered = search.showAllNodes.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
+    })()
+
     return {
       dataset: typeof search.dataset === 'string' ? search.dataset : undefined,
       view: safeView,
@@ -170,6 +194,7 @@ export const Route = createFileRoute('/explorer')({
       maxThreshold: safeMaxThreshold,
       maxEdges: safeMaxEdges,
       edgeType: safeEdgeType,
+      showAllNodes: safeShowAllNodes,
     }
   },
   search: {
@@ -194,6 +219,7 @@ function ExplorerPage() {
   const [maxEdges, setMaxEdges] = useState(search.maxEdges ?? 500)
   const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
   const [viewType, setViewType] = useState<ViewType>(search.view)
+  const [showAllNodes, setShowAllNodes] = useState<boolean>(search.showAllNodes ?? false)
   const krRef = useRef<KriskogramRef>(null)
   
   // Sidebar state for right panel
@@ -433,7 +459,24 @@ function ExplorerPage() {
       activeNodeIds.add(e.target)
     })
     
-    if (process.env.NODE_ENV !== 'production' && maxEdges < (currentSnapshot.edges as any[]).length) {
+    const nodeIncoming = new Map<string, number>()
+    const nodeOutgoing = new Map<string, number>()
+
+    filteredEdges.forEach((e: any) => {
+      const outgoing = nodeOutgoing.get(e.source) || 0
+      nodeOutgoing.set(e.source, outgoing + e.value)
+
+      const incoming = nodeIncoming.get(e.target) || 0
+      nodeIncoming.set(e.target, incoming + e.value)
+    })
+
+    const keepAllNodes = viewType === 'kriskogram' && showAllNodes
+
+    if (
+      !keepAllNodes &&
+      process.env.NODE_ENV !== 'production' &&
+      maxEdges < (currentSnapshot.edges as any[]).length
+    ) {
       const hiddenNodes = (currentSnapshot.nodes as any[])
         .filter((n: any) => !activeNodeIds.has(n.id))
         .map((n: any) => n.label || n.id)
@@ -446,29 +489,28 @@ function ExplorerPage() {
       }
     }
 
-    const filteredNodes = (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
-    
-    // Compute dynamic attributes (total incoming/outgoing) for each node
-    const nodeIncoming = new Map<string, number>()
-    const nodeOutgoing = new Map<string, number>()
-    
-    filteredEdges.forEach((e: any) => {
-      const outgoing = nodeOutgoing.get(e.source) || 0
-      nodeOutgoing.set(e.source, outgoing + e.value)
-      
-      const incoming = nodeIncoming.get(e.target) || 0
-      nodeIncoming.set(e.target, incoming + e.value)
-    })
-    
-    // Add computed attributes to nodes
-    const nodesWithDynamicAttrs = filteredNodes.map((n: any) => ({
+    const baseNodes = keepAllNodes
+      ? (currentSnapshot.nodes as any[])
+      : (currentSnapshot.nodes as any[]).filter((n: any) => activeNodeIds.has(n.id))
+
+    const nodesWithDynamicAttrs = baseNodes.map((n: any) => ({
       ...n,
       _totalIncoming: nodeIncoming.get(n.id) || 0,
       _totalOutgoing: nodeOutgoing.get(n.id) || 0,
     }))
     
     return { nodes: nodesWithDynamicAttrs, edges: filteredEdges }
-  }, [currentSnapshot, minThreshold, maxThreshold, maxEdges, edgeTypeFilter, edgeTypeInfo, intraFilter])
+  }, [
+    currentSnapshot,
+    minThreshold,
+    maxThreshold,
+    maxEdges,
+    edgeTypeFilter,
+    edgeTypeInfo,
+    intraFilter,
+    showAllNodes,
+    viewType,
+  ])
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -511,7 +553,7 @@ function ExplorerPage() {
 
   // Update visualization when filtered data changes (only for kriskogram view)
   useEffect(() => {
-    if (viewType === 'kriskogram' && filteredData.nodes.length > 0 && filteredData.edges.length > 0 && krRef.current) {
+    if (viewType === 'kriskogram' && filteredData.nodes.length > 0 && krRef.current) {
       krRef.current.updateData(filteredData.nodes, filteredData.edges)
     }
   }, [filteredData, viewType])
@@ -1259,6 +1301,28 @@ function ExplorerPage() {
                   <CollapsibleSection title="Kriskogram Settings" defaultOpen={true}>
                     {dataset?.metadata ? (
                       <div className="space-y-4">
+                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                          <div>
+                            <label htmlFor="kriskogram-show-all-nodes" className="text-sm font-medium text-gray-700">
+                              Always show all nodes
+                            </label>
+                            <p className="text-xs text-gray-500">
+                              Keeps every location visible even if its edges fall outside the filters.
+                            </p>
+                          </div>
+                          <input
+                            id="kriskogram-show-all-nodes"
+                            type="checkbox"
+                            className="w-4 h-4"
+                            checked={showAllNodes}
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              setShowAllNodes(checked)
+                              updateSearchParams({ showAllNodes: checked })
+                            }}
+                          />
+                        </div>
+
                         {/* Node Ordering */}
                         <div className="space-y-2">
                       <label className="text-xs font-medium text-gray-700">Node Ordering</label>
