@@ -295,25 +295,22 @@ export function createKriskogram(config: KriskogramConfig) {
       })
       .attr("stroke-width", (d: any) => {
         const baseWidth = Math.max(getEdgeWidth(d), 0.75);
-        const outlineGap = Math.max(0, (d.__outlineGap ?? 3));
+        const outlineThickness = Math.max(0.5, (d.__outlineGap ?? 3));
+        const style = d.__overlayStyle ?? 'filled';
         if (!forOutline) {
-          if ((d.__overlayStyle ?? 'filled') === 'outline') {
-            return Math.max(baseWidth, outlineGap > 0 ? outlineGap + 1 : baseWidth);
+          if (style === 'outline') {
+            return outlineThickness;
           }
           return baseWidth;
         }
-        if ((d.__overlayStyle ?? 'filled') !== 'outline') {
-          return 0;
-        }
-        const innerWidth = Math.max(baseWidth - outlineGap, outlineGap > 0 ? 0.5 : baseWidth);
-        return innerWidth;
+        return 0;
       })
       .attr("stroke-linecap", (d: any) => (d.__overlayStyle === 'segmented' ? d.__overlayLineCap ?? 'round' : 'round'))
       .attr("stroke-dasharray", (d: any) => d.__overlayDash ?? null)
       .attr("stroke-dashoffset", (d: any) => d.__overlayDashOffset ?? 0)
       .attr("opacity", (d: any) => {
         if (forOutline) {
-          return d.__overlayStyle === 'outline' ? 1 : 0;
+          return 0;
         }
         return d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity;
       });
@@ -407,10 +404,9 @@ export function createKriskogram(config: KriskogramConfig) {
       const datum: any = edge.datum();
       edge.style("filter", null);
       applyEdgeGeometry(edge as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>, false);
-      const matchingOutline = outlineSelection.filter((outlineDatum: any) => outlineDatum === datum);
-      applyEdgeGeometry(matchingOutline as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>, true);
+      applyEdgeGeometry(outlineSelection.filter((outlineDatum: any) => outlineDatum === datum), true);
       applySegmentAnimation(edge as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>);
-      applySegmentAnimation(matchingOutline as unknown as d3.Selection<SVGPathElement, any, SVGGElement, unknown>);
+      applySegmentAnimation(outlineSelection.filter((outlineDatum: any) => outlineDatum === datum));
       d3.selectAll(".kriskogram-tooltip").remove();
     });
 
@@ -436,13 +432,9 @@ const formatNodeTooltipBlock = (node: any) => {
   const formatNumber = (value: number) =>
     Number.isFinite(value) ? value.toLocaleString() : '0';
 
-  const accentColor = node.__baseFillColor ?? node._overlayStrokeColor ?? '#93c5fd';
-  const pastColor = 'hsl(210, 75%, 65%)';
-  const futureColor = 'hsl(0, 75%, 65%)';
-
   const optionalLine = (label: string, value: any) =>
     value != null && value !== ''
-      ? `<span style="color:${accentColor}"><strong>${label}</strong> ${typeof value === 'number' ? formatNumber(value) : value}</span><br/>`
+      ? `<div style="margin-bottom:3px;"><strong>${label}</strong> ${typeof value === 'number' ? formatNumber(value) : value}</div>`
       : '';
 
   const visibleIncoming = node.total_incoming_visible ?? node._totalIncoming ?? 0;
@@ -455,27 +447,32 @@ const formatNodeTooltipBlock = (node: any) => {
   const overlayFuture = node._overlayFutureTotal ?? node.temporal_overlay_future_total ?? 0;
   const overlayDelta = node._overlayDelta ?? node.temporal_overlay_delta ?? 0;
 
+  const overlayLines =
+    overlayPast || overlayFuture
+      ? `
+        <div style="margin-top:6px;">
+          <div style="margin-bottom:3px;color:#93c5fd;"><strong>Overlay Past Total:</strong> ${formatNumber(overlayPast)}</div>
+          <div style="margin-bottom:3px;color:#fca5a5;"><strong>Overlay Future Total:</strong> ${formatNumber(overlayFuture)}</div>
+          <div style="color:#fca5a5;"><strong>Overlay Δ (future - past):</strong> ${formatNumber(overlayDelta)}</div>
+        </div>
+      `
+      : '';
+
   return `
-    <div>
-      <strong style="color:${accentColor}">${node.label || node.id}</strong><br/>
+    <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.35);border-radius:6px;padding:10px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px;">${node.label || node.id}</div>
       ${optionalLine('Region:', node.region)}
       ${optionalLine('Division:', node.division)}
       ${optionalLine('Population:', node.population != null ? node.population : '')}
       ${optionalLine('Economic Index:', node.economic_index != null ? node.economic_index : '')}
-      <span style="color:${accentColor}"><strong>Total Incoming (year):</strong> ${formatNumber(yearIncoming)}</span><br/>
-      <span style="color:${accentColor}"><strong>Total Outgoing (year):</strong> ${formatNumber(yearOutgoing)}</span><br/>
-      <span style="color:${accentColor}"><strong>* Visible Incoming:</strong> ${formatNumber(visibleIncoming)}</span><br/>
-      <span style="color:${accentColor}"><strong>* Visible Outgoing:</strong> ${formatNumber(visibleOutgoing)}</span><br/>
-      <span style="color:${accentColor}"><strong>Total Net (year):</strong> ${formatNumber(netYear)}</span><br/>
-      <span style="color:${accentColor}"><strong>* Visible Net:</strong> ${formatNumber(netVisible)}</span><br/>
-      ${
-        overlayPast || overlayFuture
-          ? `<span style="color:${pastColor}"><strong>Overlay Past Total:</strong> ${formatNumber(overlayPast)}</span><br/>
-             <span style="color:${futureColor}"><strong>Overlay Future Total:</strong> ${formatNumber(overlayFuture)}</span><br/>
-             <span style="color:${futureColor}"><strong>Overlay Δ (future - past):</strong> ${formatNumber(overlayDelta)}</span><br/>`
-          : ''
-      }
-      <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
+      <div style="margin-bottom:3px;"><strong>Total Incoming (year):</strong> ${formatNumber(yearIncoming)}</div>
+      <div style="margin-bottom:3px;"><strong>Total Outgoing (year):</strong> ${formatNumber(yearOutgoing)}</div>
+      <div style="margin-bottom:3px;"><strong>* Visible Incoming:</strong> ${formatNumber(visibleIncoming)}</div>
+      <div style="margin-bottom:3px;"><strong>* Visible Outgoing:</strong> ${formatNumber(visibleOutgoing)}</div>
+      <div style="margin-bottom:3px;"><strong>Total Net (year):</strong> ${formatNumber(netYear)}</div>
+      <div style="margin-bottom:3px;"><strong>* Visible Net:</strong> ${formatNumber(netVisible)}</div>
+      ${overlayLines}
+      <div style="margin-top:8px;font-size:10px;color:#94a3b8;">* Calculated from currently visible flows</div>
     </div>
   `;
 };
@@ -505,19 +502,11 @@ const gatherNodesAtPointer = (event: any, fallback: any) => {
 };
 
 const renderTooltipHtmlForNodes = (nodes: any[]) => {
-  if (nodes.length === 1) {
-    return formatNodeTooltipBlock(nodes[0]);
-  }
-  return nodes
-    .map((node, index) => {
-      const header = `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#bfdbfe;margin-bottom:4px;">Node ${
-        index + 1
-      }</div>`;
-      return `<div style="margin-bottom:${index === nodes.length - 1 ? 0 : 10}px;">${header}${formatNodeTooltipBlock(
-        node,
-      )}</div>`;
-    })
-    .join('<hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:8px 0;" />');
+  return `
+    <div style="display:flex;flex-direction:column;gap:8px;max-width:320px;">
+      ${nodes.map((node) => formatNodeTooltipBlock(node)).join('')}
+    </div>
+  `;
 };
 
 enhanceNodeSelection

@@ -222,9 +222,9 @@ const explorerSearchSchema = z.object({
     (val) => {
       if (val === undefined || val === null || val === '') return 3
       const num = typeof val === 'string' ? parseFloat(val) : Number(val)
-      return Number.isNaN(num) ? 3 : Math.max(0, num)
+      return Number.isNaN(num) ? 3 : Math.max(0.5, num)
     },
-    z.number().min(0).default(3),
+    z.number().min(0.5).default(3),
   ),
 })
 
@@ -407,7 +407,7 @@ export const Route = createFileRoute('/explorer')({
     const safeEdgeOutlineGap = (() => {
       if (search.edgeOutlineGap === undefined || search.edgeOutlineGap === null || search.edgeOutlineGap === '') return 3
       const num = typeof search.edgeOutlineGap === 'string' ? parseFloat(search.edgeOutlineGap) : Number(search.edgeOutlineGap)
-      return Number.isNaN(num) ? 3 : Math.max(0, num)
+      return Number.isNaN(num) ? 3 : Math.max(0.5, num)
     })()
 
     return {
@@ -476,7 +476,7 @@ const [edgeSegmentGap, setEdgeSegmentGap] = useState<number>(search.edgeSegmentG
 const [edgeSegmentAnimate, setEdgeSegmentAnimate] = useState<boolean>(search.edgeSegmentAnimate ?? false)
 const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 0)
 const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
-const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(search.edgeOutlineGap ?? 3)
+const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, search.edgeOutlineGap ?? 3))
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
   
@@ -3116,48 +3116,48 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(search.edgeOutlineG
                               </div>
                             )}
                             {temporalOverlayEdgeStyle === 'outline' && (
-                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                                <div>
-                                  <label className="block text-[11px] font-medium text-gray-600">
-                                    Outline gap (px)
-                                  </label>
-                                  <input
-                                    type="range"
-                                    min={0}
-                                    max={12}
-                                    step={0.5}
-                                    value={edgeOutlineGap}
-                                    onChange={(e) => {
-                                      const val = Number.parseFloat(e.target.value)
-                                      if (Number.isNaN(val)) return
-                                      const clamped = Math.max(0, val)
-                                      setEdgeOutlineGap(clamped)
-                                      updateSearchParams({ edgeOutlineGap: clamped })
-                                    }}
-                                    className="mt-1 w-full"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-medium text-gray-600">
-                                    Precise value
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    step={0.5}
-                                    value={edgeOutlineGap}
-                                    onChange={(e) => {
-                                      const val = Number.parseFloat(e.target.value)
-                                      if (Number.isNaN(val)) return
-                                      const clamped = Math.max(0, val)
-                                      setEdgeOutlineGap(clamped)
-                                      updateSearchParams({ edgeOutlineGap: clamped })
-                                    }}
-                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </div>
-                              </div>
-                            )}
+                               <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                 <div>
+                                   <label className="block text-[11px] font-medium text-gray-600">
+                                     Outline thickness (px)
+                                   </label>
+                                   <input
+                                     type="range"
+                                     min={0.5}
+                                     max={12}
+                                     step={0.5}
+                                     value={edgeOutlineGap}
+                                     onChange={(e) => {
+                                       const val = Number.parseFloat(e.target.value)
+                                       if (Number.isNaN(val)) return
+                                       const clamped = Math.max(0.5, val)
+                                       setEdgeOutlineGap(clamped)
+                                       updateSearchParams({ edgeOutlineGap: clamped })
+                                     }}
+                                     className="mt-1 w-full"
+                                   />
+                                 </div>
+                                 <div>
+                                   <label className="block text-[11px] font-medium text-gray-600">
+                                     Precise value
+                                   </label>
+                                   <input
+                                     type="number"
+                                     min={0.5}
+                                     step={0.5}
+                                     value={edgeOutlineGap}
+                                     onChange={(e) => {
+                                       const val = Number.parseFloat(e.target.value)
+                                       if (Number.isNaN(val)) return
+                                       const clamped = Math.max(0.5, val)
+                                       setEdgeOutlineGap(clamped)
+                                       updateSearchParams({ edgeOutlineGap: clamped })
+                                     }}
+                                     className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   />
+                                 </div>
+                               </div>
+                             )}
                           </div>
 
                           {/* Edge Color */}
