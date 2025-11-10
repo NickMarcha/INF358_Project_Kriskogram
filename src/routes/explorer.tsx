@@ -169,7 +169,18 @@ const explorerSearchSchema = z.object({
   ),
   showAllNodes: safeCoerceBoolean(false),
   temporalOverlay: safeCoerceBoolean(false),
-  temporalOverlaySegmented: safeCoerceBoolean(true),
+  temporalOverlayStyle: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const lowered = val.toLowerCase()
+        if (['segmented', 'filled', 'outline'].includes(lowered)) {
+          return lowered
+        }
+      }
+      return 'segmented'
+    },
+    z.enum(['segmented', 'filled', 'outline']).default('segmented'),
+  ),
   temporalOverlayYears: z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '') return 1
@@ -289,14 +300,14 @@ export const Route = createFileRoute('/explorer')({
       return false
     })()
 
-    const safeTemporalOverlaySegmented = (() => {
-      if (typeof search.temporalOverlaySegmented === 'boolean') return search.temporalOverlaySegmented
-      if (typeof search.temporalOverlaySegmented === 'string') {
-        const lowered = search.temporalOverlaySegmented.toLowerCase()
-        if (lowered === 'true') return true
-        if (lowered === 'false') return false
+    const safeTemporalOverlayStyle = (() => {
+      if (typeof search.temporalOverlayStyle === 'string') {
+        const lowered = search.temporalOverlayStyle.toLowerCase()
+        if (['segmented', 'filled', 'outline'].includes(lowered)) {
+          return lowered as 'segmented' | 'filled' | 'outline'
+        }
       }
-      return true
+      return 'segmented' as const
     })()
 
     const safeTemporalOverlayYears = (() => {
@@ -304,8 +315,7 @@ export const Route = createFileRoute('/explorer')({
         return 1
       }
       const num = typeof search.temporalOverlayYears === 'string'
-        ? parseInt(search.temporalOverlayYears, 10)
-        : Number(search.temporalOverlayYears)
+        ? parseInt(search.temporalOverlayYears, 10) : Number(search.temporalOverlayYears)
       if (Number.isNaN(num) || num < 1) return 1
       return Math.max(1, Math.round(num))
     })()
@@ -323,7 +333,7 @@ export const Route = createFileRoute('/explorer')({
       egoNeighborSteps: safeEgoNeighborSteps,
       egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
       temporalOverlay: safeTemporalOverlay,
-      temporalOverlaySegmented: safeTemporalOverlaySegmented,
+      temporalOverlayStyle: safeTemporalOverlayStyle,
       temporalOverlayYears: safeTemporalOverlayYears,
       edgeWeightScale: safeEdgeWeightScale,
     }
@@ -358,8 +368,8 @@ function ExplorerPage() {
     search.edgeWeightScale ?? 'linear',
   )
   const [temporalOverlayEnabled, setTemporalOverlayEnabled] = useState<boolean>(search.temporalOverlay ?? false)
-  const [temporalOverlaySegmented, setTemporalOverlaySegmented] = useState<boolean>(
-    search.temporalOverlaySegmented ?? true,
+  const [temporalOverlayStyle, setTemporalOverlayStyle] = useState<'segmented' | 'filled' | 'outline'>(
+    search.temporalOverlayStyle ?? 'segmented',
   )
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
@@ -877,7 +887,7 @@ function ExplorerPage() {
         __temporalDelta: 0,
         _overlayType: undefined,
         _overlayYear: currentYearValue,
-        __overlaySegmented: false,
+        __overlayStyle: 'current',
       }
       if (step !== undefined) {
         decorated._egoStep = step
@@ -978,7 +988,7 @@ function ExplorerPage() {
             __isOverlay: true,
             __displayYear: targetYear,
             __temporalDelta: offset,
-            __overlaySegmented: temporalOverlaySegmented,
+            __overlayStyle: temporalOverlayStyle,
           }))
 
         overlaySubset.forEach((edge: any) => {
@@ -1092,6 +1102,7 @@ function ExplorerPage() {
           hasPast: overlayHasPast,
           hasFuture: overlayHasFuture,
           nodeDeltaAbsMax: overlayNodeAbsMax,
+          style: temporalOverlayStyle,
         }
       : null
 
@@ -1121,7 +1132,7 @@ function ExplorerPage() {
     egoNeighborSteps,
     edgeWeightScale,
     temporalOverlayEnabled,
-    temporalOverlaySegmented,
+    temporalOverlayStyle,
     temporalOverlayYears,
     dataset,
   ])
@@ -1256,20 +1267,20 @@ function ExplorerPage() {
     if (!dataset || dataset.timeRange.start === dataset.timeRange.end || typeof currentYear !== 'number') {
       if (temporalOverlayEnabled) {
         setTemporalOverlayEnabled(false)
-        updateSearchParams({ temporalOverlay: false, temporalOverlaySegmented })
+        updateSearchParams({ temporalOverlay: false, temporalOverlayStyle })
       }
     }
-  }, [dataset, currentYear, temporalOverlayEnabled, temporalOverlaySegmented, updateSearchParams])
+  }, [dataset, currentYear, temporalOverlayEnabled, temporalOverlayStyle, updateSearchParams])
 
   useEffect(() => {
     if (!isInitialMount.current) {
       updateSearchParams({
         temporalOverlay: temporalOverlayEnabled,
         temporalOverlayYears,
-        temporalOverlaySegmented,
+        temporalOverlayStyle,
       })
     }
-  }, [temporalOverlayEnabled, temporalOverlayYears, temporalOverlaySegmented])
+  }, [temporalOverlayEnabled, temporalOverlayYears, temporalOverlayStyle])
 
   return (
     <ErrorBoundary
@@ -1425,6 +1436,8 @@ function ExplorerPage() {
                               
                               const overlaySummary = filteredData.temporalOverlay
                               const overlayActive = Boolean(overlaySummary)
+                              const overlayStyle = overlaySummary?.style ?? temporalOverlayStyle
+                              const overlayOutlineActive = overlayActive && overlayStyle === 'outline'
                               const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0
                               const overlayEdgeColor = (delta: number) => {
                                 if (delta === 0) return '#6b7280'
@@ -1480,6 +1493,10 @@ function ExplorerPage() {
                                       return `hsl(0, 75%, ${lightness}%)`
                                     }
                                     return `hsl(210, 75%, ${lightness}%)`
+                                  }
+
+                                  if (overlayOutlineActive) {
+                                    return 'transparent'
                                   }
 
                                   switch (nodeColorMode) {
@@ -1604,8 +1621,12 @@ function ExplorerPage() {
                                 // Edge width
                                 edgeWidth: (e: any) => {
                                   if (e?.__temporalDelta) {
+                                    if (overlayStyle === 'outline') {
+                                      return Math.max(1.5, baseEdgeWidth)
+                                    }
                                     const normalized = normalizeEdgeWeight(e.value)
-                                    return 0.5 + (normalized * 8)
+                                    const overlayWidthMultiplier = overlayStyle === 'filled' ? 12 : 8
+                                    return 0.5 + (normalized * overlayWidthMultiplier)
                                   }
                                   if (edgeWidthMode === 'weight') {
                                     const normalized = normalizeEdgeWeight(e.value)
@@ -2373,7 +2394,7 @@ function ExplorerPage() {
                       setEgoStepColoring(false)
                       setEdgeWeightScale('linear')
                       setTemporalOverlayEnabled(false)
-                      setTemporalOverlaySegmented(true)
+                      setTemporalOverlayStyle('segmented')
                       setTemporalOverlayYears(1)
                       updateSearchParams({
                         showAllNodes: false,
@@ -2382,7 +2403,7 @@ function ExplorerPage() {
                         egoStepColoring: false,
                         temporalOverlay: false,
                         temporalOverlayYears: 1,
-                        temporalOverlaySegmented: true,
+                        temporalOverlayStyle: 'segmented',
                         edgeWeightScale: 'linear',
                       })
                     }}
@@ -2554,27 +2575,28 @@ function ExplorerPage() {
                               </p>
                             )}
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-segments">
-                                Segment overlay arcs
-                              </label>
-                              <p className="text-[11px] text-gray-500">
-                                Use dashed strokes for past/future flows to separate them visually.
-                              </p>
-                            </div>
-                            <input
-                              id="kriskogram-temporal-overlay-segments"
-                              type="checkbox"
-                              className="w-4 h-4"
+                          <div>
+                            <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-style">
+                              Overlay display mode
+                            </label>
+                            <p className="text-[11px] text-gray-500 mb-1">
+                              Choose how past and future flows (and node fills) are rendered.
+                            </p>
+                            <select
+                              id="kriskogram-temporal-overlay-style"
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              value={temporalOverlayStyle}
                               disabled={!temporalOverlayEnabled}
-                              checked={temporalOverlaySegmented}
                               onChange={(e) => {
-                                const checked = e.target.checked
-                                setTemporalOverlaySegmented(checked)
-                                updateSearchParams({ temporalOverlaySegmented: checked })
+                                const next = e.target.value as 'segmented' | 'filled' | 'outline'
+                                setTemporalOverlayStyle(next)
+                                updateSearchParams({ temporalOverlayStyle: next })
                               }}
-                            />
+                            >
+                              <option value="segmented">Segmented (dashed arcs)</option>
+                              <option value="filled">Filled (solid weight)</option>
+                              <option value="outline">Outline (stroke only)</option>
+                            </select>
                           </div>
                         </div>
 

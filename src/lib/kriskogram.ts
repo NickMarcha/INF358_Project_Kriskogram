@@ -254,7 +254,7 @@ export function createKriskogram(config: KriskogramConfig) {
       return getEdgeColor(d, isAbove);
     })
     .attr("stroke-width", (d) => getEdgeWidth(d))
-    .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
+    .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
     .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity))
     .style("cursor", "pointer")
     .on("mouseover", function(_event, d) {
@@ -825,7 +825,7 @@ enhanceNodeSelection.each(function (d) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
+        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
         .style("cursor", "pointer")
         .on("mouseover", function(_event, d) {
           const currentStroke = d3.select(this).attr("stroke");
@@ -915,7 +915,7 @@ enhanceNodeSelection.each(function (d) {
           return getEdgeColor(d, isAbove);
         })
         .attr("stroke-width", (d) => getEdgeWidth(d))
-        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlaySegmented ? "6 3" : null))
+        .attr("stroke-dasharray", (d: any) => (d && d.__isOverlay && d.__overlayStyle === 'segmented' ? "6 3" : null))
         .attr("opacity", (d: any) => (d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity));
 
       // Re-render legend when data/props change

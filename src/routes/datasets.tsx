@@ -244,7 +244,7 @@ function DatasetsPage() {
                   egoNeighborSteps: 1,
                   egoStepColoring: false,
                   temporalOverlay: false,
-                  temporalOverlaySegmented: true,
+                  temporalOverlayStyle: 'segmented',
                   temporalOverlayYears: 1,
                   edgeWeightScale: 'linear',
                 }}
@@ -289,7 +289,7 @@ function DatasetsPage() {
               egoNeighborSteps: 1,
               egoStepColoring: false,
               temporalOverlay: false,
-              temporalOverlaySegmented: true,
+              temporalOverlayStyle: 'segmented',
               temporalOverlayYears: 1,
               edgeWeightScale: 'linear',
             }}
