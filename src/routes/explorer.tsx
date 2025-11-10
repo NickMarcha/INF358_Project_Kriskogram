@@ -308,9 +308,13 @@ function ExplorerPage() {
   // Intra/Inter filters
   const [intraFilter, setIntraFilter] = useState<'none' | 'region' | 'division' | 'interRegion' | 'interDivision'>('none')
   const [baseEdgeWidth, setBaseEdgeWidth] = useState<number>(2)
-  const [nodeColorMode, setNodeColorMode] = useState<'single' | 'attribute' | 'outgoing' | 'incoming'>('single')
+  const [nodeColorMode, setNodeColorMode] = useState<
+    'single' | 'attribute' | 'visible_outgoing' | 'visible_incoming' | 'year_outgoing' | 'year_incoming' | 'net_year'
+  >('single')
   const [nodeColorAttribute, setNodeColorAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
-  const [nodeSizeMode, setNodeSizeMode] = useState<'fixed' | 'attribute' | 'outgoing' | 'incoming'>('fixed')
+  const [nodeSizeMode, setNodeSizeMode] = useState<
+    'fixed' | 'attribute' | 'visible_outgoing' | 'visible_incoming' | 'year_outgoing' | 'year_incoming' | 'net_visible' | 'net_year'
+  >('fixed')
   const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(null) // Property name when mode is 'attribute'
   const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>('pan')
   const [lensRadius, setLensRadius] = useState(80)
@@ -420,6 +424,74 @@ function ExplorerPage() {
       min,
       max,
       maxEdgesCount,
+    }
+  }, [dataset])
+
+  const datasetNodeNetStats = useMemo(() => {
+    if (!dataset) return null
+
+    let minNet = Infinity
+    let maxNet = -Infinity
+
+    dataset.snapshots.forEach((snapshot: any) => {
+      const incoming = new Map<string, number>()
+      const outgoing = new Map<string, number>()
+
+      const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
+      edges.forEach((edge: any) => {
+        const out = outgoing.get(edge.source) || 0
+        outgoing.set(edge.source, out + edge.value)
+
+        const inn = incoming.get(edge.target) || 0
+        incoming.set(edge.target, inn + edge.value)
+      })
+
+      const nodes = Array.isArray(snapshot?.nodes) ? (snapshot.nodes as any[]) : []
+      nodes.forEach((node: any) => {
+        const net = (incoming.get(node.id) || 0) - (outgoing.get(node.id) || 0)
+        if (net < minNet) minNet = net
+        if (net > maxNet) maxNet = net
+      })
+    })
+
+    if (minNet === Infinity || maxNet === -Infinity) {
+      return { min: 0, max: 0 }
+    }
+
+    return { min: minNet, max: maxNet }
+  }, [dataset])
+
+  const datasetNodeYearFlowStats = useMemo(() => {
+    if (!dataset) return null
+
+    let maxIncoming = 0
+    let maxOutgoing = 0
+
+    dataset.snapshots.forEach((snapshot: any) => {
+      const incoming = new Map<string, number>()
+      const outgoing = new Map<string, number>()
+
+      const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
+      edges.forEach((edge: any) => {
+        const out = outgoing.get(edge.source) || 0
+        outgoing.set(edge.source, out + edge.value)
+
+        const inn = incoming.get(edge.target) || 0
+        incoming.set(edge.target, inn + edge.value)
+      })
+
+      const nodes = Array.isArray(snapshot?.nodes) ? (snapshot.nodes as any[]) : []
+      nodes.forEach((node: any) => {
+        const totalIn = incoming.get(node.id) || 0
+        const totalOut = outgoing.get(node.id) || 0
+        if (totalIn > maxIncoming) maxIncoming = totalIn
+        if (totalOut > maxOutgoing) maxOutgoing = totalOut
+      })
+    })
+
+    return {
+      maxIncoming,
+      maxOutgoing,
     }
   }, [dataset])
 
@@ -583,6 +655,8 @@ function ExplorerPage() {
       const visibleOutgoing = nodeOutgoing.get(n.id) || 0
       const totalIncomingYear = totalIncomingAll.get(n.id) || 0
       const totalOutgoingYear = totalOutgoingAll.get(n.id) || 0
+      const netVisible = visibleIncoming - visibleOutgoing
+      const netYear = totalIncomingYear - totalOutgoingYear
 
       return {
         ...n,
@@ -592,6 +666,8 @@ function ExplorerPage() {
         total_outgoing_visible: visibleOutgoing,
         total_incoming_year: totalIncomingYear,
         total_outgoing_year: totalOutgoingYear,
+        net_flow_visible: netVisible,
+        net_flow_year: netYear,
       }
     })
     
@@ -649,6 +725,15 @@ function ExplorerPage() {
   const hasDivisionData = useMemo(() => {
     return filteredData.nodes.some((n: any) => n && n.division)
   }, [filteredData])
+
+  useEffect(() => {
+    if (!hasRegionData && edgeColorHue === 'region') {
+      setEdgeColorHue('direction')
+    }
+    if (!hasDivisionData && edgeColorHue === 'division') {
+      setEdgeColorHue('direction')
+    }
+  }, [hasRegionData, hasDivisionData, edgeColorHue])
 
   const effectiveMaxEdgeValue = useMemo(() => {
     if (!filteredData || filteredData.edges.length === 0) return undefined as number | undefined
@@ -766,10 +851,25 @@ function ExplorerPage() {
                               }
                               
                               // Compute node attribute ranges for color/size scaling
-                              const nodeOutgoingValues = filteredData.nodes.map((n: any) => n._totalOutgoing || 0)
-                              const nodeIncomingValues = filteredData.nodes.map((n: any) => n._totalIncoming || 0)
-                              const maxOutgoing = nodeOutgoingValues.length > 0 ? Math.max(...nodeOutgoingValues) : 1
-                              const maxIncoming = nodeIncomingValues.length > 0 ? Math.max(...nodeIncomingValues) : 1
+                              const nodeVisibleOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_visible || n._totalOutgoing || 0)
+                              const nodeVisibleIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_visible || n._totalIncoming || 0)
+                              const nodeYearOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_year || 0)
+                              const nodeYearIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_year || 0)
+                              const nodeNetVisibleValues = filteredData.nodes.map((n: any) => n.net_flow_visible || 0)
+                              const nodeNetYearValues = filteredData.nodes.map((n: any) => n.net_flow_year || 0)
+
+                              const maxVisibleOutgoing = nodeVisibleOutgoingValues.length > 0 ? Math.max(...nodeVisibleOutgoingValues) : 1
+                              const maxVisibleIncoming = nodeVisibleIncomingValues.length > 0 ? Math.max(...nodeVisibleIncomingValues) : 1
+                              const maxYearOutgoingLocal = nodeYearOutgoingValues.length > 0 ? Math.max(...nodeYearOutgoingValues) : 1
+                              const maxYearIncomingLocal = nodeYearIncomingValues.length > 0 ? Math.max(...nodeYearIncomingValues) : 1
+                              const maxAbsNetVisible = nodeNetVisibleValues.length > 0 ? Math.max(...nodeNetVisibleValues.map((v: number) => Math.abs(v))) : 1
+                              const maxAbsNetYearLocal = nodeNetYearValues.length > 0 ? Math.max(...nodeNetYearValues.map((v: number) => Math.abs(v))) : 1
+
+                              const globalMaxYearOutgoing = datasetNodeYearFlowStats?.maxOutgoing ?? maxYearOutgoingLocal
+                              const globalMaxYearIncoming = datasetNodeYearFlowStats?.maxIncoming ?? maxYearIncomingLocal
+                              const globalNetMin = datasetNodeNetStats?.min ?? -maxAbsNetYearLocal
+                              const globalNetMax = datasetNodeNetStats?.max ?? maxAbsNetYearLocal
+                              const globalNetAbs = Math.max(Math.abs(globalNetMin), Math.abs(globalNetMax)) || 1
                               
                               // Get unique categorical values for color assignment
                               const getCategoricalColor = (propName: string, propValue: any, colors: string[]) => {
@@ -804,55 +904,123 @@ function ExplorerPage() {
                                 
                                 // Node color
                                 nodeColor: (d: any) => {
-                                  if (nodeColorMode === 'single') {
-                                    return '#2563eb'
-                                  } else if (nodeColorMode === 'outgoing') {
-                                    const normalized = maxOutgoing > 0 ? (d._totalOutgoing || 0) / maxOutgoing : 0
-                                    const lightness = 20 + (normalized * 50) // 20% (dark) to 70% (light) for intensity
-                                    return `hsl(200, 70%, ${lightness}%)`
-                                  } else if (nodeColorMode === 'incoming') {
-                                    const normalized = maxIncoming > 0 ? (d._totalIncoming || 0) / maxIncoming : 0
-                                    const lightness = 20 + (normalized * 50)
-                                    return `hsl(200, 70%, ${lightness}%)`
-                                  } else if (nodeColorMode === 'attribute' && nodeColorAttribute) {
-                                    const propValue = d[nodeColorAttribute]
-                                    if (propValue === undefined || propValue === null) return '#999'
-                                    
-                                    // Check if it's a numeric property
-                                    if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
-                                      // Scale numeric value to color (using a color scale)
-                                      const allValues = filteredData.nodes
-                                        .map((n: any) => n[nodeColorAttribute])
-                                        .filter((v: any) => typeof v === 'number') as number[]
-                                      if (allValues.length === 0) return '#2563eb'
-                                      
-                                      const minVal = Math.min(...allValues)
-                                      const maxVal = Math.max(...allValues)
-                                      const range = maxVal - minVal || 1
-                                      const normalized = (Number(propValue) - minVal) / range
-                                      
-                                      // Use hue from green (120) to red (0)
-                                      const hue = 120 - (normalized * 120)
-                                      return `hsl(${hue}, 70%, 50%)`
-                                    } else {
-                                      // Categorical - assign distinct colors
+                                  const normalizedRatio = (value: number, max: number) => {
+                                    if (!Number.isFinite(value) || max <= 0) return 0
+                                    return Math.max(0, Math.min(1, value / max))
+                                  }
+
+                                  const gradientColor = (hue: number, saturation: number, ratio: number) => {
+                                    const clamped = Math.max(0, Math.min(1, ratio))
+                                    const lightness = 85 - (clamped * 45) // 85% (light) to 40% (dark)
+                                    return `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                                  }
+
+                                  const netColor = (netValue: number) => {
+                                    if (!Number.isFinite(netValue) || globalNetAbs <= 0) {
+                                      return '#6b7280'
+                                    }
+                                    if (Math.abs(netValue) < 1e-6) {
+                                      return '#9ca3af'
+                                    }
+                                    const intensity = Math.max(0, Math.min(1, Math.abs(netValue) / globalNetAbs))
+                                    const lightness = 85 - intensity * 45
+                                    if (netValue >= 0) {
+                                      return `hsl(0, 75%, ${lightness}%)`
+                                    }
+                                    return `hsl(210, 75%, ${lightness}%)`
+                                  }
+
+                                  switch (nodeColorMode) {
+                                    case 'single':
+                                      return '#2563eb'
+                                    case 'outgoing': // legacy fallback
+                                    case 'visible_outgoing': {
+                                      const ratio = normalizedRatio(d.total_outgoing_visible || d._totalOutgoing || 0, maxVisibleOutgoing)
+                                      return gradientColor(24, 85, ratio)
+                                    }
+                                    case 'incoming': // legacy fallback
+                                    case 'visible_incoming': {
+                                      const ratio = normalizedRatio(d.total_incoming_visible || d._totalIncoming || 0, maxVisibleIncoming)
+                                      return gradientColor(160, 70, ratio)
+                                    }
+                                    case 'year_outgoing': {
+                                      const ratio = normalizedRatio(d.total_outgoing_year || 0, globalMaxYearOutgoing)
+                                      return gradientColor(24, 85, ratio)
+                                    }
+                                    case 'year_incoming': {
+                                      const ratio = normalizedRatio(d.total_incoming_year || 0, globalMaxYearIncoming)
+                                      return gradientColor(160, 70, ratio)
+                                    }
+                                    case 'net_year':
+                                      return netColor(d.net_flow_year || 0)
+                                    case 'attribute': {
+                                      if (!nodeColorAttribute) return '#2563eb'
+                                      const propValue = d[nodeColorAttribute]
+                                      if (propValue === undefined || propValue === null) return '#9ca3af'
+
+                                      if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
+                                        const allValues = filteredData.nodes
+                                          .map((n: any) => n[nodeColorAttribute])
+                                          .filter((v: any) => typeof v === 'number') as number[]
+                                        if (allValues.length === 0) return '#2563eb'
+
+                                        const minVal = Math.min(...allValues)
+                                        const maxVal = Math.max(...allValues)
+                                        const range = maxVal - minVal || 1
+                                        const normalized = (Number(propValue) - minVal) / range
+                                        const hue = 120 - (Math.max(0, Math.min(1, normalized)) * 120)
+                                        return `hsl(${hue}, 70%, 50%)`
+                                      }
+
                                       return getCategoricalColor(nodeColorAttribute, propValue, categoricalColors)
                                     }
+                                    default:
+                                      return '#2563eb'
                                   }
-                                  return '#2563eb'
                                 },
                                 
                                 // Node size
                                 nodeRadius: (d: any) => {
+                                  const visibleOutgoing = d.total_outgoing_visible || d._totalOutgoing || 0
+                                  const visibleIncoming = d.total_incoming_visible || d._totalIncoming || 0
+                                  const yearOutgoing = d.total_outgoing_year || 0
+                                  const yearIncoming = d.total_incoming_year || 0
+                                  const netVisible = Math.abs(d.net_flow_visible || 0)
+                                  const netYear = Math.abs(d.net_flow_year || 0)
+
+                                  const sizeFromRatio = (ratio: number) => 3 + (Math.max(0, Math.min(1, ratio)) * 9)
+
                                   if (nodeSizeMode === 'fixed') {
                                     return 6
-                                  } else if (nodeSizeMode === 'outgoing') {
-                                    const normalized = maxOutgoing > 0 ? (d._totalOutgoing || 0) / maxOutgoing : 0
-                                    return 3 + (normalized * 9) // 3 to 12
-                                  } else if (nodeSizeMode === 'incoming') {
-                                    const normalized = maxIncoming > 0 ? (d._totalIncoming || 0) / maxIncoming : 0
-                                    return 3 + (normalized * 9) // 3 to 12
-                                  } else if (nodeSizeMode === 'attribute' && nodeSizeAttribute) {
+                                  }
+
+                                  if (nodeSizeMode === 'visible_outgoing' || nodeSizeMode === 'outgoing') {
+                                    return sizeFromRatio(maxVisibleOutgoing > 0 ? visibleOutgoing / maxVisibleOutgoing : 0)
+                                  }
+
+                                  if (nodeSizeMode === 'visible_incoming' || nodeSizeMode === 'incoming') {
+                                    return sizeFromRatio(maxVisibleIncoming > 0 ? visibleIncoming / maxVisibleIncoming : 0)
+                                  }
+
+                                  if (nodeSizeMode === 'year_outgoing') {
+                                    return sizeFromRatio(globalMaxYearOutgoing > 0 ? yearOutgoing / globalMaxYearOutgoing : 0)
+                                  }
+
+                                  if (nodeSizeMode === 'year_incoming') {
+                                    return sizeFromRatio(globalMaxYearIncoming > 0 ? yearIncoming / globalMaxYearIncoming : 0)
+                                  }
+
+                                  if (nodeSizeMode === 'net_visible') {
+                                    const maxAbs = maxAbsNetVisible > 0 ? maxAbsNetVisible : 1
+                                    return sizeFromRatio(netVisible / maxAbs)
+                                  }
+
+                                  if (nodeSizeMode === 'net_year') {
+                                    const netAbsDenominator = globalNetAbs > 0 ? globalNetAbs : 1
+                                    return sizeFromRatio(netYear / netAbsDenominator)
+                                  }
+
+                                  if (nodeSizeMode === 'attribute' && nodeSizeAttribute) {
                                     const propValue = d[nodeSizeAttribute]
                                     if (typeof propValue !== 'number') return 6
                                     
@@ -865,8 +1033,9 @@ function ExplorerPage() {
                                     const maxVal = Math.max(...allValues)
                                     const range = maxVal - minVal || 1
                                     const normalized = (propValue - minVal) / range
-                                    return 3 + (normalized * 9) // 3 to 12
+                                    return sizeFromRatio(normalized)
                                   }
+                                  
                                   return 6
                                 },
                                 
@@ -1643,32 +1812,20 @@ function ExplorerPage() {
                         <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-700">Hue Source</label>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeHue" value="direction" className="w-3.5 h-3.5" checked={edgeColorHue === 'direction'} onChange={() => setEdgeColorHue('direction')} />
-                                <span>Direction</span>
-                              </label>
-                              {hasRegionData && (
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input type="radio" name="edgeHue" value="region" className="w-3.5 h-3.5" checked={edgeColorHue === 'region'} onChange={() => setEdgeColorHue('region')} />
-                                  <span>Region</span>
-                                </label>
-                              )}
-                              {hasDivisionData && (
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                  <input type="radio" name="edgeHue" value="division" className="w-3.5 h-3.5" checked={edgeColorHue === 'division'} onChange={() => setEdgeColorHue('division')} />
-                                  <span>Division</span>
-                                </label>
-                              )}
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeHue" value="attribute" className="w-3.5 h-3.5" checked={edgeColorHue === 'attribute'} onChange={() => setEdgeColorHue('attribute')} />
-                                <span>Attribute</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeHue" value="single" className="w-3.5 h-3.5" checked={edgeColorHue === 'single'} onChange={() => setEdgeColorHue('single')} />
-                                <span>Single</span>
-                              </label>
-                            </div>
+                            <select
+                              value={edgeColorHue}
+                              onChange={(e) => {
+                                const value = e.target.value as typeof edgeColorHue
+                                setEdgeColorHue(value)
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="direction">Direction (above/below)</option>
+                              <option value="region" disabled={!hasRegionData}>Region</option>
+                              <option value="division" disabled={!hasDivisionData}>Division</option>
+                              <option value="attribute">Attribute</option>
+                              <option value="single">Single Color</option>
+                            </select>
                             {edgeColorHue === 'attribute' && dataset?.metadata && (
                               <div className="mt-2">
                                 <label className="text-xs text-gray-600">Hue Attribute</label>
@@ -1689,20 +1846,15 @@ function ExplorerPage() {
                           </div>
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-700">Intensity Source</label>
-                            <div className="flex items-center gap-3 text-xs">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeIntensity" value="weight" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'weight'} onChange={() => setEdgeColorIntensity('weight')} />
-                                <span>Weight</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeIntensity" value="constant" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'constant'} onChange={() => setEdgeColorIntensity('constant')} />
-                                <span>Constant</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="edgeIntensity" value="attribute" className="w-3.5 h-3.5" checked={edgeColorIntensity === 'attribute'} onChange={() => setEdgeColorIntensity('attribute')} />
-                                <span>Attribute</span>
-                              </label>
-                            </div>
+                            <select
+                              value={edgeColorIntensity}
+                              onChange={(e) => setEdgeColorIntensity(e.target.value as typeof edgeColorIntensity)}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="weight">Weight</option>
+                              <option value="constant">Constant</option>
+                              <option value="attribute">Attribute</option>
+                            </select>
                             {edgeColorIntensity === 'constant' && (
                               <div className="mt-2">
                                 <label className="text-xs text-gray-600">Constant Intensity: {(edgeColorIntensityConst*100).toFixed(0)}%</label>
@@ -1732,8 +1884,11 @@ function ExplorerPage() {
                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="single">Single Color</option>
-                        <option value="outgoing">Total Outgoing</option>
-                        <option value="incoming">Total Incoming</option>
+                        <option value="visible_outgoing">Visible Outgoing Flow</option>
+                        <option value="visible_incoming">Visible Incoming Flow</option>
+                        <option value="year_outgoing">Year Outgoing Flow</option>
+                        <option value="year_incoming">Year Incoming Flow</option>
+                        <option value="net_year">Net Flow (year)</option>
                         <option value="attribute">By Attribute</option>
                       </select>
                       {nodeColorMode === 'attribute' && (
@@ -1766,8 +1921,12 @@ function ExplorerPage() {
                         className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="fixed">Fixed</option>
-                        <option value="outgoing">Total Outgoing</option>
-                        <option value="incoming">Total Incoming</option>
+                        <option value="visible_outgoing">Visible Outgoing Flow</option>
+                        <option value="visible_incoming">Visible Incoming Flow</option>
+                        <option value="year_outgoing">Year Outgoing Flow</option>
+                        <option value="year_incoming">Year Incoming Flow</option>
+                        <option value="net_visible">Net Flow (visible)</option>
+                        <option value="net_year">Net Flow (year)</option>
                         <option value="attribute">By Attribute</option>
                       </select>
                       {nodeSizeMode === 'attribute' && (
@@ -1783,6 +1942,36 @@ function ExplorerPage() {
                             </option>
                           ))}
                         </select>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Interaction Mode</label>
+                      <select
+                        value={interactionMode}
+                        onChange={(e) => setInteractionMode(e.target.value as typeof interactionMode)}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="pan">Pan</option>
+                        <option value="lens">Edge Lens</option>
+                      </select>
+                      {interactionMode === 'lens' && (
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-gray-600">
+                            Lens Radius: {lensRadius}px
+                          </label>
+                          <input
+                            type="range"
+                            min={20}
+                            max={300}
+                            step={5}
+                            value={lensRadius}
+                            onChange={(e) => setLensRadius(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                          <p className="text-[10px] text-gray-500">
+                            Scroll over the visualization to adjust while lens mode is active.
+                          </p>
+                        </div>
                       )}
                     </div>
                       </div>

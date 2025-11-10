@@ -337,10 +337,12 @@ enhanceNodeSelection
       .style("z-index", "1000")
       .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
 
-  const visibleIncoming = (d as any)?.total_incoming_visible ?? (d as any)?._totalIncoming ?? 0;
-  const visibleOutgoing = (d as any)?.total_outgoing_visible ?? (d as any)?._totalOutgoing ?? 0;
-  const yearIncoming = (d as any)?.total_incoming_year ?? visibleIncoming;
-  const yearOutgoing = (d as any)?.total_outgoing_year ?? visibleOutgoing;
+    const visibleIncoming = (d as any)?.total_incoming_visible ?? (d as any)?._totalIncoming ?? 0;
+    const visibleOutgoing = (d as any)?.total_outgoing_visible ?? (d as any)?._totalOutgoing ?? 0;
+    const yearIncoming = (d as any)?.total_incoming_year ?? visibleIncoming;
+    const yearOutgoing = (d as any)?.total_outgoing_year ?? visibleOutgoing;
+    const netVisible = (d as any)?.net_flow_visible ?? (visibleIncoming - visibleOutgoing);
+    const netYear = (d as any)?.net_flow_year ?? (yearIncoming - yearOutgoing);
 
     tooltip.html(`
       <strong>${d.label || d.id}</strong><br/>
@@ -352,7 +354,9 @@ enhanceNodeSelection
     <strong>Total Outgoing (year):</strong> ${yearOutgoing.toLocaleString()}<br/>
     <strong>* Visible Incoming:</strong> ${visibleIncoming.toLocaleString()}<br/>
     <strong>* Visible Outgoing:</strong> ${visibleOutgoing.toLocaleString()}<br/>
-    <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
+      <strong>Total Net (year):</strong> ${netYear.toLocaleString()}<br/>
+      <strong>* Visible Net:</strong> ${netVisible.toLocaleString()}<br/>
+      <span style="display:block;margin-top:6px;font-size:10px;color:#9ca3af;">* Calculated from currently visible flows</span>
     `);
 
     tooltip
