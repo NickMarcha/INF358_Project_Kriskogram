@@ -1004,6 +1004,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         __overlayDash: currentDashArray,
         __overlayDashOffset: currentDashOffset,
         __overlayLineCap: currentLineCap,
+        __segmentInitialGap: temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
         __segmentCycle:
           temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
         __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
@@ -1119,6 +1120,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             __overlayDash: overlayDashArray,
             __overlayDashOffset: overlayDashOffset,
             __overlayLineCap: overlayLineCap,
+            __segmentInitialGap: temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
             __segmentCycle:
               temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
             __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,

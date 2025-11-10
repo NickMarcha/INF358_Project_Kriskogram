@@ -203,16 +203,19 @@ export function createKriskogram(config: KriskogramConfig) {
     .attr("stroke-width", 2);
 
   // ---- Arcs (edges) ----
-  function arcPath(x1: number, x2: number, isAbove: boolean) {
-    const dx = Math.abs(x2 - x1);
-    let arcHeight = dx / 2;
+  function arcPath(x1: number, x2: number, isAbove: boolean, initialGap = 0) {
+    const span = Math.max(Math.abs(x2 - x1), 1);
+    const gap = Math.max(0, Math.min(initialGap, span / 2));
+    const startY = baselineY + (isAbove ? gap : -gap);
+    const endY = startY;
+    let arcHeight = span / 2;
 
     // EdgeLens: amplify arc height if lens is enabled and intersects this span
     if (config.lens && config.lens.enabled) {
       const midX = (x1 + x2) / 2;
       const lens = config.lens;
       const withinX = (midX >= Math.min(x1, x2) && midX <= Math.max(x1, x2));
-      const dy = Math.abs(baselineY - lens.y);
+      const dy = Math.abs(startY - lens.y);
       const withinY = dy <= lens.radius;
       if (withinX && withinY) {
         // Increase curvature based on proximity to lens center in X
@@ -230,7 +233,9 @@ export function createKriskogram(config: KriskogramConfig) {
       sweep = isAbove ? 1 : 0;
     }
 
-    return `M${x1},${baselineY} A${dx / 2},${arcHeight} 0 0,${sweep} ${x2},${baselineY}`;
+    const radius = Math.max(span / 2, 1);
+
+    return `M${x1},${startY} A${radius},${arcHeight} 0 0,${sweep} ${x2},${endY}`;
   }
 
   const edgeGroup = zoomGroup.append("g").attr("class", "edges");
@@ -286,7 +291,13 @@ export function createKriskogram(config: KriskogramConfig) {
             d.__segmentDirection = 1;
           }
         }
-        return arcPath(x1, x2, isAbove);
+        const initialGap =
+          typeof d.__segmentInitialGap === 'number'
+            ? d.__segmentInitialGap
+            : typeof d.__initialGap === 'number'
+              ? d.__initialGap
+              : 0;
+        return arcPath(x1, x2, isAbove, initialGap);
       })
       .attr("stroke-linejoin", "round")
       .attr("stroke", (d: any) => {
@@ -881,7 +892,13 @@ enhanceNodeSelection.each(function (d) {
         const x1 = xScale(d.source)!;
         const x2 = xScale(d.target)!;
         const isAbove = x1 > x2;
-        return arcPath(x1, x2, isAbove);
+        const initialGap =
+          typeof d.__segmentInitialGap === 'number'
+            ? d.__segmentInitialGap
+            : typeof d.__initialGap === 'number'
+              ? d.__initialGap
+              : 0;
+        return arcPath(x1, x2, isAbove, initialGap);
       });
     },
     updateData: (newNodes: Node[], newEdges: Edge[]) => {
@@ -985,7 +1002,13 @@ enhanceNodeSelection.each(function (d) {
               (d as any).__segmentDirection = 1;
             }
           }
-          return arcPath(x1, x2, isAbove);
+          const initialGap =
+            typeof (d as any).__segmentInitialGap === 'number'
+              ? (d as any).__segmentInitialGap
+              : typeof (d as any).__initialGap === 'number'
+                ? (d as any).__initialGap
+                : 0;
+          return arcPath(x1, x2, isAbove, initialGap);
         })
         .attr("stroke", (d) => {
           const x1 = xScale(d.source)!;
@@ -1087,7 +1110,13 @@ enhanceNodeSelection.each(function (d) {
               (d as any).__segmentDirection = 1;
             }
           }
-          return arcPath(x1, x2, isAbove);
+          const initialGap =
+            typeof (d as any).__segmentInitialGap === 'number'
+              ? (d as any).__segmentInitialGap
+              : typeof (d as any).__initialGap === 'number'
+                ? (d as any).__initialGap
+                : 0;
+          return arcPath(x1, x2, isAbove, initialGap);
         })
         .attr("stroke", (d) => {
           const x1 = xScale(d.source)!;
