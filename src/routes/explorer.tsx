@@ -372,17 +372,75 @@ function ExplorerPage() {
     }) as any
   }, [dataset, currentYear])
 
-  // Auto-adjust max threshold and reset filters when snapshot changes
-  useEffect(() => {
-    if (currentSnapshot && currentSnapshot.edges.length > 0) {
-      const maxValue = Math.max(...currentSnapshot.edges.map((e: any) => e.value))
-      const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
-      // Reset to show all data when snapshot changes
-      setMinThreshold(minValue)
-      setMaxThreshold(Math.max(maxValue, minValue))
-      setMaxEdges(currentSnapshot.edges.length)
+  const datasetEdgeStats = useMemo(() => {
+    if (!dataset) return null
+
+    let min = Infinity
+    let max = -Infinity
+    let maxEdgesCount = 0
+
+    dataset.snapshots.forEach((snapshot: any) => {
+      const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
+      if (edges.length > maxEdgesCount) {
+        maxEdgesCount = edges.length
+      }
+      edges.forEach((edge: any) => {
+        const value = Number(edge?.value)
+        if (!Number.isFinite(value)) return
+        if (value < min) min = value
+        if (value > max) max = value
+      })
+    })
+
+    if (min === Infinity || max === -Infinity) {
+      return {
+        min: 0,
+        max: 0,
+        maxEdgesCount,
+      }
     }
-  }, [currentSnapshot])
+
+    return {
+      min,
+      max,
+      maxEdgesCount,
+    }
+  }, [dataset])
+
+  // Auto-adjust thresholds to stay within dataset-wide bounds
+  useEffect(() => {
+    if (!datasetEdgeStats) return
+    const { min, max, maxEdgesCount } = datasetEdgeStats
+
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return
+
+    const clamp = (value: number, lower: number, upper: number) => {
+      if (upper < lower) return lower
+      if (!Number.isFinite(value)) return lower
+      if (value < lower) return lower
+      if (value > upper) return upper
+      return value
+    }
+
+    const nextMin = clamp(minThreshold, min, max)
+    let nextMax = clamp(maxThreshold, min, max)
+    if (nextMax < nextMin) {
+      nextMax = nextMin
+    }
+
+    const edgesUpperBound = Math.max(1, maxEdgesCount)
+    const nextMaxEdges = Math.max(1, Math.min(maxEdges, edgesUpperBound))
+
+    if (nextMin !== minThreshold) {
+      setMinThreshold(nextMin)
+    }
+    if (nextMax !== maxThreshold) {
+      setMaxThreshold(nextMax)
+    }
+    if (nextMaxEdges !== maxEdges) {
+      setMaxEdges(nextMaxEdges)
+    }
+  }, [datasetEdgeStats, minThreshold, maxThreshold, maxEdges])
 
   // Get available edge type property (e.g., migration_type) and values
   const edgeTypeInfo = useMemo(() => {
@@ -531,6 +589,14 @@ function ExplorerPage() {
       maxValue,
     }
   }, [currentSnapshot, filteredData])
+
+  const datasetMinEdgeValue = datasetEdgeStats?.min ?? 0
+  const datasetMaxEdgeValue = datasetEdgeStats?.max ?? (stats?.maxValue ?? datasetMinEdgeValue)
+  const sliderMaxValue = Math.max(datasetMinEdgeValue, datasetMaxEdgeValue)
+  const normalizedSliderMax = Math.max(sliderMaxValue, 1)
+  const sliderStep = Math.max(1, Math.floor(normalizedSliderMax / 1000))
+  const datasetMaxEdgesCount = datasetEdgeStats?.maxEdgesCount ?? (stats?.totalEdges ?? 0)
+  const maxEdgesUpperBound = Math.max(500, datasetMaxEdgesCount)
 
   // Effective minimum value after applying thresholds and maxEdges (top-N)
   const effectiveMinEdgeValue = useMemo(() => {
@@ -1210,17 +1276,17 @@ function ExplorerPage() {
                           )}
                         </label>
                         {(() => {
-                          const minValue = Math.min(...currentSnapshot.edges.map((e: any) => e.value))
-                          const isFiltered = 
-                            minThreshold > minValue || 
-                            maxThreshold < stats.maxValue || 
-                            maxEdges < stats.totalEdges
+                          const edgesUpperBound = Math.max(1, datasetMaxEdgesCount)
+                          const isFiltered =
+                            minThreshold > datasetMinEdgeValue ||
+                            maxThreshold < datasetMaxEdgeValue ||
+                            maxEdges < edgesUpperBound
                           return (
                             <button
                               onClick={() => {
-                                setMinThreshold(minValue)
-                                setMaxThreshold(stats.maxValue)
-                                setMaxEdges(stats.totalEdges)
+                                setMinThreshold(datasetMinEdgeValue)
+                                setMaxThreshold(datasetMaxEdgeValue)
+                                setMaxEdges(edgesUpperBound)
                               }}
                               disabled={!isFiltered}
                               type="button"
@@ -1233,9 +1299,9 @@ function ExplorerPage() {
                       </div>
                       <input
                         type="range"
-                        min={0}
-                        max={stats.maxValue || 200000}
-                        step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                        min={datasetMinEdgeValue}
+                        max={sliderMaxValue || 1}
+                        step={sliderStep}
                         value={minThreshold}
                         onChange={(e) => {
                           const val = parseInt(e.target.value)
@@ -1256,9 +1322,9 @@ function ExplorerPage() {
                       </label>
                       <input
                         type="range"
-                        min={0}
-                        max={stats.maxValue || 200000}
-                        step={Math.max(1, Math.floor((stats.maxValue || 200000) / 1000))}
+                        min={datasetMinEdgeValue}
+                        max={sliderMaxValue || 1}
+                        step={sliderStep}
                         value={maxThreshold}
                         onChange={(e) => {
                           const val = parseInt(e.target.value)
@@ -1277,7 +1343,7 @@ function ExplorerPage() {
                       <input
                         type="range"
                         min={10}
-                        max={Math.max(500, stats.totalEdges)}
+                        max={maxEdgesUpperBound}
                         step={10}
                         value={maxEdges}
                         onChange={(e) => {
