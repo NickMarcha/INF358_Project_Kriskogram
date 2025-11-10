@@ -339,13 +339,22 @@ export function createKriskogram(config: KriskogramConfig) {
       const cycle = d.__segmentCycle ?? 0;
       const baseOffset = d.__overlayDashOffset ?? 0;
       const direction = d.__segmentDirection ?? -1;
+      const baseSpeed = Number(d.__segmentSpeed ?? 1);
+      const scaleByWeight = Boolean(d.__segmentScaleByWeight);
       path.interrupt();
       if (!animate || !cycle) {
         path.attr('stroke-dashoffset', baseOffset);
         return;
       }
       const step = cycle;
-      const duration = Math.max(1500, step * 120);
+      const speedMultiplier = Number.isFinite(baseSpeed) && baseSpeed > 0 ? baseSpeed : 1;
+      let effectiveSpeed = speedMultiplier;
+      if (scaleByWeight) {
+        const weightWidth = Math.max(getEdgeWidth(d), 0.5);
+        effectiveSpeed *= weightWidth;
+      }
+      const baseDuration = Math.max(400, step * 120);
+      const duration = Math.max(200, baseDuration / effectiveSpeed);
       const start = baseOffset;
       const end = baseOffset + direction * -step;
       const loop = () => {

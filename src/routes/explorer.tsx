@@ -205,7 +205,9 @@ const explorerSearchSchema = z.object({
   edgeSegmentLength: safeCoerceNumber(8),
   edgeSegmentGap: safeCoerceNumber(4),
   edgeSegmentAnimate: safeCoerceBoolean(false),
-  edgeSegmentOffset: safeCoerceNumber(0),
+  edgeSegmentOffset: safeCoerceNumber(15),
+  edgeSegmentSpeed: safeCoerceNumber(1),
+  edgeSegmentScaleByWeight: safeCoerceBoolean(false),
   edgeSegmentCap: z.preprocess(
     (val) => {
       if (typeof val === 'string') {
@@ -389,9 +391,25 @@ export const Route = createFileRoute('/explorer')({
     })()
 
     const safeEdgeSegmentOffset = (() => {
-      if (search.edgeSegmentOffset === undefined || search.edgeSegmentOffset === null || search.edgeSegmentOffset === '') return 0
+      if (search.edgeSegmentOffset === undefined || search.edgeSegmentOffset === null || search.edgeSegmentOffset === '') return 15
       const num = typeof search.edgeSegmentOffset === 'string' ? parseFloat(search.edgeSegmentOffset) : Number(search.edgeSegmentOffset)
-      return Number.isNaN(num) ? 0 : Math.max(0, num)
+      return Number.isNaN(num) ? 15 : Math.max(0, num)
+    })()
+
+    const safeEdgeSegmentSpeed = (() => {
+      if (search.edgeSegmentSpeed === undefined || search.edgeSegmentSpeed === null || search.edgeSegmentSpeed === '') return 1
+      const num = typeof search.edgeSegmentSpeed === 'string' ? parseFloat(search.edgeSegmentSpeed) : Number(search.edgeSegmentSpeed)
+      return Number.isNaN(num) ? 1 : Math.max(0.1, num)
+    })()
+
+    const safeEdgeSegmentScaleByWeight = (() => {
+      if (typeof search.edgeSegmentScaleByWeight === 'boolean') return search.edgeSegmentScaleByWeight
+      if (typeof search.edgeSegmentScaleByWeight === 'string') {
+        const lowered = search.edgeSegmentScaleByWeight.toLowerCase()
+        if (lowered === 'true') return true
+        if (lowered === 'false') return false
+      }
+      return false
     })()
 
     const safeEdgeSegmentCap = (() => {
@@ -431,6 +449,8 @@ export const Route = createFileRoute('/explorer')({
       edgeSegmentGap: safeEdgeSegmentGap,
       edgeSegmentAnimate: safeEdgeSegmentAnimate,
       edgeSegmentOffset: safeEdgeSegmentOffset,
+      edgeSegmentSpeed: safeEdgeSegmentSpeed,
+      edgeSegmentScaleByWeight: safeEdgeSegmentScaleByWeight,
       edgeSegmentCap: safeEdgeSegmentCap,
       edgeOutlineGap: safeEdgeOutlineGap,
     }
@@ -474,7 +494,9 @@ const [temporalOverlayNodeStyle, setTemporalOverlayNodeStyle] = useState<'filled
 const [edgeSegmentLength, setEdgeSegmentLength] = useState<number>(search.edgeSegmentLength ?? 8)
 const [edgeSegmentGap, setEdgeSegmentGap] = useState<number>(search.edgeSegmentGap ?? 4)
 const [edgeSegmentAnimate, setEdgeSegmentAnimate] = useState<boolean>(search.edgeSegmentAnimate ?? false)
-const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 0)
+const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 15)
+const [edgeSegmentSpeed, setEdgeSegmentSpeed] = useState<number>(Math.max(0.1, search.edgeSegmentSpeed ?? 1))
+const [edgeSegmentScaleByWeight, setEdgeSegmentScaleByWeight] = useState<boolean>(search.edgeSegmentScaleByWeight ?? false)
 const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
 const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, search.edgeOutlineGap ?? 3))
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
@@ -1005,6 +1027,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         __overlayDashOffset: currentDashOffset,
         __overlayLineCap: currentLineCap,
         __segmentInitialGap: temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
+        __segmentSpeed: Math.max(0.1, edgeSegmentSpeed),
+        __segmentScaleByWeight: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentScaleByWeight,
         __segmentCycle:
           temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
         __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
@@ -1121,6 +1145,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             __overlayDashOffset: overlayDashOffset,
             __overlayLineCap: overlayLineCap,
             __segmentInitialGap: temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
+            __segmentSpeed: Math.max(0.1, edgeSegmentSpeed),
+            __segmentScaleByWeight: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentScaleByWeight,
             __segmentCycle:
               temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
             __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
@@ -1280,6 +1306,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeSegmentLength,
     edgeSegmentGap,
     edgeSegmentOffset,
+    edgeSegmentSpeed,
+    edgeSegmentScaleByWeight,
     edgeSegmentCap,
     edgeSegmentAnimate,
     edgeOutlineGap,
@@ -2606,7 +2634,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setTemporalOverlayYears(1)
                       setEdgeSegmentLength(8)
                       setEdgeSegmentGap(4)
-                      setEdgeSegmentOffset(0)
+                      setEdgeSegmentOffset(15)
+                      setEdgeSegmentSpeed(1)
+                      setEdgeSegmentScaleByWeight(false)
                       setEdgeSegmentCap('round')
                       setEdgeSegmentAnimate(false)
                       setEdgeOutlineGap(3)
@@ -2621,7 +2651,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         temporalOverlayNodeStyle: 'filled',
                         edgeSegmentLength: 8,
                         edgeSegmentGap: 4,
-                        edgeSegmentOffset: 0,
+                        edgeSegmentOffset: 15,
+                        edgeSegmentSpeed: 1,
+                        edgeSegmentScaleByWeight: false,
                         edgeSegmentCap: 'round',
                         edgeSegmentAnimate: false,
                         edgeWeightScale: 'linear',
@@ -3112,6 +3144,41 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                       const checked = e.target.checked
                                       setEdgeSegmentAnimate(checked)
                                       updateSearchParams({ edgeSegmentAnimate: checked })
+                                    }}
+                                  />
+                                </label>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">
+                                    Animation speed multiplier
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={0.1}
+                                    step={0.1}
+                                    value={edgeSegmentSpeed}
+                                    onChange={(e) => {
+                                      const val = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(val)) return
+                                      const clamped = Math.max(0.1, val)
+                                      setEdgeSegmentSpeed(clamped)
+                                      updateSearchParams({ edgeSegmentSpeed: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <p className="mt-1 text-[10px] text-gray-500">
+                                    Higher values move dashes faster. 1.0 matches the legacy speed.
+                                  </p>
+                                </div>
+                                <label className="flex items-center justify-between text-[11px] font-medium text-gray-600">
+                                  <span>Multiply speed by flow weight</span>
+                                  <input
+                                    type="checkbox"
+                                    className="w-3.5 h-3.5"
+                                    checked={edgeSegmentScaleByWeight}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked
+                                      setEdgeSegmentScaleByWeight(checked)
+                                      updateSearchParams({ edgeSegmentScaleByWeight: checked })
                                     }}
                                   />
                                 </label>
