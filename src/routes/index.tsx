@@ -41,7 +41,8 @@ function App() {
                 edgeSegmentOffset: 0,
                 edgeSegmentCap: 'round',
                 edgeSegmentAnimate: false,
-                edgeOutlineGap: 3,
+                edgeOutlineThickness: 3,
+                edgeOutlineGap: 2,
                 temporalOverlayYears: 1,
                 edgeWeightScale: 'linear',
               }}

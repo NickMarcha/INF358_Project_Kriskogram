@@ -211,20 +211,30 @@ const explorerSearchSchema = z.object({
       if (typeof val === 'string') {
         const lowered = val.toLowerCase()
         if (['round', 'butt'].includes(lowered)) {
-          return lowered as 'round' | 'butt'
+          return lowered
         }
       }
-      return 'round' as const
+      return 'round'
     },
     z.enum(['round', 'butt']).default('round'),
   ),
-  edgeOutlineGap: z.preprocess(
+  edgeOutlineThickness: z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '') return 3
       const num = typeof val === 'string' ? parseFloat(val) : Number(val)
-      return Number.isNaN(num) ? 3 : Math.max(0.5, num)
+      if (Number.isNaN(num)) return 3
+      return Math.max(0.5, num)
     },
     z.number().min(0.5).default(3),
+  ),
+  edgeOutlineGap: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 2
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 2
+      return Math.max(0, num)
+    },
+    z.number().min(0).default(2),
   ),
 })
 
@@ -398,16 +408,22 @@ export const Route = createFileRoute('/explorer')({
       if (typeof search.edgeSegmentCap === 'string') {
         const lowered = search.edgeSegmentCap.toLowerCase()
         if (['round', 'butt'].includes(lowered)) {
-          return lowered as 'round' | 'butt'
+          return lowered
         }
       }
-      return 'round' as const
+      return 'round'
+    })()
+
+    const safeEdgeOutlineThickness = (() => {
+      if (search.edgeOutlineThickness === undefined || search.edgeOutlineThickness === null || search.edgeOutlineThickness === '') return 3
+      const num = typeof search.edgeOutlineThickness === 'string' ? parseFloat(search.edgeOutlineThickness) : Number(search.edgeOutlineThickness)
+      return Number.isNaN(num) ? 3 : Math.max(0.5, num)
     })()
 
     const safeEdgeOutlineGap = (() => {
-      if (search.edgeOutlineGap === undefined || search.edgeOutlineGap === null || search.edgeOutlineGap === '') return 3
+      if (search.edgeOutlineGap === undefined || search.edgeOutlineGap === null || search.edgeOutlineGap === '') return 2
       const num = typeof search.edgeOutlineGap === 'string' ? parseFloat(search.edgeOutlineGap) : Number(search.edgeOutlineGap)
-      return Number.isNaN(num) ? 3 : Math.max(0.5, num)
+      return Number.isNaN(num) ? 2 : Math.max(0, num)
     })()
 
     return {
@@ -432,6 +448,7 @@ export const Route = createFileRoute('/explorer')({
       edgeSegmentAnimate: safeEdgeSegmentAnimate,
       edgeSegmentOffset: safeEdgeSegmentOffset,
       edgeSegmentCap: safeEdgeSegmentCap,
+      edgeOutlineThickness: safeEdgeOutlineThickness,
       edgeOutlineGap: safeEdgeOutlineGap,
     }
   },
@@ -475,8 +492,9 @@ const [edgeSegmentLength, setEdgeSegmentLength] = useState<number>(search.edgeSe
 const [edgeSegmentGap, setEdgeSegmentGap] = useState<number>(search.edgeSegmentGap ?? 4)
 const [edgeSegmentAnimate, setEdgeSegmentAnimate] = useState<boolean>(search.edgeSegmentAnimate ?? false)
 const [edgeSegmentOffset, setEdgeSegmentOffset] = useState<number>(search.edgeSegmentOffset ?? 0)
-const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
-const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, search.edgeOutlineGap ?? 3))
+const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>((search.edgeSegmentCap as 'round' | 'butt') ?? 'round')
+const [edgeOutlineThickness, setEdgeOutlineThickness] = useState<number>(Math.max(0.5, search.edgeOutlineThickness ?? 3))
+const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0, search.edgeOutlineGap ?? 2))
   const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
   const krRef = useRef<KriskogramRef>(null)
   
@@ -1007,6 +1025,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         __segmentCycle:
           temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
         __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
+        __outlineThickness: edgeOutlineThickness,
         __outlineGap: edgeOutlineGap,
       }
       if (step !== undefined) {
@@ -1122,6 +1141,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             __segmentCycle:
               temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
             __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
+            __outlineThickness: edgeOutlineThickness,
             __outlineGap: edgeOutlineGap,
           }))
 
@@ -1242,6 +1262,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           edgeSegmentOffset,
           edgeSegmentCap,
           edgeSegmentAnimate,
+          edgeOutlineThickness,
           edgeOutlineGap,
         }
       : null
@@ -1280,6 +1301,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeSegmentOffset,
     edgeSegmentCap,
     edgeSegmentAnimate,
+    edgeOutlineThickness,
     edgeOutlineGap,
     dataset,
   ])
@@ -1423,6 +1445,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           edgeSegmentOffset,
           edgeSegmentCap,
           edgeSegmentAnimate,
+          edgeOutlineThickness,
           edgeOutlineGap,
          })
        }
@@ -1438,6 +1461,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
      edgeSegmentOffset,
      edgeSegmentCap,
      edgeSegmentAnimate,
+     edgeOutlineThickness,
      edgeOutlineGap,
      updateSearchParams,
    ])
@@ -1454,6 +1478,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         edgeSegmentOffset,
         edgeSegmentCap,
         edgeSegmentAnimate,
+        edgeOutlineThickness,
         edgeOutlineGap,
       })
     }
@@ -1467,6 +1492,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeSegmentOffset,
     edgeSegmentCap,
     edgeSegmentAnimate,
+    edgeOutlineThickness,
     edgeOutlineGap,
     updateSearchParams,
   ])
@@ -2607,7 +2633,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setEdgeSegmentOffset(0)
                       setEdgeSegmentCap('round')
                       setEdgeSegmentAnimate(false)
-                      setEdgeOutlineGap(3)
+                      setEdgeOutlineThickness(3)
+                      setEdgeOutlineGap(2)
                       updateSearchParams({
                         showAllNodes: false,
                         egoNodeId: null,
@@ -2623,7 +2650,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         edgeSegmentCap: 'round',
                         edgeSegmentAnimate: false,
                         edgeWeightScale: 'linear',
-                        edgeOutlineGap: 3,
+                        edgeOutlineThickness: 3,
+                        edgeOutlineGap: 2,
                       })
                     }}
                   >
@@ -3126,13 +3154,13 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                      min={0.5}
                                      max={12}
                                      step={0.5}
-                                     value={edgeOutlineGap}
+                                     value={edgeOutlineThickness}
                                      onChange={(e) => {
                                        const val = Number.parseFloat(e.target.value)
                                        if (Number.isNaN(val)) return
                                        const clamped = Math.max(0.5, val)
-                                       setEdgeOutlineGap(clamped)
-                                       updateSearchParams({ edgeOutlineGap: clamped })
+                                       setEdgeOutlineThickness(clamped)
+                                       updateSearchParams({ edgeOutlineThickness: clamped })
                                      }}
                                      className="mt-1 w-full"
                                    />
@@ -3145,11 +3173,50 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                      type="number"
                                      min={0.5}
                                      step={0.5}
-                                     value={edgeOutlineGap}
+                                     value={edgeOutlineThickness}
                                      onChange={(e) => {
                                        const val = Number.parseFloat(e.target.value)
                                        if (Number.isNaN(val)) return
                                        const clamped = Math.max(0.5, val)
+                                       setEdgeOutlineThickness(clamped)
+                                       updateSearchParams({ edgeOutlineThickness: clamped })
+                                     }}
+                                     className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   />
+                                 </div>
+                                 <div>
+                                   <label className="block text-[11px] font-medium text-gray-600">
+                                     Outline gap (px)
+                                   </label>
+                                   <input
+                                     type="range"
+                                     min={0}
+                                     max={12}
+                                     step={0.5}
+                                     value={edgeOutlineGap}
+                                     onChange={(e) => {
+                                       const val = Number.parseFloat(e.target.value)
+                                       if (Number.isNaN(val)) return
+                                       const clamped = Math.max(0, val)
+                                       setEdgeOutlineGap(clamped)
+                                       updateSearchParams({ edgeOutlineGap: clamped })
+                                     }}
+                                     className="mt-1 w-full"
+                                   />
+                                 </div>
+                                 <div>
+                                   <label className="block text-[11px] font-medium text-gray-600">
+                                     Precise gap value
+                                   </label>
+                                   <input
+                                     type="number"
+                                     min={0}
+                                     step={0.5}
+                                     value={edgeOutlineGap}
+                                     onChange={(e) => {
+                                       const val = Number.parseFloat(e.target.value)
+                                       if (Number.isNaN(val)) return
+                                       const clamped = Math.max(0, val)
                                        setEdgeOutlineGap(clamped)
                                        updateSearchParams({ edgeOutlineGap: clamped })
                                      }}
