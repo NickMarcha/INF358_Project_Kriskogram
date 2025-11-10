@@ -716,7 +716,16 @@ function ExplorerPage() {
                               const edgeWeights = filteredData.edges.map((e: any) => e.value)
                               const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
                               const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
-                              const edgeWeightRange = maxEdgeWeight - minEdgeWeight || 1
+                              const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
+                              const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
+                              const globalEdgeWeightRange = globalMaxEdgeWeight - globalMinEdgeWeight || 1
+
+                              const normalizeEdgeWeight = (value: number) => {
+                                if (!Number.isFinite(value)) return 0
+                                const normalized = (value - globalMinEdgeWeight) / globalEdgeWeightRange
+                                if (!Number.isFinite(normalized)) return 0
+                                return Math.max(0, Math.min(1, normalized))
+                              }
                               
                               // Compute node attribute ranges for color/size scaling
                               const nodeOutgoingValues = filteredData.nodes.map((n: any) => n._totalOutgoing || 0)
@@ -826,7 +835,7 @@ function ExplorerPage() {
                                 // Edge width
                                 edgeWidth: (e: any) => {
                                   if (edgeWidthMode === 'weight') {
-                                    const normalized = (e.value - minEdgeWeight) / edgeWeightRange
+                                    const normalized = normalizeEdgeWeight(e.value)
                                     return 0.5 + (normalized * 15) // 0.5 to 15.5
                                   }
                                   return baseEdgeWidth
@@ -834,7 +843,7 @@ function ExplorerPage() {
                                 
                                 // Edge color (supports advanced hue/intensity sources)
                                 edgeColor: (e: any, isAbove: boolean) => {
-                                  const weightNorm = (e.value - minEdgeWeight) / edgeWeightRange
+                                  const weightNorm = normalizeEdgeWeight(e.value)
 
                                   // Helper: categorical palette
                                   const palette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
