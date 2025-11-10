@@ -32,37 +32,53 @@ const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSIN
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
 
 // Collapsible Section Component
-function CollapsibleSection({ 
-  title, 
+function CollapsibleSection({
+  title,
   subtitle,
-  children, 
-  defaultOpen = false 
-}: { 
+  children,
+  defaultOpen = false,
+  onReset,
+}: {
   title: string
   subtitle?: string
   children: React.ReactNode | string | number | undefined
-  defaultOpen?: boolean 
+  defaultOpen?: boolean
+  onReset?: () => void
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   
   return (
     <div className="border border-gray-200 rounded-md">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
-      >
-        <div className="flex-1">
-          <div className="font-semibold text-sm">{title}</div>
-          {subtitle && (
-            <div className="text-xs text-gray-600 mt-0.5">{subtitle}</div>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex-1 flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
+        >
+          <div className="flex-1">
+            <div className="font-semibold text-sm">{title}</div>
+            {subtitle && (
+              <div className="text-xs text-gray-600 mt-0.5">{subtitle}</div>
+            )}
+          </div>
+          {isOpen ? (
+            <ChevronUp className="w-4 h-4 text-gray-600 flex-shrink-0" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" />
           )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-gray-600 flex-shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" />
+        </button>
+        {onReset && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onReset()
+            }}
+            className="pr-3 text-[11px] font-medium text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Reset
+          </button>
         )}
-      </button>
+      </div>
       {isOpen && (
         <div className="p-3 pt-0 border-t border-gray-200">
           {children}
@@ -1216,7 +1232,24 @@ function ExplorerPage() {
                 )}
 
                 {/* General Settings - Collapsible */}
-                <CollapsibleSection title="General Settings" defaultOpen={true}>
+                <CollapsibleSection
+                  title="General Settings"
+                  defaultOpen={true}
+                  onReset={() => {
+                    const edgesUpperBound = Math.max(1, datasetMaxEdgesCount)
+                    setEdgeTypeFilter(null)
+                    setIntraFilter('none')
+                    setMinThreshold(datasetMinEdgeValue)
+                    setMaxThreshold(datasetMaxEdgeValue)
+                    setMaxEdges(edgesUpperBound)
+                    updateSearchParams({
+                      edgeType: null,
+                      minThreshold: datasetMinEdgeValue,
+                      maxThreshold: datasetMaxEdgeValue,
+                      maxEdges: edgesUpperBound,
+                    })
+                  }}
+                >
                   <div className="space-y-4">
                     {/* Year Slider */}
                     {hasTime && currentYear !== undefined && (
@@ -1262,36 +1295,17 @@ function ExplorerPage() {
                     {(hasRegionData || hasDivisionData) && (
                       <div className="space-y-1">
                         <label className="text-sm font-medium">Edge Scope</label>
-                        <div className="flex items-center gap-3 text-xs">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="radio" name="edgeScope" value="none" className="w-3.5 h-3.5" checked={intraFilter === 'none'} onChange={() => setIntraFilter('none')} />
-                            <span>All</span>
-                          </label>
-                          {hasRegionData && (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="edgeScope" value="region" className="w-3.5 h-3.5" checked={intraFilter === 'region'} onChange={() => setIntraFilter('region')} />
-                              <span>Intra Region</span>
-                            </label>
-                          )}
-                          {hasDivisionData && (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="edgeScope" value="division" className="w-3.5 h-3.5" checked={intraFilter === 'division'} onChange={() => setIntraFilter('division')} />
-                              <span>Intra Division</span>
-                            </label>
-                          )}
-                          {hasRegionData && (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="edgeScope" value="interRegion" className="w-3.5 h-3.5" checked={intraFilter === 'interRegion'} onChange={() => setIntraFilter('interRegion')} />
-                              <span>Inter Region</span>
-                            </label>
-                          )}
-                          {hasDivisionData && (
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="radio" name="edgeScope" value="interDivision" className="w-3.5 h-3.5" checked={intraFilter === 'interDivision'} onChange={() => setIntraFilter('interDivision')} />
-                              <span>Inter Division</span>
-                            </label>
-                          )}
-                        </div>
+                        <select
+                          value={intraFilter}
+                          onChange={(e) => setIntraFilter(e.target.value as typeof intraFilter)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="none">All</option>
+                          {hasRegionData && <option value="region">Intra Region</option>}
+                          {hasDivisionData && <option value="division">Intra Division</option>}
+                          {hasRegionData && <option value="interRegion">Inter Region</option>}
+                          {hasDivisionData && <option value="interDivision">Inter Division</option>}
+                        </select>
                       </div>
                     )}
 
@@ -1443,7 +1457,32 @@ function ExplorerPage() {
 
                 {/* Kriskogram Visualization Controls */}
                 {viewType === 'kriskogram' && (
-                  <CollapsibleSection title="Kriskogram Settings" defaultOpen={true}>
+                  <CollapsibleSection
+                    title="Kriskogram Settings"
+                    defaultOpen={true}
+                    onReset={() => {
+                      setShowAllNodes(false)
+                      setNodeOrderMode('alphabetical')
+                      setArcOpacity(0.85)
+                      setEdgeWidthMode('weight')
+                      setBaseEdgeWidth(2)
+                      setNodeColorMode('single')
+                      setNodeColorAttribute(null)
+                      setNodeSizeMode('fixed')
+                      setNodeSizeAttribute(null)
+                      setEdgeColorAdvanced(false)
+                      setEdgeColorHue('direction')
+                      setEdgeColorHueAttribute(null)
+                      setEdgeColorInterGrayscale(true)
+                      setEdgeColorIntensity('weight')
+                      setEdgeColorIntensityAttribute(null)
+                      setEdgeColorIntensityConst(0.6)
+                      setInteractionMode('pan')
+                      setLensRadius(80)
+                      setLensPos({ x: 0, y: 0 })
+                      updateSearchParams({ showAllNodes: false })
+                    }}
+                  >
                     {dataset?.metadata ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
@@ -1470,47 +1509,25 @@ function ExplorerPage() {
 
                         {/* Node Ordering */}
                         <div className="space-y-2">
-                      <label className="text-xs font-medium text-gray-700">Node Ordering</label>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeOrder"
-                            value="alphabetical"
-                            checked={nodeOrderMode === 'alphabetical'}
+                          <label className="text-xs font-medium text-gray-700">Node Ordering</label>
+                          <select
+                            value={nodeOrderMode}
                             onChange={(e) => setNodeOrderMode(e.target.value)}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Alphabetical</span>
-                        </label>
-                        {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
-                          <label key={prop} className="flex items-center gap-2 cursor-pointer text-xs">
-                            <input
-                              type="radio"
-                              name="nodeOrder"
-                              value={prop}
-                              checked={nodeOrderMode === prop}
-                              onChange={(e) => setNodeOrderMode(e.target.value)}
-                              className="w-3.5 h-3.5"
-                            />
-                            <span>By {prop}</span>
-                          </label>
-                        ))}
-                        {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
-                          <label key={prop} className="flex items-center gap-2 cursor-pointer text-xs">
-                            <input
-                              type="radio"
-                              name="nodeOrder"
-                              value={prop}
-                              checked={nodeOrderMode === prop}
-                              onChange={(e) => setNodeOrderMode(e.target.value)}
-                              className="w-3.5 h-3.5"
-                            />
-                            <span>By {prop}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
+                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="alphabetical">Alphabetical</option>
+                            {dataset.metadata.hasCategoricalProperties.nodes.map((prop) => (
+                              <option key={prop} value={prop}>
+                                By {prop}
+                              </option>
+                            ))}
+                            {dataset.metadata.hasNumericProperties.nodes.map((prop) => (
+                              <option key={prop} value={prop}>
+                                By {prop}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
                     {/* Arc Opacity */}
                     <div className="space-y-2">
@@ -1576,7 +1593,23 @@ function ExplorerPage() {
                       <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-gray-700">Edge Color</label>
                         <label className="flex items-center gap-1 text-[11px] text-gray-600 cursor-pointer">
-                          <input type="checkbox" className="w-3.5 h-3.5" checked={edgeColorAdvanced} onChange={(e) => setEdgeColorAdvanced(e.target.checked)} />
+                          <input
+                            type="checkbox"
+                            className="w-3.5 h-3.5"
+                            checked={edgeColorAdvanced}
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              setEdgeColorAdvanced(checked)
+                              if (!checked) {
+                                setEdgeColorHue('direction')
+                                setEdgeColorHueAttribute(null)
+                                setEdgeColorInterGrayscale(true)
+                                setEdgeColorIntensity('weight')
+                                setEdgeColorIntensityAttribute(null)
+                                setEdgeColorIntensityConst(0.6)
+                              }
+                            }}
+                          />
                           Advanced
                         </label>
                       </div>
@@ -1607,7 +1640,7 @@ function ExplorerPage() {
                         </div>
                       )}
                       {edgeColorAdvanced && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
                           <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-700">Hue Source</label>
                             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1693,52 +1726,16 @@ function ExplorerPage() {
                     {/* Node Color */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-gray-700">Node Color</label>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeColor"
-                            value="single"
-                            checked={nodeColorMode === 'single'}
-                            onChange={(e) => setNodeColorMode(e.target.value as 'single')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Single</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeColor"
-                            value="outgoing"
-                            checked={nodeColorMode === 'outgoing'}
-                            onChange={(e) => setNodeColorMode(e.target.value as 'outgoing')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Total Outgoing</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeColor"
-                            value="incoming"
-                            checked={nodeColorMode === 'incoming'}
-                            onChange={(e) => setNodeColorMode(e.target.value as 'incoming')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Total Incoming</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeColor"
-                            value="attribute"
-                            checked={nodeColorMode === 'attribute'}
-                            onChange={(e) => setNodeColorMode(e.target.value as 'attribute')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Attribute</span>
-                        </label>
-                      </div>
+                      <select
+                        value={nodeColorMode}
+                        onChange={(e) => setNodeColorMode(e.target.value as typeof nodeColorMode)}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="single">Single Color</option>
+                        <option value="outgoing">Total Outgoing</option>
+                        <option value="incoming">Total Incoming</option>
+                        <option value="attribute">By Attribute</option>
+                      </select>
                       {nodeColorMode === 'attribute' && (
                         <select
                           value={nodeColorAttribute || ''}
@@ -1763,52 +1760,16 @@ function ExplorerPage() {
                     {/* Node Size */}
                     <div className="space-y-2">
                       <label className="text-xs font-medium text-gray-700">Node Size</label>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeSize"
-                            value="fixed"
-                            checked={nodeSizeMode === 'fixed'}
-                            onChange={(e) => setNodeSizeMode(e.target.value as 'fixed')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Fixed</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeSize"
-                            value="outgoing"
-                            checked={nodeSizeMode === 'outgoing'}
-                            onChange={(e) => setNodeSizeMode(e.target.value as 'outgoing')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Total Outgoing</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeSize"
-                            value="incoming"
-                            checked={nodeSizeMode === 'incoming'}
-                            onChange={(e) => setNodeSizeMode(e.target.value as 'incoming')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>Total Incoming</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-xs">
-                          <input
-                            type="radio"
-                            name="nodeSize"
-                            value="attribute"
-                            checked={nodeSizeMode === 'attribute'}
-                            onChange={(e) => setNodeSizeMode(e.target.value as 'attribute')}
-                            className="w-3.5 h-3.5"
-                          />
-                          <span>By Attribute</span>
-                        </label>
-                      </div>
+                      <select
+                        value={nodeSizeMode}
+                        onChange={(e) => setNodeSizeMode(e.target.value as typeof nodeSizeMode)}
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="fixed">Fixed</option>
+                        <option value="outgoing">Total Outgoing</option>
+                        <option value="incoming">Total Incoming</option>
+                        <option value="attribute">By Attribute</option>
+                      </select>
                       {nodeSizeMode === 'attribute' && (
                         <select
                           value={nodeSizeAttribute || ''}
@@ -1822,9 +1783,9 @@ function ExplorerPage() {
                             </option>
                           ))}
                         </select>
-                        )}
-                      </div>
+                      )}
                     </div>
+                      </div>
                     ) : (
                       <div className="text-xs text-gray-500 italic">No dataset metadata available</div>
                     )}
