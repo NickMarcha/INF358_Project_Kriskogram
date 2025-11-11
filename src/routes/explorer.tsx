@@ -91,6 +91,21 @@ function CollapsibleSection({
 
 const viewTypeSchema = z.enum(['kriskogram', 'table', 'sankey', 'chord'])
 
+function summarizeValues(values: number[]) {
+  if (!values.length) {
+    return { mean: 0, median: 0 }
+  }
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  const median =
+    sorted.length % 2 !== 0
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2
+  const total = values.reduce((sum, value) => sum + value, 0)
+  const mean = total / values.length
+  return { mean, median }
+}
+
 // Helper function to coerce to number safely, returning undefined if invalid
 const safeCoerceNumber = (defaultValue?: number) => {
   const schema = defaultValue !== undefined 
@@ -1216,6 +1231,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     let min = Infinity
     let max = -Infinity
     let maxEdgesCount = 0
+    let sum = 0
+    let count = 0
+    const values: number[] = []
 
     dataset.snapshots.forEach((snapshot: any) => {
       const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
@@ -1229,6 +1247,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         nonSelfCount += 1
         if (value < min) min = value
         if (value > max) max = value
+        sum += value
+        count += 1
+        values.push(value)
       })
       if (nonSelfCount > maxEdgesCount) {
         maxEdgesCount = nonSelfCount
@@ -1240,13 +1261,19 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         min: 0,
         max: 0,
         maxEdgesCount,
+        mean: 0,
+        median: 0,
       }
     }
+
+    const { mean, median } = summarizeValues(values)
 
     return {
       min,
       max,
       maxEdgesCount,
+      mean: count > 0 ? mean : 0,
+      median: count > 0 ? median : 0,
     }
   }, [dataset])
 
@@ -1255,6 +1282,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
     let minNet = Infinity
     let maxNet = -Infinity
+    let maxAbs = 0
+    const absValues: number[] = []
 
     dataset.snapshots.forEach((snapshot: any) => {
       const incoming = new Map<string, number>()
@@ -1274,14 +1303,19 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         const net = (incoming.get(node.id) || 0) - (outgoing.get(node.id) || 0)
         if (net < minNet) minNet = net
         if (net > maxNet) maxNet = net
+        const abs = Math.abs(net)
+        if (abs > maxAbs) maxAbs = abs
+        absValues.push(abs)
       })
     })
 
     if (minNet === Infinity || maxNet === -Infinity) {
-      return { min: 0, max: 0 }
+      return { min: 0, max: 0, maxAbs: 0, meanAbs: 0, medianAbs: 0 }
     }
 
-    return { min: minNet, max: maxNet }
+    const { mean, median } = summarizeValues(absValues)
+
+    return { min: minNet, max: maxNet, maxAbs, meanAbs: mean, medianAbs: median }
   }, [dataset])
 
   const datasetNodeYearFlowStats = useMemo(() => {
@@ -1289,6 +1323,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
     let maxIncoming = 0
     let maxOutgoing = 0
+    const incomingTotals: number[] = []
+    const outgoingTotals: number[] = []
 
     dataset.snapshots.forEach((snapshot: any) => {
       const incoming = new Map<string, number>()
@@ -1309,12 +1345,21 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         const totalOut = outgoing.get(node.id) || 0
         if (totalIn > maxIncoming) maxIncoming = totalIn
         if (totalOut > maxOutgoing) maxOutgoing = totalOut
+        incomingTotals.push(totalIn)
+        outgoingTotals.push(totalOut)
       })
     })
+
+    const incomingStats = summarizeValues(incomingTotals)
+    const outgoingStats = summarizeValues(outgoingTotals)
 
     return {
       maxIncoming,
       maxOutgoing,
+      meanIncoming: incomingTotals.length > 0 ? incomingStats.mean : 0,
+      meanOutgoing: outgoingTotals.length > 0 ? outgoingStats.mean : 0,
+      medianIncoming: incomingTotals.length > 0 ? incomingStats.median : 0,
+      medianOutgoing: outgoingTotals.length > 0 ? outgoingStats.median : 0,
     }
   }, [dataset])
 
@@ -1322,6 +1367,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     if (!dataset) return null
 
     let maxSelf = 0
+    const values: number[] = []
 
     dataset.snapshots.forEach((snapshot: any) => {
       const edges = Array.isArray(snapshot?.edges) ? (snapshot.edges as any[]) : []
@@ -1336,10 +1382,45 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       })
       totals.forEach((total) => {
         if (total > maxSelf) maxSelf = total
+        values.push(total)
       })
     })
 
-    return { max: maxSelf }
+    const stats = summarizeValues(values)
+
+    return { max: maxSelf, mean: values.length > 0 ? stats.mean : 0, median: values.length > 0 ? stats.median : 0 }
+  }, [dataset])
+
+  const datasetNodeAttributeStats = useMemo(() => {
+    if (!dataset?.metadata) return new Map<string, { min: number; max: number; mean: number; median: number }>()
+    const numericProps = dataset.metadata.hasNumericProperties?.nodes ?? []
+    if (!numericProps.length) return new Map()
+
+    const valueMap = new Map<string, number[]>()
+    numericProps.forEach((prop) => valueMap.set(prop, []))
+
+    dataset.snapshots.forEach((snapshot: any) => {
+      const nodes = Array.isArray(snapshot?.nodes) ? (snapshot.nodes as any[]) : []
+      nodes.forEach((node: any) => {
+        numericProps.forEach((prop) => {
+          const raw = node?.[prop]
+          if (typeof raw === 'number' && Number.isFinite(raw)) {
+            valueMap.get(prop)?.push(raw)
+          }
+        })
+      })
+    })
+
+    const result = new Map<string, { min: number; max: number; mean: number; median: number }>()
+    valueMap.forEach((values, prop) => {
+      if (!values.length) return
+      const min = Math.min(...values)
+      const max = Math.max(...values)
+      const { mean, median } = summarizeValues(values)
+      result.set(prop, { min, max, mean, median })
+    })
+
+    return result
   }, [dataset])
 
   // Auto-adjust thresholds to stay within dataset-wide bounds
@@ -2359,6 +2440,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   }
     };
 
+    const globalEdgeMean = datasetEdgeStats?.mean ?? (globalMinEdgeWeight + globalMaxEdgeWeight) / 2;
+    const globalEdgeMedian = datasetEdgeStats?.median ?? valueForFraction(0.5);
+
     const nodeVisibleOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_visible || n._totalOutgoing || 0);
     const nodeVisibleIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_visible || n._totalIncoming || 0);
     const nodeYearOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_year || 0);
@@ -2866,27 +2950,35 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     if (filteredData.baseEdges.length > 0) {
+      const seenEdgeSamples = new Set<string>();
       if (edgeWidthMode === 'weight') {
-        const sampleFractions = [0, 0.5, 1] as const;
-        const labelsByIndex = ['Minimum', 'Median', 'Maximum'] as const;
-        const widthSamples = sampleFractions.map((fraction, idx) => {
-          const value = valueForFraction(fraction);
+        const samples: Array<{ label: string; value: number; width: number; fraction?: number }> = [];
+        const pushSample = (label: string, value: number, fraction?: number) => {
+          if (!Number.isFinite(value)) return;
           const width = computeEdgeWidth(value, currentEdgeStyle);
-                                    return {
-            label: labelsByIndex[idx],
-                                      value,
-                                      width,
-            fraction,
-          };
-        });
+          const key = `${label}:${Math.round(value)}`;
+          if (seenEdgeSamples.has(key)) return;
+          seenEdgeSamples.add(key);
+          samples.push({ label, value, width, fraction });
+        };
+        pushSample('Minimum', globalMinEdgeWeight, 0);
+        if (Number.isFinite(globalEdgeMean)) {
+          pushSample('Mean', globalEdgeMean);
+        }
+        if (Number.isFinite(globalEdgeMedian)) {
+          pushSample('Median', globalEdgeMedian);
+        } else {
+          pushSample('Median', valueForFraction(0.5), 0.5);
+        }
+        pushSample('Maximum', globalMaxEdgeWeight, 1);
         legendItems.push({
           type: 'edgeWidth',
           mode: 'weight',
-                                    scale: edgeWeightScale,
+          scale: edgeWeightScale,
           multiplier: edgeWidthMultiplier,
           min: globalMinEdgeWeight,
           max: globalMaxEdgeWeight,
-          samples: widthSamples,
+          samples,
         });
       } else {
         const width = computeEdgeWidth(globalMaxEdgeWeight, currentEdgeStyle);
@@ -2897,6 +2989,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           samples: [
             {
               label: 'Fixed',
+              value: globalMaxEdgeWeight,
               width,
             },
           ],
@@ -2931,12 +3024,101 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       }
     };
 
-    const nodeSizeSampleFractions = [0, 0.5, 1] as const;
-    const nodeSizeLabels = ['Minimum', 'Median', 'Maximum'] as const;
-    const nodeSizeEntries = nodeSizeSampleFractions.map((fraction, idx) => ({
-      label: nodeSizeLabels[idx],
-      radius: sizeFromRatio(fraction),
-    }));
+    const nodeLegendEntries: Array<{ label: string; radius: number; value?: number }> = [];
+    const seenNodeSamples = new Set<string>();
+    const pushNodeSample = (label: string, value: number, denominator: number) => {
+      if (!Number.isFinite(value) || !Number.isFinite(denominator) || denominator <= 0) return;
+      const ratio = Math.max(0, Math.min(1, value / denominator));
+      const key = `${label}:${Math.round(value)}`;
+      if (seenNodeSamples.has(key)) return;
+      seenNodeSamples.add(key);
+      nodeLegendEntries.push({
+        label,
+        radius: sizeFromRatio(ratio),
+        value,
+      });
+    };
+
+    const pushNodeSamplesForMode = () => {
+      switch (nodeSizeMode) {
+        case 'fixed': {
+          const radius = Math.max(1, 6 * nodeSizeMultiplier);
+          nodeLegendEntries.push({
+            label: 'Fixed radius',
+            radius,
+            value: radius,
+          });
+          return;
+        }
+        case 'visible_outgoing':
+        case 'outgoing':
+        case 'year_outgoing': {
+          const max = datasetNodeYearFlowStats?.maxOutgoing ?? globalMaxYearOutgoing ?? 0;
+          const mean = datasetNodeYearFlowStats?.meanOutgoing ?? max / 2;
+          const median = datasetNodeYearFlowStats?.medianOutgoing ?? max / 2;
+          pushNodeSample('Minimum', 0, max || 1);
+          pushNodeSample('Mean', mean, max || 1);
+          pushNodeSample('Median', median, max || 1);
+          pushNodeSample('Maximum', max, max || 1);
+          return;
+        }
+        case 'visible_incoming':
+        case 'incoming':
+        case 'year_incoming': {
+          const max = datasetNodeYearFlowStats?.maxIncoming ?? globalMaxYearIncoming ?? 0;
+          const mean = datasetNodeYearFlowStats?.meanIncoming ?? max / 2;
+          const median = datasetNodeYearFlowStats?.medianIncoming ?? max / 2;
+          pushNodeSample('Minimum', 0, max || 1);
+          pushNodeSample('Mean', mean, max || 1);
+          pushNodeSample('Median', median, max || 1);
+          pushNodeSample('Maximum', max, max || 1);
+          return;
+        }
+        case 'net_visible':
+        case 'net_year': {
+          const max = datasetNodeNetStats?.maxAbs ?? globalNetAbs ?? 0;
+          const mean = datasetNodeNetStats?.meanAbs ?? max / 2;
+          const median = datasetNodeNetStats?.medianAbs ?? max / 2;
+          pushNodeSample('Minimum', 0, max || 1);
+          pushNodeSample('Mean', mean, max || 1);
+          pushNodeSample('Median', median, max || 1);
+          pushNodeSample('Maximum', max, max || 1);
+          return;
+        }
+        case 'self_year': {
+          const max = datasetNodeSelfFlowStats?.max ?? 0;
+          const mean = datasetNodeSelfFlowStats?.mean ?? max / 2;
+          const median = datasetNodeSelfFlowStats?.median ?? max / 2;
+          pushNodeSample('Minimum', 0, max || 1);
+          pushNodeSample('Mean', mean, max || 1);
+          pushNodeSample('Median', median, max || 1);
+          pushNodeSample('Maximum', max, max || 1);
+          return;
+        }
+        case 'attribute': {
+          if (!nodeSizeAttribute) return;
+          const stats = datasetNodeAttributeStats.get(nodeSizeAttribute);
+          if (!stats) return;
+          const { min, max, mean, median } = stats;
+          const denominator = max || 1;
+          pushNodeSample('Minimum', min, denominator);
+          pushNodeSample('Mean', mean, denominator);
+          pushNodeSample('Median', median, denominator);
+          pushNodeSample('Maximum', max, denominator);
+          return;
+        }
+        default: {
+          const fallbackMax = Math.max(globalMaxYearOutgoing, globalMaxYearIncoming, 1);
+          pushNodeSample('Minimum', 0, fallbackMax);
+          pushNodeSample('Mean', fallbackMax / 2, fallbackMax);
+          pushNodeSample('Median', fallbackMax / 2, fallbackMax);
+          pushNodeSample('Maximum', fallbackMax, fallbackMax);
+        }
+      }
+    };
+
+    pushNodeSamplesForMode();
+
     legendItems.push({
       type: 'nodeSize',
       mode: describeNodeSizeMode(),
@@ -2946,7 +3128,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         nodeSizeMode === 'attribute' && nodeSizeAttribute
           ? `Using numeric attribute "${nodeSizeAttribute}"`
           : undefined,
-      entries: nodeSizeEntries,
+      entries: nodeLegendEntries,
     });
 
     return { accessors, legendItems };
@@ -2979,6 +3161,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     nodeSizeMode,
     nodeSizeMultiplier,
     nodeSizeWeightScale,
+    datasetNodeAttributeStats,
     temporalOverlayColorFuture,
     temporalOverlayColorMid,
     temporalOverlayColorPast,

@@ -65,7 +65,7 @@ type LegendNodeSizeItem = {
   mode: string;
   scale?: 'linear' | 'sqrt' | 'log';
   multiplier?: number;
-  entries: Array<{ label: string; radius: number }>;
+  entries: Array<{ label: string; radius: number; value?: number }>;
   note?: string;
 };
 
@@ -682,20 +682,31 @@ enhanceNodeSelection.each(function (d) {
           .attr("stroke-dasharray", dashArray);
       }
 
-      // Label positioning: adjust these values to fine-tune label placement
-      // y: vertical offset - INCREASE to move DOWN, DECREASE to move UP
-      // x: horizontal offset - INCREASE to move RIGHT, DECREASE to move LEFT
-      // Current: y = r + 10, x = r + 5 (balanced position for 45° rotation)
-      // rotate(45): labels slant upward-right for better readability
-      g.append("text")
-        .attr("y", r + 10)  // <- ADJUST for vertical position (current: r + 10)
-        .attr("x", r + 5)   // <- ADJUST for horizontal position (current: r + 5)
+      const labelText = getNodeLabel(d);
+      const labelGroup = g.append("g")
+        .attr("transform", `rotate(45) translate(${r + 5}, ${r + 10})`);
+
+      const background = labelGroup.append("rect")
+        .attr("x", -6)
+        .attr("y", -11)
+        .attr("rx", 6)
+        .attr("ry", 6)
+        .attr("fill", "rgba(0,0,0,0.75)")
+        .attr("stroke", "rgba(255,255,255,0.2)")
+        .attr("stroke-width", 0.5)
+        .attr("height", 18);
+
+      const textNode = labelGroup.append("text")
+        .attr("x", 0)
+        .attr("y", 3)
         .attr("text-anchor", "start")
         .attr("font-size", "11px")
-        .attr("font-weight", "500")
-        .attr("fill", "#333")
-        .attr("transform", `rotate(45)`)
-        .text(getNodeLabel(d));
+        .attr("font-weight", "600")
+        .attr("fill", "#fff")
+        .text(labelText);
+
+      const textLength = (textNode.node() as SVGTextElement)?.getBBox().width ?? (labelText.length * 6.2);
+      background.attr("width", textLength + 12);
     });
 
   // Add title (not affected by zoom)
@@ -1072,14 +1083,38 @@ enhanceNodeSelection.each(function (d) {
             .attr('y', circleY + 4)
             .attr('fill', '#333')
             .attr('font-size', 11)
-            .text(entry.label);
-          maxLabelWidth = Math.max(maxLabelWidth, textWidth(entry.label));
+            .text(() => {
+              const parts: string[] = [];
+              if (entry.label) parts.push(entry.label);
+              if (entry.value !== undefined) {
+                const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
+                  Math.round(entry.value),
+                );
+                parts.push(formatted);
+              }
+              return parts.join(' • ');
+            });
+          const labelText =
+            entry.value !== undefined
+              ? `${entry.label} • ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
+                  Math.round(entry.value),
+                )}`
+              : entry.label;
+          maxLabelWidth = Math.max(maxLabelWidth, textWidth(labelText));
           cursorY += entry.radius * 2 + 12;
         });
         width = Math.max(
           textWidth('Node size', true),
           legendItem.entries.reduce(
-            (acc, entry) => Math.max(acc, entry.radius * 2 + 8 + textWidth(entry.label)),
+            (acc, entry) => {
+              const labelText =
+                entry.value !== undefined
+                  ? `${entry.label} • ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
+                      Math.round(entry.value),
+                    )}`
+                  : entry.label;
+              return Math.max(acc, entry.radius * 2 + 8 + textWidth(labelText));
+            },
             0,
           ),
         );
