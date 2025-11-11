@@ -355,10 +355,6 @@ export function createKriskogram(config: KriskogramConfig) {
           if (style === 'outline') {
             return outlineThickness;
           }
-          if (d.__isOverlay) {
-            const shrinkFactor = style === 'segmented' ? 0.65 : 0.7;
-            return Math.max(0.5, baseWidth * shrinkFactor);
-          }
           return baseWidth;
         }
         return 0;
@@ -395,17 +391,31 @@ export function createKriskogram(config: KriskogramConfig) {
         path.attr('stroke-dashoffset', baseOffset);
         return;
       }
-      const step = cycle;
+      const element = this as SVGPathElement;
+      let pathLength = d.__pathLength;
+      if (typeof pathLength !== 'number' || !Number.isFinite(pathLength)) {
+        try {
+          pathLength = Math.max(1, element.getTotalLength());
+        } catch {
+          pathLength = Math.max(1, cycle);
+        }
+        d.__pathLength = pathLength;
+      }
+
+      const step = Math.max(cycle, 1);
+      const cycles = Math.max(1, Math.ceil(pathLength / step));
+      const travel = step * cycles;
       const speedMultiplier = Number.isFinite(baseSpeed) && baseSpeed > 0 ? baseSpeed : 1;
       let effectiveSpeed = speedMultiplier;
       if (scaleByWeight) {
         const weightWidth = Math.max(getEdgeWidth(d), 0.5);
         effectiveSpeed *= weightWidth;
       }
-      const baseDuration = Math.max(1500, step * 120);
-      const duration = Math.max(200, baseDuration / effectiveSpeed);
+      const basePixelsPerSecond = 6; // baseline dash travel rate (~1 minute loops for medium arcs)
+      const durationSeconds = Math.max(2, travel / (basePixelsPerSecond * Math.max(effectiveSpeed, 0.05)));
+      const duration = durationSeconds * 1000;
       const start = baseOffset;
-      const end = baseOffset + direction * -step;
+      const end = baseOffset + direction * -travel;
       const loop = () => {
         path
           .attr('stroke-dashoffset', start)
