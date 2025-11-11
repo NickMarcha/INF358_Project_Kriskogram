@@ -22,6 +22,7 @@ export const explorerDefaultSearch: ExplorerSearchParams = {
   temporalOverlayColorFuture: '#91bfdb',
   temporalOverlayCurrentBlack: true,
   edgeWeightScale: 'linear',
+  edgeWidthMultiplier: 1,
   edgeSegmentLength: 8,
   edgeSegmentGap: 4,
   edgeSegmentAnimate: false,
@@ -48,6 +49,8 @@ export const explorerDefaultSearch: ExplorerSearchParams = {
   nodeColorAttribute: null,
   nodeSizeMode: 'fixed',
   nodeSizeAttribute: null,
+  nodeSizeWeightScale: 'linear',
+  nodeSizeMultiplier: 1,
   interactionMode: 'pan',
   lensRadius: 80,
 }

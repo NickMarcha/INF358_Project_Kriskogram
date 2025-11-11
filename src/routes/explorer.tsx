@@ -213,6 +213,15 @@ const explorerSearchSchema = z.object({
     },
     z.enum(['linear', 'sqrt', 'log']).default('linear'),
   ),
+  edgeWidthMultiplier: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.1, Math.min(10, num))
+    },
+    z.number().min(0.1).max(10).default(1),
+  ),
   egoNodeId: z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '' || val === 'null') return null
@@ -331,6 +340,24 @@ const explorerSearchSchema = z.object({
     'fixed',
   ),
   nodeSizeAttribute: safeCoerceNullableString(),
+  nodeSizeWeightScale: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return 'linear'
+      const lowered = val.toLowerCase()
+      if (['linear', 'sqrt', 'log'].includes(lowered)) return lowered
+      return 'linear'
+    },
+    z.enum(['linear', 'sqrt', 'log']).default('linear'),
+  ),
+  nodeSizeMultiplier: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.1, Math.min(10, num))
+    },
+    z.number().min(0.1).max(10).default(1),
+  ),
   interactionMode: safeCoerceEnum(['pan', 'lens'] as const, 'pan'),
   lensRadius: z.preprocess(
     (val) => {
@@ -457,6 +484,17 @@ export const Route = createFileRoute('/explorer')({
         }
       }
       return 'linear' as const
+    })()
+
+    const safeEdgeWidthMultiplier = (() => {
+      if (search.edgeWidthMultiplier === undefined || search.edgeWidthMultiplier === null || search.edgeWidthMultiplier === '') {
+        return 1
+      }
+      const num = typeof search.edgeWidthMultiplier === 'string'
+        ? parseFloat(search.edgeWidthMultiplier)
+        : Number(search.edgeWidthMultiplier)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.1, Math.min(10, num))
     })()
 
     const safeShowAllNodes = (() => {
@@ -752,6 +790,27 @@ export const Route = createFileRoute('/explorer')({
       return null
     })()
 
+    const safeNodeSizeWeightScale = (() => {
+      if (typeof search.nodeSizeWeightScale === 'string') {
+        const lowered = search.nodeSizeWeightScale.toLowerCase()
+        if (['linear', 'sqrt', 'log'].includes(lowered)) {
+          return lowered as 'linear' | 'sqrt' | 'log'
+        }
+      }
+      return 'linear' as const
+    })()
+
+    const safeNodeSizeMultiplier = (() => {
+      if (search.nodeSizeMultiplier === undefined || search.nodeSizeMultiplier === null || search.nodeSizeMultiplier === '') {
+        return 1
+      }
+      const num = typeof search.nodeSizeMultiplier === 'string'
+        ? parseFloat(search.nodeSizeMultiplier)
+        : Number(search.nodeSizeMultiplier)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.1, Math.min(10, num))
+    })()
+
     const safeInteractionMode = (() => {
       if (typeof search.interactionMode === 'string') {
         const lowered = search.interactionMode.toLowerCase()
@@ -796,6 +855,7 @@ export const Route = createFileRoute('/explorer')({
             ? search.temporalOverlayCurrentBlack.toLowerCase() !== 'false'
             : true,
       edgeWeightScale: safeEdgeWeightScale,
+      edgeWidthMultiplier: safeEdgeWidthMultiplier,
       edgeSegmentLength: safeEdgeSegmentLength,
       edgeSegmentGap: safeEdgeSegmentGap,
       edgeSegmentAnimate: safeEdgeSegmentAnimate,
@@ -822,6 +882,8 @@ export const Route = createFileRoute('/explorer')({
       nodeColorAttribute: safeNodeColorAttribute,
       nodeSizeMode: safeNodeSizeMode,
       nodeSizeAttribute: safeNodeSizeAttribute,
+      nodeSizeWeightScale: safeNodeSizeWeightScale,
+      nodeSizeMultiplier: safeNodeSizeMultiplier,
       interactionMode: safeInteractionMode,
       lensRadius: safeLensRadius,
     }
@@ -854,6 +916,9 @@ function ExplorerPage() {
   const [egoStepColoring, setEgoStepColoring] = useState<boolean>(search.egoStepColoring ?? false)
   const [edgeWeightScale, setEdgeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
     search.edgeWeightScale ?? 'linear',
+  )
+  const [edgeWidthMultiplier, setEdgeWidthMultiplier] = useState<number>(
+    Math.max(0.1, search.edgeWidthMultiplier ?? 1),
   )
   const [temporalOverlayEnabled, setTemporalOverlayEnabled] = useState<boolean>(search.temporalOverlay ?? false)
 const [temporalOverlayEdgeStyle, setTemporalOverlayEdgeStyle] = useState<'segmented' | 'filled' | 'outline'>(
@@ -988,6 +1053,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     | 'self_year'
   >(search.nodeSizeMode ?? 'fixed')
   const [nodeSizeAttribute, setNodeSizeAttribute] = useState<string | null>(search.nodeSizeAttribute ?? null) // Property name when mode is 'attribute'
+  const [nodeSizeWeightScale, setNodeSizeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
+    search.nodeSizeWeightScale ?? 'linear',
+  )
+  const [nodeSizeMultiplier, setNodeSizeMultiplier] = useState<number>(
+    Math.max(0.1, search.nodeSizeMultiplier ?? 1),
+  )
   const [interactionMode, setInteractionMode] = useState<'pan' | 'lens'>(search.interactionMode ?? 'pan')
   const [lensRadius, setLensRadius] = useState(search.lensRadius ?? 80)
   const [lensPos, setLensPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -2391,11 +2462,32 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     };
 
     const computeNodeRadius = (node: any): number => {
-      const sizeFromRatio = (ratio: number) => 3 + Math.max(0, Math.min(1, ratio)) * 9;
+      const applyNodeRatioScaling = (ratio: number) => {
+        const clamped = Math.max(0, Math.min(1, ratio));
+        switch (nodeSizeWeightScale) {
+          case 'sqrt':
+            return Math.sqrt(clamped);
+          case 'log': {
+            if (clamped <= 0) return 0;
+            const numerator = Math.log10(clamped * 9 + 1);
+            const denom = Math.log10(10);
+            return denom > 0 ? Math.min(1, numerator / denom) : clamped;
+          }
+          case 'linear':
+          default:
+            return clamped;
+        }
+      };
+
+      const sizeFromRatio = (ratio: number) => {
+        const scaled = applyNodeRatioScaling(ratio);
+        const base = 3 + scaled * 9;
+        return Math.max(1, base * nodeSizeMultiplier);
+      };
 
       switch (nodeSizeMode) {
         case 'fixed':
-          return 6;
+          return Math.max(1, 6 * nodeSizeMultiplier);
         case 'visible_outgoing':
                                   case 'outgoing':
           return sizeFromRatio(maxVisibleOutgoing > 0 ? (node.total_outgoing_visible || node._totalOutgoing || 0) / maxVisibleOutgoing : 0);
@@ -2446,10 +2538,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
       if (edgeWidthMode === 'weight') {
         const normalized = normalizeEdgeWeight(value);
-        if (style === 'segmented') {
-          return 0.5 + normalized * 12;
-        }
-        return 0.5 + normalized * 15;
+        const baseWidth = style === 'segmented' ? 0.5 + normalized * 12 : 0.5 + normalized * 15;
+        return Math.max(0.25, baseWidth * edgeWidthMultiplier);
       }
 
       if (style === 'segmented') {
@@ -2817,6 +2907,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeColorIntensityAttribute,
     edgeColorIntensityConst,
     edgeWidthMode,
+    edgeWidthMultiplier,
     edgeWeightScale,
     egoNodeId,
     egoStepColoring,
@@ -2827,6 +2918,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     nodeOrderMode,
     nodeSizeAttribute,
     nodeSizeMode,
+    nodeSizeMultiplier,
+    nodeSizeWeightScale,
     temporalOverlayColorFuture,
     temporalOverlayColorMid,
     temporalOverlayColorPast,
@@ -3438,11 +3531,14 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setNodeOrderMode('alphabetical')
                       setArcOpacity(0.85)
                       setEdgeWidthMode('weight')
+                      setEdgeWidthMultiplier(1)
                       setBaseEdgeWidth(2)
                       setNodeColorMode('single')
                       setNodeColorAttribute(null)
                       setNodeSizeMode('fixed')
                       setNodeSizeAttribute(null)
+                      setNodeSizeWeightScale('linear')
+                      setNodeSizeMultiplier(1)
                       setEdgeColorAdvanced(false)
                       setEdgeColorHue('direction')
                       setEdgeColorHueAttribute(null)
@@ -3479,11 +3575,14 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         nodeOrderMode: 'alphabetical',
                         arcOpacity: 0.85,
                         edgeWidthMode: 'weight',
+                        edgeWidthMultiplier: 1,
                         baseEdgeWidth: 2,
                         nodeColorMode: 'single',
                         nodeColorAttribute: null,
                         nodeSizeMode: 'fixed',
                         nodeSizeAttribute: null,
+                        nodeSizeWeightScale: 'linear',
+                        nodeSizeMultiplier: 1,
                         edgeColorAdvanced: false,
                         edgeColorHue: 'direction',
                         edgeColorHueAttribute: null,
@@ -3831,6 +3930,50 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 ))}
                               </select>
                             )}
+                            <div className="mt-2 border border-gray-200 rounded-md p-2 bg-gray-50">
+                              <div className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">
+                                Weight
+                              </div>
+                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">Scaling</label>
+                                  <select
+                                    value={nodeSizeWeightScale}
+                                    onChange={(e) => {
+                                      const next = e.target.value as 'linear' | 'sqrt' | 'log'
+                                      setNodeSizeWeightScale(next)
+                                      updateSearchParams({ nodeSizeWeightScale: next })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="linear">Linear</option>
+                                    <option value="sqrt">Square root</option>
+                                    <option value="log">Logarithmic</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">Multiplier</label>
+                                  <input
+                                    type="number"
+                                    min={0.1}
+                                    max={10}
+                                    step={0.1}
+                                    value={nodeSizeMultiplier}
+                                    onChange={(e) => {
+                                      const raw = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(raw)) return
+                                      const clamped = Math.max(0.1, Math.min(10, raw))
+                                      setNodeSizeMultiplier(clamped)
+                                      updateSearchParams({ nodeSizeMultiplier: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                              <p className="mt-2 text-[10px] text-gray-500">
+                                Apply curve scaling and an overall multiplier to flow-based node sizes.
+                              </p>
+                            </div>
                           </div>
 
                           <div className="space-y-2">
@@ -3931,23 +4074,48 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 />
                               </div>
                             )}
-                            <div className="mt-2 space-y-1">
-                              <label className="text-xs font-medium text-gray-700">Weight scaling</label>
-                              <select
-                                value={edgeWeightScale}
-                                onChange={(e) => {
-                                  const value = e.target.value as 'linear' | 'sqrt' | 'log'
-                                  setEdgeWeightScale(value)
-                                  updateSearchParams({ edgeWeightScale: value })
-                                }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="linear">Linear (use raw weight differences)</option>
-                                <option value="sqrt">Square root (compress extremes)</option>
-                                <option value="log">Logarithmic (highlight small flows)</option>
-                              </select>
-                              <p className="text-[11px] text-gray-500">
-                                Applies to both edge widths and weight-based color intensity.
+                            <div className="mt-2 border border-gray-200 rounded-md p-2 bg-gray-50">
+                              <div className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">
+                                Weight
+                              </div>
+                              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">Scaling</label>
+                                  <select
+                                    value={edgeWeightScale}
+                                    onChange={(e) => {
+                                      const value = e.target.value as 'linear' | 'sqrt' | 'log'
+                                      setEdgeWeightScale(value)
+                                      updateSearchParams({ edgeWeightScale: value })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="linear">Linear (use raw weight differences)</option>
+                                    <option value="sqrt">Square root (compress extremes)</option>
+                                    <option value="log">Logarithmic (highlight small flows)</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-medium text-gray-600">Multiplier</label>
+                                  <input
+                                    type="number"
+                                    min={0.1}
+                                    max={10}
+                                    step={0.1}
+                                    value={edgeWidthMultiplier}
+                                    onChange={(e) => {
+                                      const raw = Number.parseFloat(e.target.value)
+                                      if (Number.isNaN(raw)) return
+                                      const clamped = Math.max(0.1, Math.min(10, raw))
+                                      setEdgeWidthMultiplier(clamped)
+                                      updateSearchParams({ edgeWidthMultiplier: clamped })
+                                    }}
+                                    className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                              </div>
+                              <p className="mt-2 text-[10px] text-gray-500">
+                                Scaling also shapes weight-based color intensity; the multiplier only stretches rendered edge widths.
                               </p>
                             </div>
                           </div>
