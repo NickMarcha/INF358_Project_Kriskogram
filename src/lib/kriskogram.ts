@@ -50,14 +50,22 @@ type LegendWeightItem = {
 
 type LegendEdgeWidthItem = {
   type: 'edgeWidth';
+  mode: 'weight' | 'fixed';
+  scale?: 'linear' | 'sqrt' | 'log';
+  multiplier?: number;
+  baseWidth?: number;
   min?: number;
   max?: number;
-  samples?: Array<{ value: number; width: number }>;
+  samples?: Array<{ label: string; width: number; value?: number; fraction?: number }>;
 };
 
 type LegendNodeSizeItem = {
   type: 'nodeSize';
-  entries: Array<{ label: string; radius: number }>;
+  mode: string;
+  scale?: 'linear' | 'sqrt' | 'log';
+  multiplier?: number;
+  entries: Array<{ label: string; radius: number; value?: number }>;
+  note?: string;
 };
 
 type LegendTemporalOverlayItem = {
@@ -910,6 +918,8 @@ enhanceNodeSelection.each(function (d) {
           if (value === undefined || !Number.isFinite(value)) return '—';
           return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(value);
         };
+        const modeLabel =
+          legendItem.mode === 'weight' ? 'Mode: Weight-based widths' : 'Mode: Fixed width';
         let cursorY = 0;
         content
           .append('text')
@@ -920,41 +930,76 @@ enhanceNodeSelection.each(function (d) {
           .attr('font-weight', 600)
           .text('Edge width');
         cursorY += 16;
+        content
+          .append('text')
+          .attr('x', 0)
+          .attr('y', cursorY)
+          .attr('fill', '#4b5563')
+          .attr('font-size', 10)
+          .text(modeLabel);
+        cursorY += 14;
+        if (legendItem.mode === 'weight') {
+          const scaleLabel =
+            legendItem.scale === 'sqrt'
+              ? 'Scaling: square root'
+              : legendItem.scale === 'log'
+                ? 'Scaling: logarithmic'
+                : 'Scaling: linear';
+          content
+            .append('text')
+            .attr('x', 0)
+            .attr('y', cursorY)
+            .attr('fill', '#4b5563')
+            .attr('font-size', 10)
+            .text(scaleLabel);
+          cursorY += 14;
+        } else if (legendItem.baseWidth !== undefined) {
+          content
+            .append('text')
+            .attr('x', 0)
+            .attr('y', cursorY)
+            .attr('fill', '#4b5563')
+            .attr('font-size', 10)
+            .text(`Base width`);
+          cursorY += 16;
+        }
         const samples =
           Array.isArray(legendItem.samples) && legendItem.samples.length > 0
             ? legendItem.samples
-            : [
-                { value: legendItem.min ?? 0, width: 2 },
-                { value: legendItem.max ?? ((legendItem.min ?? 0) + 1), width: 6 },
-              ];
+            : undefined;
         let maxLabelWidth = 0;
-        samples.forEach((sample) => {
-          const y = cursorY + sample.width / 2;
-          content
-            .append('line')
-            .attr('x1', 0)
-            .attr('y1', y)
-            .attr('x2', 60)
-            .attr('y2', y)
-            .attr('stroke', '#4b5563')
-            .attr('stroke-width', Math.max(1.5, sample.width))
-            .attr('stroke-linecap', 'round');
-          const labelText = formatValue(sample.value);
-          content
-            .append('text')
-            .attr('x', 68)
-            .attr('y', cursorY + 6)
-            .attr('fill', '#333')
-            .attr('font-size', 11)
-            .text(labelText);
-          maxLabelWidth = Math.max(maxLabelWidth, textWidth(labelText));
-          cursorY += Math.max(20, sample.width + 8);
-        });
+        if (samples) {
+          samples.forEach((sample) => {
+            const displayWidth = Math.max(2, sample.width);
+            const y = cursorY;
+            content
+              .append('rect')
+              .attr('x', 0)
+              .attr('y', y)
+              .attr('width', displayWidth)
+              .attr('height', 4)
+              .attr('fill', '#4b5563');
+            const parts: string[] = [];
+            if (sample.label) parts.push(sample.label);
+            if (sample.value !== undefined) parts.push(formatValue(sample.value));
+            const labelText = parts.join(' • ');
+            content
+              .append('text')
+              .attr('x', displayWidth + 8)
+              .attr('y', cursorY + 4)
+              .attr('fill', '#333')
+              .attr('font-size', 11)
+              .text(labelText);
+            maxLabelWidth = Math.max(maxLabelWidth, textWidth(labelText));
+            cursorY += 16;
+          });
+        }
         width = Math.max(textWidth('Edge width', true), 68 + maxLabelWidth);
         height = cursorY;
         break;
       }
       case 'nodeSize': {
+        const modeLine = `Mode: ${legendItem.mode}`;
         let cursorY = 0;
         content
           .append('text')
@@ -965,6 +1010,50 @@ enhanceNodeSelection.each(function (d) {
           .attr('font-weight', 600)
           .text('Node size');
         cursorY += 16;
+        content
+          .append('text')
+          .attr('x', 0)
+          .attr('y', cursorY)
+          .attr('fill', '#4b5563')
+          .attr('font-size', 10)
+          .text(modeLine);
+        cursorY += 14;
+        if (legendItem.scale) {
+          const scaleLabel =
+            legendItem.scale === 'sqrt'
+              ? 'Scaling: square root'
+              : legendItem.scale === 'log'
+                ? 'Scaling: logarithmic'
+                : 'Scaling: linear';
+          content
+            .append('text')
+            .attr('x', 0)
+            .attr('y', cursorY)
+            .attr('fill', '#4b5563')
+            .attr('font-size', 10)
+            .text(scaleLabel);
+          cursorY += 14;
+        }
+        if (legendItem.multiplier !== undefined && Math.abs(legendItem.multiplier - 1) > 0.05) {
+          content
+            .append('text')
+            .attr('x', 0)
+            .attr('y', cursorY)
+            .attr('fill', '#4b5563')
+            .attr('font-size', 10)
+            .text(`Multiplier: ×${legendItem.multiplier.toFixed(2)}`);
+          cursorY += 14;
+        }
+        if (legendItem.note) {
+          content
+            .append('text')
+            .attr('x', 0)
+            .attr('y', cursorY)
+            .attr('fill', '#6b7280')
+            .attr('font-size', 9.5)
+            .text(legendItem.note);
+          cursorY += 14;
+        }
         let maxLabelWidth = 0;
         legendItem.entries.forEach((entry) => {
           const circleY = cursorY + entry.radius;
@@ -985,7 +1074,13 @@ enhanceNodeSelection.each(function (d) {
           maxLabelWidth = Math.max(maxLabelWidth, textWidth(entry.label));
           cursorY += entry.radius * 2 + 12;
         });
-        width = Math.max(textWidth('Node size', true), legendItem.entries.reduce((acc, entry) => Math.max(acc, entry.radius * 2 + 8 + textWidth(entry.label)), 0));
+        width = Math.max(
+          textWidth('Node size', true),
+          legendItem.entries.reduce(
+            (acc, entry) => Math.max(acc, entry.radius * 2 + 8 + textWidth(entry.label)),
+            0,
+          ),
+        );
         height = cursorY;
         break;
       }

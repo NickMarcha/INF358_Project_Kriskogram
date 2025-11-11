@@ -2264,13 +2264,21 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       }
     | {
         type: 'edgeWidth'
+        mode: 'weight' | 'fixed'
+        scale?: 'linear' | 'sqrt' | 'log'
+        multiplier?: number
+        baseWidth?: number
         min?: number
         max?: number
-        samples?: Array<{ value: number; width: number }>
+        samples?: Array<{ label: string; width: number; value?: number; fraction?: number }>
       }
     | {
         type: 'nodeSize'
-        entries: Array<{ label: string; radius: number }>
+        mode: string
+        scale?: 'linear' | 'sqrt' | 'log'
+        multiplier?: number
+        note?: string
+        entries: Array<{ label: string; radius: number; value?: number }>
       }
     | {
         type: 'temporalOverlay'
@@ -2346,7 +2354,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   case 'linear':
         default:
           return globalMinEdgeWeight + clampedF * weightSpan;
-      }
+                                  }
     };
 
     const nodeVisibleOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_visible || n._totalOutgoing || 0);
@@ -2370,9 +2378,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     const globalNetAbs = Math.max(Math.abs(globalNetMin), Math.abs(globalNetMax)) || 1;
 
     const maxSelf = datasetNodeSelfFlowStats?.max ?? 0;
-
+                              
     const categoricalColors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-
+                              
     const overlaySummary = filteredData.temporalOverlay;
     const overlayActive = Boolean(overlaySummary);
     const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0;
@@ -2428,7 +2436,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
     const getOverlayColorForDelta = (delta: number) => {
       if (delta === 0) return overlayCurrentColorHex;
-      if (delta < 0) {
+                                if (delta < 0) {
         if (overlayYearsPastSetting === 0) return expandHexLocal(overlayColorMidSetting);
         const closeness = Math.max(0, Math.min(1, Math.abs(delta) / Math.max(overlayYearsPastSetting, 1)));
         const t = 1 - closeness;
@@ -2502,7 +2510,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           const netVisible = Math.abs(node.net_flow_visible || 0);
           const denom = maxAbsNetVisible > 0 ? maxAbsNetVisible : 1;
           return sizeFromRatio(netVisible / denom);
-        }
+                                  }
         case 'net_year': {
           const netYear = Math.abs(node.net_flow_year || 0);
           const denom = globalNetAbs > 0 ? globalNetAbs : 1;
@@ -2614,7 +2622,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             const ratio = maxSelf > 0 ? (d.self_flow_year || 0) / maxSelf : 0;
             baseColor = gradientColor(280, 70, ratio);
             break;
-          }
+                                  }
           case 'attribute': {
             if (!nodeColorAttribute) {
               baseColor = '#2563eb';
@@ -2751,7 +2759,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                   }
                                   if (edgeColorHue === 'single') {
           return `hsl(210, 70%, ${Math.round(light)}%)`;
-        }
+                                  }
         return hueColor;
                                 },
                                 nodeStroke: (d: any) => {
@@ -2761,16 +2769,16 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           const width = temporalOverlayNodeStyle === 'outline' ? 2.5 : 2;
           const color = temporalOverlayNodeStyle === 'outline' ? baseColor : '#fff';
           return { color, width };
-        }
+                                  }
 
         const ratio = Math.min(1, Math.abs(delta) / Math.max(overlayDeltaMax, 1));
         if (temporalOverlayNodeStyle === 'outline') {
           const width = 2.5 + (delta === 0 ? 0 : ratio * 1.5);
           return { color: baseColor, width };
-        }
+                                  }
         const width = 2 + (delta === 0 ? 0 : ratio * 2);
         return { color: getOverlayColorForDelta(delta), width };
-      },
+                                },
     };
 
     const legendItems: LegendItemConfig[] = [];
@@ -2839,54 +2847,151 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           entries,
           interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined,
         });
-      }
+                                }
     }
 
     if (filteredData.baseEdges.length > 0) {
-      const sampleFractions = [0, 0.5, 1];
-      const widthSamples = sampleFractions.map((fraction) => {
-        const value = valueForFraction(fraction);
+      if (edgeWidthMode === 'weight') {
+        const sampleFractions = [0, 0.5, 1] as const;
+        const labelsByIndex = ['Minimum', 'Median', 'Maximum'] as const;
+        const widthSamples = sampleFractions.map((fraction, idx) => {
+          const value = valueForFraction(fraction);
+          const width = computeEdgeWidth(value, currentEdgeStyle);
                                     return {
+            label: labelsByIndex[idx],
                                       value,
-          width: computeEdgeWidth(value, currentEdgeStyle),
-        };
-      });
-      legendItems.push({
-        type: 'edgeWidth',
-        min: globalMinEdgeWeight,
-        max: globalMaxEdgeWeight,
-        samples: widthSamples,
-      });
+                                      width,
+            fraction,
+          };
+        });
+        legendItems.push({
+          type: 'edgeWidth',
+          mode: 'weight',
+                                    scale: edgeWeightScale,
+          multiplier: edgeWidthMultiplier,
+          min: globalMinEdgeWeight,
+          max: globalMaxEdgeWeight,
+          samples: widthSamples,
+        });
+      } else {
+        const width = computeEdgeWidth(globalMaxEdgeWeight, currentEdgeStyle);
+        legendItems.push({
+          type: 'edgeWidth',
+          mode: 'fixed',
+          baseWidth: width,
+          samples: [
+            {
+              label: 'Fixed',
+              width,
+            },
+          ],
+        });
+      }
     }
+
+    const describeNodeSizeMode = () => {
+      switch (nodeSizeMode) {
+        case 'fixed':
+          return 'Fixed radius';
+        case 'visible_outgoing':
+        case 'outgoing':
+          return 'Visible outgoing flow';
+        case 'visible_incoming':
+        case 'incoming':
+          return 'Visible incoming flow';
+        case 'year_outgoing':
+          return 'Year outgoing flow';
+        case 'year_incoming':
+          return 'Year incoming flow';
+        case 'net_visible':
+          return 'Visible net flow';
+        case 'net_year':
+          return 'Year net flow';
+        case 'self_year':
+          return 'Self flow (year)';
+        case 'attribute':
+          return nodeSizeAttribute ? `Attribute: ${nodeSizeAttribute}` : 'Attribute value';
+        default:
+          return String(nodeSizeMode).replace(/_/g, ' ');
+      }
+    };
+
+    const nodeSizeValueFor = (node: any): number | null => {
+      switch (nodeSizeMode) {
+        case 'fixed':
+          return null;
+        case 'visible_outgoing':
+        case 'outgoing':
+          return node.total_outgoing_visible || node._totalOutgoing || 0;
+        case 'visible_incoming':
+        case 'incoming':
+          return node.total_incoming_visible || node._totalIncoming || 0;
+        case 'year_outgoing':
+          return node.total_outgoing_year || 0;
+        case 'year_incoming':
+          return node.total_incoming_year || 0;
+        case 'net_visible':
+          return Math.abs(node.net_flow_visible || 0);
+        case 'net_year':
+          return Math.abs(node.net_flow_year || 0);
+        case 'self_year':
+          return node.self_flow_year || 0;
+        case 'attribute':
+          if (!nodeSizeAttribute) return null;
+          return typeof node[nodeSizeAttribute] === 'number' ? (node[nodeSizeAttribute] as number) : null;
+        default:
+          return null;
+      }
+    };
 
     const nodeRadiusEntries = filteredData.nodes
       .map((node: any) => ({
+        id: node.id,
         label: node.label || node.id,
         radius: computeNodeRadius(node),
+        value: nodeSizeValueFor(node),
       }))
       .filter((entry) => Number.isFinite(entry.radius))
       .sort((a, b) => a.radius - b.radius);
 
     if (nodeRadiusEntries.length > 0) {
-      const formatRadius = (radius: number) => `${radius.toFixed(1)} px`;
       const pickEntry = (index: number) => nodeRadiusEntries[Math.min(nodeRadiusEntries.length - 1, Math.max(0, index))];
       const minEntry = pickEntry(0);
       const medianEntry = pickEntry(Math.floor(nodeRadiusEntries.length / 2));
       const maxEntry = pickEntry(nodeRadiusEntries.length - 1);
-      const uniqueByRadius = new Map<number, { label: string; radius: number }>();
-      [
-        { label: `Small (${formatRadius(minEntry.radius)})`, radius: minEntry.radius },
-        { label: `Typical (${formatRadius(medianEntry.radius)})`, radius: medianEntry.radius },
-        { label: `Large (${formatRadius(maxEntry.radius)})`, radius: maxEntry.radius },
-      ].forEach((entry) => {
+      const uniqueByRadius = new Map<number, { label: string; radius: number; value?: number | null }>();
+      const nodeSizeLabels = [
+        { label: 'Minimum', radius: minEntry.radius, value: minEntry.value },
+        { label: 'Median', radius: medianEntry.radius, value: medianEntry.value },
+        { label: 'Maximum', radius: maxEntry.radius, value: maxEntry.value },
+      ];
+      nodeSizeLabels.forEach((entry) => {
         const rounded = Math.round(entry.radius * 10) / 10;
         if (!uniqueByRadius.has(rounded)) {
-          uniqueByRadius.set(rounded, { label: entry.label, radius: Math.max(3, entry.radius) });
+          uniqueByRadius.set(rounded, {
+            label: entry.label,
+            radius: Math.max(3, entry.radius),
+            value: entry.value ?? undefined,
+          });
         }
+      });
+      const entries = Array.from(uniqueByRadius.values()).map((entry) => {
+        const parts: string[] = [entry.label];
+        if (entry.value !== undefined && entry.value !== null) {
+          parts.push(new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(entry.value));
+        }
+        return { label: parts.join(' • '), radius: entry.radius, value: entry.value ?? undefined };
       });
       legendItems.push({
         type: 'nodeSize',
-        entries: Array.from(uniqueByRadius.values()),
+        mode: describeNodeSizeMode(),
+        scale: nodeSizeMode === 'fixed' ? undefined : nodeSizeWeightScale,
+        multiplier: nodeSizeMultiplier,
+        note:
+          nodeSizeMode === 'attribute' && nodeSizeAttribute
+            ? `Using numeric attribute "${nodeSizeAttribute}"`
+            : undefined,
+        entries,
       });
     }
 
@@ -4081,19 +4186,19 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                 <div>
                                   <label className="block text-[11px] font-medium text-gray-600">Scaling</label>
-                                  <select
-                                    value={edgeWeightScale}
-                                    onChange={(e) => {
-                                      const value = e.target.value as 'linear' | 'sqrt' | 'log'
-                                      setEdgeWeightScale(value)
-                                      updateSearchParams({ edgeWeightScale: value })
-                                    }}
+                              <select
+                                value={edgeWeightScale}
+                                onChange={(e) => {
+                                  const value = e.target.value as 'linear' | 'sqrt' | 'log'
+                                  setEdgeWeightScale(value)
+                                  updateSearchParams({ edgeWeightScale: value })
+                                }}
                                     className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  >
-                                    <option value="linear">Linear (use raw weight differences)</option>
-                                    <option value="sqrt">Square root (compress extremes)</option>
-                                    <option value="log">Logarithmic (highlight small flows)</option>
-                                  </select>
+                              >
+                                <option value="linear">Linear (use raw weight differences)</option>
+                                <option value="sqrt">Square root (compress extremes)</option>
+                                <option value="log">Logarithmic (highlight small flows)</option>
+                              </select>
                                 </div>
                                 <div>
                                   <label className="block text-[11px] font-medium text-gray-600">Multiplier</label>
