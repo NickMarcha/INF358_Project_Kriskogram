@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { parseStateMigrationCSV, loadCSVFromUrl, REGION_COLORS, DIVISION_COLORS } from '../lib/csv-parser';
-import type { MigrationData } from '../lib/csv-parser';
+import type { MigrationData, MigrationNode, MigrationEdge } from '../lib/csv-parser';
 import Kriskogram from './Kriskogram';
 import type { KriskogramRef } from './Kriskogram';
+import type { Node as KriskogramNodeType, Edge as KriskogramEdgeType } from '../lib/kriskogram';
 
 interface StateMigrationDemoProps {
   csvUrl?: string;
@@ -10,6 +11,20 @@ interface StateMigrationDemoProps {
 
 type ColorMode = 'grayscale' | 'region' | 'division';
 type OrderMode = 'alphabetical' | 'region' | 'division';
+
+const convertNodeToKriskogram = (node: MigrationNode): KriskogramNodeType => ({
+  id: node.id,
+  label: node.label,
+  region: node.region,
+  division: node.division,
+});
+
+const convertEdgeToKriskogram = (edge: MigrationEdge): KriskogramEdgeType => ({
+  source: edge.source,
+  target: edge.target,
+  value: edge.value,
+  ...(edge.moe !== undefined ? { moe: edge.moe } : {}),
+});
 
 // Helper functions for color conversion
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -113,7 +128,10 @@ export function StateMigrationDemo({
         nodeIds.add(edge.target);
       }
       const nodes = data.nodes.filter(n => nodeIds.has(n.id));
-      kriskogramRef.current.updateData(nodes, edges);
+      kriskogramRef.current.updateData(
+        nodes.map(convertNodeToKriskogram),
+        edges.map(convertEdgeToKriskogram),
+      );
     }
   };
 
@@ -133,7 +151,10 @@ export function StateMigrationDemo({
         nodeIds.add(edge.target);
       }
       const nodes = data.nodes.filter(n => nodeIds.has(n.id));
-      kriskogramRef.current.updateData(nodes, edges);
+      kriskogramRef.current.updateData(
+        nodes.map(convertNodeToKriskogram),
+        edges.map(convertEdgeToKriskogram),
+      );
     }
   };
 
@@ -151,7 +172,10 @@ export function StateMigrationDemo({
         nodeIds.add(edge.target);
       }
       const nodes = data.nodes.filter(n => nodeIds.has(n.id));
-      kriskogramRef.current.updateData(nodes, edges);
+      kriskogramRef.current.updateData(
+        nodes.map(convertNodeToKriskogram),
+        edges.map(convertEdgeToKriskogram),
+      );
     }
   };
 
@@ -401,38 +425,41 @@ export function StateMigrationDemo({
               <Kriskogram
                 key={`kriskogram-${colorMode}-${orderMode}-${arcOpacity}`}
                 ref={kriskogramRef}
-                nodes={filteredNodes}
-                edges={filteredEdges}
+                nodes={filteredNodes.map(convertNodeToKriskogram)}
+                edges={filteredEdges.map(convertEdgeToKriskogram)}
                 width={1200}
                 height={700}
                 margin={{ top: 80, right: 40, bottom: 120, left: 40 }}
                 arcOpacity={arcOpacity}
                 accessors={{
-                  nodeOrder: (d: any) => {
+                  nodeOrder: (d) => {
+                    const node = d as MigrationNode;
                     // Order nodes based on selected mode
                     if (orderMode === 'region') {
                       // Primary: region, Secondary: label
-                      return `${d.region || 'ZZZ'}_${d.label || d.id}`;
+                      return `${node.region || 'ZZZ'}_${node.label || node.id}`;
                     } else if (orderMode === 'division') {
                       // Primary: division, Secondary: label
-                      return `${d.division || 'ZZZ'}_${d.label || d.id}`;
+                      return `${node.division || 'ZZZ'}_${node.label || node.id}`;
                     } else {
                       // Alphabetical by label
-                      return d.label || d.id;
+                      return node.label || node.id;
                     }
                   },
                   nodeColor: () => '#2563eb',
                   nodeRadius: () => 5,
-                  edgeWidth: (e: any) => {
+                  edgeWidth: (e) => {
+                    const edge = e as MigrationEdge;
                     // Scale edge width based on migration volume
                     const minWidth = 0.5;
                     const maxWidth = 15;
-                    const normalized = Math.log(e.value + 1) / Math.log(maxMigration + 1);
+                    const normalized = Math.log(edge.value + 1) / Math.log(maxMigration + 1);
                     return minWidth + (normalized * (maxWidth - minWidth));
                   },
-                  edgeColor: (e: any) => {
+                  edgeColor: (e) => {
+                    const edge = e as MigrationEdge;
                     // Calculate luminosity based on migration volume using DISCRETE steps
-                    const normalized = e.value / maxMigration;
+                    const normalized = edge.value / maxMigration;
                     
                     // Define discrete luminosity levels to match legend
                     const lightnessLevels = colorMode === 'division' 
@@ -452,8 +479,8 @@ export function StateMigrationDemo({
                       return `hsl(0, 0%, ${lightness}%)`;
                     } else if (colorMode === 'region') {
                       // Region-based coloring
-                      const sourceNode = data?.nodes.find(n => n.id === e.source);
-                      const targetNode = data?.nodes.find(n => n.id === e.target);
+                      const sourceNode = data?.nodes.find(n => n.id === edge.source);
+                      const targetNode = data?.nodes.find(n => n.id === edge.target);
                       
                       // Check if both nodes are in the same region
                       if (sourceNode?.region && targetNode?.region && sourceNode.region === targetNode.region) {
@@ -473,8 +500,8 @@ export function StateMigrationDemo({
                       }
                     } else {
                       // Division-based coloring
-                      const sourceNode = data?.nodes.find(n => n.id === e.source);
-                      const targetNode = data?.nodes.find(n => n.id === e.target);
+                      const sourceNode = data?.nodes.find(n => n.id === edge.source);
+                      const targetNode = data?.nodes.find(n => n.id === edge.target);
                       
                       // Check if both nodes are in the same division
                       if (sourceNode?.division && targetNode?.division && sourceNode.division === targetNode.division) {

@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
-import * as d3 from 'd3';
+import type React from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import type * as d3 from 'd3';
 import { createKriskogram } from '../lib/kriskogram';
 import type { KriskogramConfig, Node, Edge } from '../lib/kriskogram';
 
@@ -23,7 +24,7 @@ export interface KriskogramProps {
 
 export interface KriskogramRef {
   updateData: (nodes: Node[], edges: Edge[]) => void;
-  getSVG: () => d3.Selection<SVGSVGElement, unknown, HTMLElement, any> | null;
+  getSVG: () => d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown> | null;
 }
 
 export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
@@ -58,7 +59,7 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
         margin,
         arcOpacity,
         title,
-        container: containerRef.current as any,
+        container: containerRef.current ?? undefined,
         lens,
         legend,
         labelScale,
@@ -70,14 +71,17 @@ export const Kriskogram = forwardRef<KriskogramRef, KriskogramProps>(
       return () => {
         // Remove any tooltips when component unmounts
         if (typeof document !== 'undefined') {
-          document.querySelectorAll(".kriskogram-tooltip").forEach(el => el.remove());
+          const tooltips = document.querySelectorAll('.kriskogram-tooltip');
+          for (const tooltip of tooltips) {
+            tooltip.remove();
+          }
         }
         if (containerRef.current) {
           containerRef.current.innerHTML = '';
         }
         kriskogramRef.current = null;
       };
-    }, [nodes, edges, accessors, width, height, margin, arcOpacity, title, lens?.enabled, lens?.x, lens?.y, lens?.radius, legend, labelScale]);
+    }, [accessors, arcOpacity, edges, height, labelScale, lens, legend, margin, nodes, title, width]);
 
     // Update data when props change
     useEffect(() => {

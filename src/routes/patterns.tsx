@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import Kriskogram from '@/components/Kriskogram'
-import React from 'react'
+import type React from 'react'
 
 type Edge = { source: string; target: string; value: number }
 const NODES = [
@@ -229,7 +229,7 @@ function MiniKriskogram({ title, edges }: { title: string; edges: Edge[] }) {
   )
 }
 
-function SimpleDiagram({ edges }: { edges: Edge[] }) {
+function SimpleDiagram({ edges, title }: { edges: Edge[]; title: string }) {
   const size = 384
   const padding = 32
   const positions: Record<string, { x: number; y: number }> = {
@@ -243,7 +243,15 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
     <div className="bg-white rounded-lg border border-gray-200 p-3">
       <div className="text-sm font-semibold text-gray-700 mb-2">Diagram</div>
       <div className="w-full" style={{ aspectRatio: '1 / 1' }}>
-        <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} preserveAspectRatio="xMidYMid meet">
+        <svg
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${size} ${size}`}
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-labelledby={`${title.replace(/\s+/g, '-').toLowerCase()}-diagram`}
+        >
+          <title id={`${title.replace(/\s+/g, '-').toLowerCase()}-diagram`}>{title}</title>
           <defs>
             <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
               <path d="M 0 0 L 12 6 L 0 12 z" fill="#374151" />
@@ -252,12 +260,12 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
 
           {(() => {
             // Build lookup for directions and unique undirected pairs
-            const dirSet = new Set(edges.map(e => `${e.source}->${e.target}`))
+            const dirSet = new Set(edges.map((edge) => `${edge.source}->${edge.target}`))
             const pairKeys = new Set<string>()
             const pairs: Array<[string, string]> = []
-            for (const e of edges) {
-              const a = e.source
-              const b = e.target
+            for (const edge of edges) {
+              const a = edge.source
+              const b = edge.target
               if (!positions[a] || !positions[b] || a === b) continue
               const key = [a, b].sort().join('|')
               if (!pairKeys.has(key)) {
@@ -266,8 +274,7 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
               }
             }
 
-            const lines = pairs.map((ab, i) => {
-              const [a, b] = ab
+            const lines = pairs.map(([a, b]) => {
               const A = positions[a]
               const B = positions[b]
               const dx = B.x - A.x
@@ -290,6 +297,7 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
               const hasBA = dirSet.has(`${b}->${a}`)
 
               const paths: React.ReactElement[] = []
+              const keyBase = `${a}-${b}`
 
               if (hasAB && hasBA) {
                 // Two parallel lines equidistant from centerline
@@ -304,18 +312,54 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
                 const e2y = endBaseY - ny * off
 
                 paths.push(
-                  <line key={`ab-${i}`} x1={s1x} y1={s1y} x2={e1x} y2={e1y} stroke="#374151" strokeWidth={2.25} markerEnd="url(#arrow)" />
+                  <line
+                    key={`${keyBase}-forward`}
+                    x1={s1x}
+                    y1={s1y}
+                    x2={e1x}
+                    y2={e1y}
+                    stroke="#374151"
+                    strokeWidth={2.25}
+                    markerEnd="url(#arrow)"
+                  />,
                 )
                 paths.push(
-                  <line key={`ba-${i}`} x1={e2x} y1={e2y} x2={s2x} y2={s2y} stroke="#374151" strokeWidth={2.25} markerEnd="url(#arrow)" />
+                  <line
+                    key={`${keyBase}-reverse`}
+                    x1={e2x}
+                    y1={e2y}
+                    x2={s2x}
+                    y2={s2y}
+                    stroke="#374151"
+                    strokeWidth={2.25}
+                    markerEnd="url(#arrow)"
+                  />,
                 )
               } else if (hasAB) {
                 paths.push(
-                  <line key={`ab-${i}`} x1={startBaseX} y1={startBaseY} x2={endBaseX} y2={endBaseY} stroke="#374151" strokeWidth={2.25} markerEnd="url(#arrow)" />
+                  <line
+                    key={`${keyBase}-forward`}
+                    x1={startBaseX}
+                    y1={startBaseY}
+                    x2={endBaseX}
+                    y2={endBaseY}
+                    stroke="#374151"
+                    strokeWidth={2.25}
+                    markerEnd="url(#arrow)"
+                  />,
                 )
               } else if (hasBA) {
                 paths.push(
-                  <line key={`ba-${i}`} x1={endBaseX} y1={endBaseY} x2={startBaseX} y2={startBaseY} stroke="#374151" strokeWidth={2.25} markerEnd="url(#arrow)" />
+                  <line
+                    key={`${keyBase}-reverse`}
+                    x1={endBaseX}
+                    y1={endBaseY}
+                    x2={startBaseX}
+                    y2={startBaseY}
+                    stroke="#374151"
+                    strokeWidth={2.25}
+                    markerEnd="url(#arrow)"
+                  />,
                 )
               }
 
@@ -355,9 +399,9 @@ function PatternsPage() {
               <h2 className="text-xl font-bold text-gray-800 mb-4">{p.title}</h2>
               <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
                 <MiniKriskogram title={p.variants[0].name} edges={p.variants[0].edges} />
-                <SimpleDiagram edges={p.variants[0].edges} />
+                <SimpleDiagram title={`${p.variants[0].name} diagram`} edges={p.variants[0].edges} />
                 <MiniKriskogram title={p.variants[1].name} edges={p.variants[1].edges} />
-                <SimpleDiagram edges={p.variants[1].edges} />
+                <SimpleDiagram title={`${p.variants[1].name} diagram`} edges={p.variants[1].edges} />
               </div>
             </div>
           ))}

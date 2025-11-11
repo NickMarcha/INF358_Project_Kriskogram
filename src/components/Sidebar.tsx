@@ -101,6 +101,7 @@ export default function Sidebar({ isCollapsed, onToggle, onResize, children }: S
             </div>
           )}
           <button
+            type="button"
             onClick={onToggle}
             className="p-2 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -125,7 +126,7 @@ export default function Sidebar({ isCollapsed, onToggle, onResize, children }: S
           <div className="flex flex-col gap-2 p-2">
             {routes.map((route) => {
               const Icon = route.icon
-              const isActive = currentPath === route.path || currentPath.startsWith(route.path + '/')
+              const isActive = currentPath === route.path || currentPath.startsWith(`${route.path}/`)
               return (
                 <Link
                   key={route.path}

@@ -29,16 +29,21 @@ if ('serviceWorker' in navigator) {
     })
   } else {
     // Dev: actively unregister any existing service workers to prevent stale caches & invalid hook errors
-    navigator.serviceWorker.getRegistrations?.().then((regs) => {
-      regs.forEach((r) => r.unregister())
-    }).catch(() => {})
+    navigator.serviceWorker
+      .getRegistrations?.()
+      .then((registrations) => {
+        for (const registration of registrations) {
+          void registration.unregister()
+        }
+      })
+      .catch(() => {})
   }
 }
 
 // Handle 404 redirect from GitHub Pages
-(function() {
-  const redirect = sessionStorage.redirect;
-  delete sessionStorage.redirect;
+(() => {
+  const redirect = sessionStorage.getItem('redirect');
+  sessionStorage.removeItem('redirect');
   if (redirect && redirect !== location.href) {
     // Extract the path after the base URL
     const baseUrl = location.origin + import.meta.env.BASE_URL;

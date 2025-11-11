@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import type React from 'react'
+import { useEffect, useState } from 'react'
 import { X, Network } from 'lucide-react'
 import Kriskogram from './Kriskogram'
 
@@ -106,7 +107,7 @@ const PATTERNS = [
   },
 ]
 
-function SimpleDiagram({ edges }: { edges: Edge[] }) {
+function SimpleDiagram({ edges, title }: { edges: Edge[]; title: string }) {
   const size = 160
   const padding = 24
   const positions: Record<string, { x: number; y: number }> = {
@@ -117,45 +118,104 @@ function SimpleDiagram({ edges }: { edges: Edge[] }) {
   }
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role="img"
+      aria-labelledby={`${title.replace(/\s+/g, '-').toLowerCase()}-title`}
+    >
+      <title id={`${title.replace(/\s+/g, '-').toLowerCase()}-title`}>{title}</title>
       <defs>
         <marker id="arrow-small" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
           <path d="M 0 0 L 12 6 L 0 12 z" fill="#374151" />
         </marker>
       </defs>
       {(() => {
-        const dirSet = new Set(edges.map(e => `${e.source}->${e.target}`))
+        const dirSet = new Set(edges.map((edge) => `${edge.source}->${edge.target}`))
         const pairKeys = new Set<string>()
         const pairs: Array<[string, string]> = []
-        for (const e of edges) {
-          const a = e.source
-          const b = e.target
+        for (const edge of edges) {
+          const a = edge.source
+          const b = edge.target
           if (!positions[a] || !positions[b] || a === b) continue
-          const key = [a,b].sort().join('|')
-          if (!pairKeys.has(key)) { pairKeys.add(key); pairs.push([a,b]) }
+          const key = [a, b].sort().join('|')
+          if (!pairKeys.has(key)) {
+            pairKeys.add(key)
+            pairs.push([a, b])
+          }
         }
         const out: React.ReactElement[] = []
-        for (let i=0;i<pairs.length;i++){
-          const [a,b] = pairs[i]
+        for (const [a, b] of pairs) {
           const A = positions[a]
           const B = positions[b]
-          const dx = B.x - A.x, dy = B.y - A.y
-          const dist = Math.hypot(dx,dy) || 1
-          const ux = dx/dist, uy = dy/dist
+          const dx = B.x - A.x
+          const dy = B.y - A.y
+          const dist = Math.hypot(dx, dy) || 1
+          const ux = dx / dist
+          const uy = dy / dist
           const trim = dist * 0.10
-          const nx = -uy, ny = ux
+          const nx = -uy
+          const ny = ux
           const off = 12
-          const sX = A.x + ux*trim, sY = A.y + uy*trim
-          const eX = B.x - ux*trim, eY = B.y - uy*trim
+          const sX = A.x + ux * trim
+          const sY = A.y + uy * trim
+          const eX = B.x - ux * trim
+          const eY = B.y - uy * trim
           const hasAB = dirSet.has(`${a}->${b}`)
           const hasBA = dirSet.has(`${b}->${a}`)
+          const keyBase = `${a}-${b}`
           if (hasAB && hasBA) {
-            out.push(<line key={`ab-${i}`} x1={sX+nx*off} y1={sY+ny*off} x2={eX+nx*off} y2={eY+ny*off} stroke="#374151" strokeWidth={2} markerEnd="url(#arrow-small)" />)
-            out.push(<line key={`ba-${i}`} x1={eX-nx*off} y1={eY-ny*off} x2={sX-nx*off} y2={sY-ny*off} stroke="#374151" strokeWidth={2} markerEnd="url(#arrow-small)" />)
+            out.push(
+              <line
+                key={`${keyBase}-forward`}
+                x1={sX + nx * off}
+                y1={sY + ny * off}
+                x2={eX + nx * off}
+                y2={eY + ny * off}
+                stroke="#374151"
+                strokeWidth={2}
+                markerEnd="url(#arrow-small)"
+              />,
+            )
+            out.push(
+              <line
+                key={`${keyBase}-reverse`}
+                x1={eX - nx * off}
+                y1={eY - ny * off}
+                x2={sX - nx * off}
+                y2={sY - ny * off}
+                stroke="#374151"
+                strokeWidth={2}
+                markerEnd="url(#arrow-small)"
+              />,
+            )
           } else if (hasAB) {
-            out.push(<line key={`ab-${i}`} x1={sX} y1={sY} x2={eX} y2={eY} stroke="#374151" strokeWidth={2} markerEnd="url(#arrow-small)" />)
+            out.push(
+              <line
+                key={`${keyBase}-forward`}
+                x1={sX}
+                y1={sY}
+                x2={eX}
+                y2={eY}
+                stroke="#374151"
+                strokeWidth={2}
+                markerEnd="url(#arrow-small)"
+              />,
+            )
           } else if (hasBA) {
-            out.push(<line key={`ba-${i}`} x1={eX} y1={eY} x2={sX} y2={sY} stroke="#374151" strokeWidth={2} markerEnd="url(#arrow-small)" />)
+            out.push(
+              <line
+                key={`${keyBase}-reverse`}
+                x1={eX}
+                y1={eY}
+                x2={sX}
+                y2={sY}
+                stroke="#374151"
+                strokeWidth={2}
+                markerEnd="url(#arrow-small)"
+              />,
+            )
           }
         }
         return out
@@ -204,34 +264,34 @@ export default function PatternsPanel() {
             <Network className="w-4 h-4 text-gray-700" />
             <span className="font-semibold text-gray-800">Patterns</span>
           </div>
-          <button onClick={() => setOpen(false)} className="p-2 rounded hover:bg-gray-100" aria-label="Close patterns">
+          <button type="button" onClick={() => setOpen(false)} className="p-2 rounded hover:bg-gray-100" aria-label="Close patterns">
             <X className="w-4 h-4 text-gray-600" />
           </button>
         </div>
         <div className="h-full overflow-auto p-3 space-y-4">
-          {PATTERNS.map((p, idx) => (
-            <div key={idx} className="space-y-2">
-              <div className="text-sm font-semibold text-gray-800">{p.title}</div>
+          {PATTERNS.map((pattern) => (
+            <div key={pattern.title} className="space-y-2">
+              <div className="text-sm font-semibold text-gray-800">{pattern.title}</div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded p-2">
                   <div className="text-xs text-gray-600 mb-1">Variant 1</div>
                   <div className="aspect-square">
-                    <Kriskogram title={`${p.title} 1`} width={300} height={300} nodes={NODES} edges={p.variants[0]} accessors={{}} />
+                    <Kriskogram title={`${pattern.title} 1`} width={300} height={300} nodes={NODES} edges={pattern.variants[0]} accessors={{}} />
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded p-2">
                   <div className="text-xs text-gray-600 mb-1">Diagram 1</div>
-                  <SimpleDiagram edges={p.variants[0]} />
+                  <SimpleDiagram title={`${pattern.title} diagram 1`} edges={pattern.variants[0]} />
                 </div>
                 <div className="bg-gray-50 rounded p-2">
                   <div className="text-xs text-gray-600 mb-1">Variant 2</div>
                   <div className="aspect-square">
-                    <Kriskogram title={`${p.title} 2`} width={300} height={300} nodes={NODES} edges={p.variants[1]} accessors={{}} />
+                    <Kriskogram title={`${pattern.title} 2`} width={300} height={300} nodes={NODES} edges={pattern.variants[1]} accessors={{}} />
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded p-2">
                   <div className="text-xs text-gray-600 mb-1">Diagram 2</div>
-                  <SimpleDiagram edges={p.variants[1]} />
+                  <SimpleDiagram title={`${pattern.title} diagram 2`} edges={pattern.variants[1]} />
                 </div>
               </div>
             </div>

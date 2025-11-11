@@ -20,9 +20,22 @@ export interface TwoFileCSVConfig {
   }
 }
 
+export interface ParsedTwoFileCSVNode {
+  id: string
+  label: string
+  [key: string]: string | number
+}
+
+export interface ParsedTwoFileCSVEdge {
+  source: string
+  target: string
+  value: number
+  [key: string]: string | number
+}
+
 export interface ParsedTwoFileCSV {
-  nodes: any[]
-  edges: any[]
+  nodes: ParsedTwoFileCSVNode[]
+  edges: ParsedTwoFileCSVEdge[]
 }
 
 function parseCSVLine(line: string): string[] {
@@ -85,7 +98,7 @@ export function parseTwoFileCSV(config: TwoFileCSVConfig): ParsedTwoFileCSV {
   }
 
   const nodes = nodeRows.map(row => {
-    const node: any = {
+    const node: ParsedTwoFileCSVNode = {
       id: String(row[idFieldIndex] || '').trim(),
       label: labelFieldIndex >= 0 ? String(row[labelFieldIndex] || '').trim() : String(row[idFieldIndex] || '').trim(),
     }
@@ -148,7 +161,7 @@ export function parseTwoFileCSV(config: TwoFileCSVConfig): ParsedTwoFileCSV {
         console.warn(`Edge references missing node: ${source} -> ${target}`)
       }
 
-      const edge: any = {
+      const edge: ParsedTwoFileCSVEdge = {
         source,
         target,
         value: value as number,
@@ -170,23 +183,25 @@ export function parseTwoFileCSV(config: TwoFileCSVConfig): ParsedTwoFileCSV {
 
       return edge
     })
-    .filter((edge): edge is any => edge !== null && nodeIdMap.has(edge.source) && nodeIdMap.has(edge.target))
+    .filter((edge): edge is ParsedTwoFileCSVEdge => edge !== null)
 
   // Add any missing nodes that are referenced in edges but not in nodes file
   const referencedNodeIds = new Set<string>()
-  edges.forEach(e => {
-    referencedNodeIds.add(e.source)
-    referencedNodeIds.add(e.target)
-  })
+  for (const edge of edges) {
+    referencedNodeIds.add(edge.source)
+    referencedNodeIds.add(edge.target)
+  }
 
-  referencedNodeIds.forEach(nodeId => {
+  for (const nodeId of referencedNodeIds) {
     if (!nodeIdMap.has(nodeId)) {
-      nodes.push({
+      const fallbackNode: ParsedTwoFileCSVNode = {
         id: nodeId,
         label: nodeId,
-      })
+      }
+      nodes.push(fallbackNode)
+      nodeIdMap.set(nodeId, fallbackNode)
     }
-  })
+  }
 
   return { nodes, edges }
 }

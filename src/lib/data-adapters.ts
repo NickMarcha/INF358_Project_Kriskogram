@@ -8,14 +8,14 @@
 export interface CommonNode {
   id: string
   label?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface CommonEdge {
   source: string
   target: string
   value: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
@@ -28,14 +28,14 @@ export interface CommonEdge {
 export interface SankeyNode {
   id: string
   name: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface SankeyLink {
   source: number | string | SankeyNode  // Index, ID, or reference to node (depends on nodeId usage)
   target: number | string | SankeyNode  // Index, ID, or reference to node (depends on nodeId usage)
   value: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface SankeyData {
@@ -239,12 +239,19 @@ export function getUniqueEdgePropertyValues(
   
   edges.forEach(edge => {
     const value = edge[property]
-    if (value !== null && value !== undefined) {
-      if (Array.isArray(value)) {
-        value.forEach(v => values.add(v))
-      } else {
-        values.add(value)
-      }
+    if (value === null || value === undefined) {
+      return
+    }
+
+    if (Array.isArray(value)) {
+      value
+        .filter((v): v is string | number => typeof v === 'string' || typeof v === 'number')
+        .forEach(v => values.add(v))
+      return
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      values.add(value)
     }
   })
 

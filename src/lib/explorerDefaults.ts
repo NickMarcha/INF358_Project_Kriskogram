@@ -53,4 +53,5 @@ export const explorerDefaultSearch: ExplorerSearchParams = {
   nodeSizeMultiplier: 1,
   interactionMode: 'pan',
   lensRadius: 80,
+  labelScale: 1,
 }

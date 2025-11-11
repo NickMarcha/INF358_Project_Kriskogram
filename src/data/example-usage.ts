@@ -4,7 +4,16 @@
  * This file demonstrates how to load and use the GEXF data in your Kriskogram implementation.
  */
 
-import { loadGexfFromUrl, parseGexf, gexfToKriskogramSnapshots, createSampleKriskogramData } from '../lib/gexf-parser';
+import {
+  loadGexfFromUrl,
+  parseGexf,
+  gexfToKriskogramSnapshots,
+  createSampleKriskogramData,
+  type KriskogramSnapshot,
+  type KriskogramNode,
+  type KriskogramEdge,
+} from '../lib/gexf-parser';
+import type { KriskogramConfig } from '../lib/kriskogram';
 
 // Example 1: Load GEXF data from file
 export async function loadMigrationData() {
@@ -55,38 +64,47 @@ export function parseGexfString(gexfXml: string) {
 }
 
 // Example 4: Create a simple Kriskogram configuration
-export function createKriskogramConfig(snapshot: any) {
+export function createKriskogramConfig(snapshot: KriskogramSnapshot): KriskogramConfig {
   return {
     nodes: snapshot.nodes,
     edges: snapshot.edges,
     accessors: {
       // Order nodes by economic index (descending)
-      nodeOrder: (d: any) => -(d.economic_index || 0),
+      nodeOrder: (node) => {
+        const typedNode = node as KriskogramNode;
+        return -(typedNode.economic_index ?? 0);
+      },
       
       // Color nodes by economic index
-      nodeColor: (d: any) => {
-        const index = d.economic_index || 0;
+      nodeColor: (node) => {
+        const typedNode = node as KriskogramNode;
+        const index = Math.max(0, Math.min(1, typedNode.economic_index ?? 0));
         const hue = index * 120; // Green to red scale
         return `hsl(${hue}, 70%, 50%)`;
       },
       
       // Size nodes by population
-      nodeRadius: (d: any) => {
-        const population = d.population || 1000000;
+      nodeRadius: (node) => {
+        const typedNode = node as KriskogramNode;
+        const population = Math.max(0, typedNode.population ?? 1_000_000);
         return Math.sqrt(population) / 1000;
       },
       
       // Width edges by migration value
-      edgeWidth: (e: any) => Math.sqrt(e.value) / 10,
+      edgeWidth: (edge) => {
+        const typedEdge = edge as KriskogramEdge;
+        return Math.sqrt(Math.max(0, typedEdge.value)) / 10;
+      },
       
       // Color edges by migration type
-      edgeColor: (e: any, isAbove: boolean) => {
+      edgeColor: (edge, isAbove: boolean) => {
+        const typedEdge = edge as KriskogramEdge;
         const colors = {
           economic: isAbove ? '#1f77b4' : '#d62728',
           career: isAbove ? '#2ca02c' : '#ff7f0e',
           lifestyle: isAbove ? '#9467bd' : '#8c564b',
         };
-        return colors[e.migration_type as keyof typeof colors] || (isAbove ? '#1f77b4' : '#d62728');
+        return colors[typedEdge.migration_type as keyof typeof colors] || (isAbove ? '#1f77b4' : '#d62728');
       },
     },
     width: 1000,
@@ -96,7 +114,17 @@ export function createKriskogramConfig(snapshot: any) {
 }
 
 // Example 5: Animation helper
-export function createAnimationData(snapshots: any[], duration = 5000) {
+export interface KriskogramAnimationData {
+  snapshots: KriskogramSnapshot[];
+  duration: number;
+  frameRate: number;
+  getSnapshotAtTime: (time: number) => KriskogramSnapshot | undefined;
+}
+
+export function createAnimationData(
+  snapshots: KriskogramSnapshot[],
+  duration = 5000,
+): KriskogramAnimationData {
   return {
     snapshots,
     duration,

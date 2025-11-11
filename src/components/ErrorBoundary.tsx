@@ -44,6 +44,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {this.state.error?.message || 'An error occurred'}
           </p>
           <button
+            type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
             className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 cursor-pointer transition-colors"
           >
