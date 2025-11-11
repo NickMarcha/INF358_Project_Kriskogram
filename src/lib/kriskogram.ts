@@ -35,6 +35,7 @@ export interface KriskogramAccessors {
 
 type LegendDirectionItem = {
   type: 'direction';
+  title?: string;
   labels?: { above?: string; below?: string };
   colors?: { above?: string; below?: string };
 };
@@ -64,13 +65,14 @@ type LegendNodeSizeItem = {
   mode: string;
   scale?: 'linear' | 'sqrt' | 'log';
   multiplier?: number;
-  entries: Array<{ label: string; radius: number; value?: number }>;
+  entries: Array<{ label: string; radius: number }>;
   note?: string;
 };
 
 type LegendTemporalOverlayItem = {
   type: 'temporalOverlay';
-  entries: Array<{ label: string; color: string }>;
+  title?: string;
+  entries: Array<{ label: string; color: string; delta?: number }>;
 };
 
 type LegendEgoStepsItem = {
@@ -805,7 +807,7 @@ enhanceNodeSelection.each(function (d) {
         const cAbove = colors.above ?? '#d62728';
         const cBelow = colors.below ?? '#1f77b4';
         let y = 0;
-        const title = 'flow direction ⟳';
+        const title = legendItem.title ?? 'Edge color (direction)';
         content
           .append('text')
           .attr('x', 0)
@@ -1086,6 +1088,7 @@ enhanceNodeSelection.each(function (d) {
       }
       case 'temporalOverlay': {
         let cursorY = 0;
+        const heading = (legendItem as LegendTemporalOverlayItem).title ?? 'Edge color (temporal)';
         content
           .append('text')
           .attr('x', 0)
@@ -1093,7 +1096,7 @@ enhanceNodeSelection.each(function (d) {
           .attr('fill', '#333')
           .attr('font-size', 12)
           .attr('font-weight', 600)
-          .text('Temporal overlay');
+          .text(heading);
         cursorY += 16;
         let maxLabelWidth = 0;
         legendItem.entries.forEach(({ label, color }) => {

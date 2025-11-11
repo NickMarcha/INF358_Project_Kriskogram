@@ -1911,8 +1911,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
            colorMid: overlayColorMid,
            colorFuture: overlayColorFuture,
            useBlackForCurrent: temporalOverlayCurrentBlack,
-           legendEntries: (() => {
-             const entries: Array<{ label: string; color: string }> = []
+          legendEntries: (() => {
+            const entries: Array<{ label: string; color: string; delta: number }> = []
              const makeLabel = (offset: number) => {
                if (typeof currentYear === 'number') {
                  const yearLabel = currentYear + offset
@@ -1931,12 +1931,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                return `${offset} ${suffix} future`
              }
 
-             entries.push({ label: makeLabel(0), color: overlayCurrentColor })
+            entries.push({ label: makeLabel(0), color: overlayCurrentColor, delta: 0 })
              for (let offset = -yearsPast; offset < 0; offset += 1) {
-               entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset) })
+              entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset), delta: offset })
              }
              for (let offset = 1; offset <= yearsFuture; offset += 1) {
-               entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset) })
+              entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset), delta: offset })
              }
              return entries
            })(),
@@ -2251,6 +2251,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
   type LegendItemConfig =
     | {
         type: 'direction'
+        title?: string
         labels?: { above?: string; below?: string }
         colors?: { above?: string; below?: string }
       }
@@ -2282,7 +2283,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       }
     | {
         type: 'temporalOverlay'
-        entries: Array<{ label: string; color: string }>
+        title?: string
+        entries: Array<{ label: string; color: string; delta?: number }>
       }
     | {
         type: 'egoSteps'
@@ -2469,30 +2471,30 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       return colorMap.get(propValue) || categoricalColors[0];
     };
 
-    const computeNodeRadius = (node: any): number => {
-      const applyNodeRatioScaling = (ratio: number) => {
-        const clamped = Math.max(0, Math.min(1, ratio));
-        switch (nodeSizeWeightScale) {
-          case 'sqrt':
-            return Math.sqrt(clamped);
-          case 'log': {
-            if (clamped <= 0) return 0;
-            const numerator = Math.log10(clamped * 9 + 1);
-            const denom = Math.log10(10);
-            return denom > 0 ? Math.min(1, numerator / denom) : clamped;
-          }
-          case 'linear':
-          default:
-            return clamped;
+    const applyNodeRatioScaling = (ratio: number) => {
+      const clamped = Math.max(0, Math.min(1, ratio));
+      switch (nodeSizeWeightScale) {
+        case 'sqrt':
+          return Math.sqrt(clamped);
+        case 'log': {
+          if (clamped <= 0) return 0;
+          const numerator = Math.log10(clamped * 9 + 1);
+          const denom = Math.log10(10);
+          return denom > 0 ? Math.min(1, numerator / denom) : clamped;
         }
-      };
+        case 'linear':
+        default:
+          return clamped;
+      }
+    };
 
-      const sizeFromRatio = (ratio: number) => {
-        const scaled = applyNodeRatioScaling(ratio);
-        const base = 3 + scaled * 9;
-        return Math.max(1, base * nodeSizeMultiplier);
-      };
+    const sizeFromRatio = (ratio: number) => {
+      const scaled = Math.max(0, Math.min(1, applyNodeRatioScaling(ratio)));
+      const base = 3 + scaled * 9;
+      return Math.max(1, base * nodeSizeMultiplier);
+    };
 
+    const computeNodeRadius = (node: any): number => {
       switch (nodeSizeMode) {
         case 'fixed':
           return Math.max(1, 6 * nodeSizeMultiplier);
@@ -2782,16 +2784,29 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     };
 
     const legendItems: LegendItemConfig[] = [];
-    legendItems.push({
-      type: 'direction',
-      labels: { above: 'Above baseline (clockwise)', below: 'Below baseline (counter)' },
-      colors: { above: '#d62728', below: '#1f77b4' },
-    });
+    const temporalLegendEntries =
+      overlaySummary && Array.isArray(overlaySummary.legendEntries)
+        ? overlaySummary.legendEntries.slice().sort((a, b) => (a.delta ?? 0) - (b.delta ?? 0))
+        : [];
 
-    if (overlaySummary && (overlaySummary.hasPast || overlaySummary.hasFuture)) {
-      const entries = overlaySummary.legendEntries ?? [];
-      legendItems.push({ type: 'temporalOverlay', entries });
-    } else if (shouldColorEdgesByEgoStep) {
+    if (temporalLegendEntries.length > 0) {
+      legendItems.push({
+        type: 'temporalOverlay',
+        title: 'Edge color (temporal)',
+        entries: temporalLegendEntries,
+      });
+    }
+
+    if (!shouldColorEdgesByEgoStep && edgeColorHue === 'direction') {
+      legendItems.push({
+        type: 'direction',
+        title: 'Edge color (direction)',
+        labels: { above: 'Above baseline (clockwise)', below: 'Below baseline (counter)' },
+        colors: { above: '#d62728', below: '#1f77b4' },
+      });
+    }
+
+    if (shouldColorEdgesByEgoStep) {
       const entries = Array.from({ length: egoStepMax }, (_, idx) => {
         const step = idx + 1;
         return { step, color: computeEgoStepColor(step) };
@@ -2831,7 +2846,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         }));
         legendItems.push({
           type: 'categorical',
-          title: 'Regions',
+          title: 'Edge color (region)',
           entries,
           interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined,
         });
@@ -2843,7 +2858,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         }));
         legendItems.push({
           type: 'categorical',
-          title: 'Divisions',
+          title: 'Edge color (division)',
           entries,
           interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined,
         });
@@ -2916,84 +2931,23 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       }
     };
 
-    const nodeSizeValueFor = (node: any): number | null => {
-      switch (nodeSizeMode) {
-        case 'fixed':
-          return null;
-        case 'visible_outgoing':
-        case 'outgoing':
-          return node.total_outgoing_visible || node._totalOutgoing || 0;
-        case 'visible_incoming':
-        case 'incoming':
-          return node.total_incoming_visible || node._totalIncoming || 0;
-        case 'year_outgoing':
-          return node.total_outgoing_year || 0;
-        case 'year_incoming':
-          return node.total_incoming_year || 0;
-        case 'net_visible':
-          return Math.abs(node.net_flow_visible || 0);
-        case 'net_year':
-          return Math.abs(node.net_flow_year || 0);
-        case 'self_year':
-          return node.self_flow_year || 0;
-        case 'attribute':
-          if (!nodeSizeAttribute) return null;
-          return typeof node[nodeSizeAttribute] === 'number' ? (node[nodeSizeAttribute] as number) : null;
-        default:
-          return null;
-      }
-    };
-
-    const nodeRadiusEntries = filteredData.nodes
-      .map((node: any) => ({
-        id: node.id,
-        label: node.label || node.id,
-        radius: computeNodeRadius(node),
-        value: nodeSizeValueFor(node),
-      }))
-      .filter((entry) => Number.isFinite(entry.radius))
-      .sort((a, b) => a.radius - b.radius);
-
-    if (nodeRadiusEntries.length > 0) {
-      const pickEntry = (index: number) => nodeRadiusEntries[Math.min(nodeRadiusEntries.length - 1, Math.max(0, index))];
-      const minEntry = pickEntry(0);
-      const medianEntry = pickEntry(Math.floor(nodeRadiusEntries.length / 2));
-      const maxEntry = pickEntry(nodeRadiusEntries.length - 1);
-      const uniqueByRadius = new Map<number, { label: string; radius: number; value?: number | null }>();
-      const nodeSizeLabels = [
-        { label: 'Minimum', radius: minEntry.radius, value: minEntry.value },
-        { label: 'Median', radius: medianEntry.radius, value: medianEntry.value },
-        { label: 'Maximum', radius: maxEntry.radius, value: maxEntry.value },
-      ];
-      nodeSizeLabels.forEach((entry) => {
-        const rounded = Math.round(entry.radius * 10) / 10;
-        if (!uniqueByRadius.has(rounded)) {
-          uniqueByRadius.set(rounded, {
-            label: entry.label,
-            radius: Math.max(3, entry.radius),
-            value: entry.value ?? undefined,
-          });
-        }
-      });
-      const entries = Array.from(uniqueByRadius.values()).map((entry) => {
-        const parts: string[] = [entry.label];
-        if (entry.value !== undefined && entry.value !== null) {
-          parts.push(new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(entry.value));
-        }
-        return { label: parts.join(' • '), radius: entry.radius, value: entry.value ?? undefined };
-      });
-      legendItems.push({
-        type: 'nodeSize',
-        mode: describeNodeSizeMode(),
-        scale: nodeSizeMode === 'fixed' ? undefined : nodeSizeWeightScale,
-        multiplier: nodeSizeMultiplier,
-        note:
-          nodeSizeMode === 'attribute' && nodeSizeAttribute
-            ? `Using numeric attribute "${nodeSizeAttribute}"`
-            : undefined,
-        entries,
-      });
-    }
+    const nodeSizeSampleFractions = [0, 0.5, 1] as const;
+    const nodeSizeLabels = ['Minimum', 'Median', 'Maximum'] as const;
+    const nodeSizeEntries = nodeSizeSampleFractions.map((fraction, idx) => ({
+      label: nodeSizeLabels[idx],
+      radius: sizeFromRatio(fraction),
+    }));
+    legendItems.push({
+      type: 'nodeSize',
+      mode: describeNodeSizeMode(),
+      scale: nodeSizeMode === 'fixed' ? undefined : nodeSizeWeightScale,
+      multiplier: nodeSizeMode === 'fixed' ? undefined : nodeSizeMultiplier,
+      note:
+        nodeSizeMode === 'attribute' && nodeSizeAttribute
+          ? `Using numeric attribute "${nodeSizeAttribute}"`
+          : undefined,
+      entries: nodeSizeEntries,
+    });
 
     return { accessors, legendItems };
   }, [
