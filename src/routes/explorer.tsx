@@ -429,7 +429,6 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(0.5).default(3),
   ),
-  egoNodeSecondaryId: safeCoerceNullableString(),
   labelScale: z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '') return 1
@@ -496,18 +495,6 @@ export const Route = createFileRoute('/explorer')({
         return null
       }
       return typeof search.egoNodeId === 'string' ? search.egoNodeId : null
-    })()
-
-    const safeEgoNodeSecondaryId = (() => {
-      if (
-        search.egoNodeSecondaryId === undefined ||
-        search.egoNodeSecondaryId === null ||
-        search.egoNodeSecondaryId === '' ||
-        search.egoNodeSecondaryId === 'null'
-      ) {
-        return null
-      }
-      return typeof search.egoNodeSecondaryId === 'string' ? search.egoNodeSecondaryId : null
     })()
 
     const safeEgoNeighborSteps = (() => {
@@ -907,10 +894,8 @@ export const Route = createFileRoute('/explorer')({
       showAllNodes: safeShowAllNodes,
       labelScale: safeLabelScale,
       egoNodeId: safeEgoNodeId,
-      egoNodeSecondaryId: safeEgoNodeSecondaryId,
       egoNeighborSteps: safeEgoNeighborSteps,
-      egoStepColoring:
-        safeEgoStepColoring && (safeEgoNodeId || safeEgoNodeSecondaryId) ? safeEgoStepColoring : false,
+      egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
       temporalOverlay: safeTemporalOverlay,
       temporalOverlayEdgeStyle: safeTemporalOverlayEdgeStyle,
       temporalOverlayNodeStyle: safeTemporalOverlayNodeStyle,
@@ -986,15 +971,8 @@ function ExplorerPage() {
     Math.max(0.5, Math.min(3, search.labelScale ?? 1)),
   )
   const [egoNodeId, setEgoNodeId] = useState<string | null>(search.egoNodeId ?? null)
-  const [egoNodeSecondaryId, setEgoNodeSecondaryId] = useState<string | null>(
-    search.egoNodeSecondaryId ?? null,
-  )
-  const initialHasEgoFocus = Boolean((search.egoNodeId ?? null) || (search.egoNodeSecondaryId ?? null))
-  const hasActiveEgoFocus = Boolean(egoNodeId || egoNodeSecondaryId)
   const [egoNeighborSteps, setEgoNeighborSteps] = useState<number>(search.egoNeighborSteps ?? 1)
-  const [egoStepColoring, setEgoStepColoring] = useState<boolean>(
-    initialHasEgoFocus ? (search.egoStepColoring ?? false) : false,
-  )
+  const [egoStepColoring, setEgoStepColoring] = useState<boolean>(search.egoStepColoring ?? false)
   const [edgeWeightScale, setEdgeWeightScale] = useState<'linear' | 'sqrt' | 'log'>(
     search.edgeWeightScale ?? 'linear',
   )
@@ -1549,33 +1527,17 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
   // Reset ego focus if the selected node is not present in the current snapshot
   useEffect(() => {
     if (!currentSnapshot) return
-    const availableIds = new Set((currentSnapshot.nodes as any[]).map((n: any) => n.id))
-
-    let nextPrimary = egoNodeId
-    let nextSecondary = egoNodeSecondaryId
-    const updates: Partial<ExplorerSearchParams> = {}
-
-    if (egoNodeId && !availableIds.has(egoNodeId)) {
-      nextPrimary = null
-      setEgoNodeId(null)
-      updates.egoNodeId = null
+    if (egoNodeId) {
+      const exists = (currentSnapshot.nodes as any[]).some((n: any) => n.id === egoNodeId)
+      if (!exists) {
+        setEgoNodeId(null)
+        if (egoStepColoring) {
+          setEgoStepColoring(false)
+        }
+        updateSearchParams({ egoNodeId: null, egoStepColoring: false })
+      }
     }
-
-    if (egoNodeSecondaryId && !availableIds.has(egoNodeSecondaryId)) {
-      nextSecondary = null
-      setEgoNodeSecondaryId(null)
-      updates.egoNodeSecondaryId = null
-    }
-
-    if (!nextPrimary && !nextSecondary && egoStepColoring) {
-      setEgoStepColoring(false)
-      updates.egoStepColoring = false
-    }
-
-    if (Object.keys(updates).length > 0) {
-      updateSearchParams(updates)
-    }
-  }, [currentSnapshot, egoNodeId, egoNodeSecondaryId, egoStepColoring, updateSearchParams])
+  }, [currentSnapshot, egoNodeId, egoStepColoring, updateSearchParams])
 
   // Calculate filtered edges and nodes
   const filteredData = useMemo(() => {
@@ -1619,27 +1581,21 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     const yearsPast = Math.max(0, Math.round(temporalOverlayYearsPast))
     const yearsFuture = Math.max(0, Math.round(temporalOverlayYearsFuture))
 
-    const activeEgoNodes = [egoNodeId, egoNodeSecondaryId].filter((id): id is string => Boolean(id))
-
     const computeEgoReachability = (edgesList: Array<any>) => {
       const allowedEdges = new Set<number>()
       const edgeSteps = new Map<number, number>()
       const nodeSteps = new Map<string, number>()
       let maxStep = 0
 
-      if (!(viewType === 'kriskogram' && activeEgoNodes.length > 0)) {
+      if (!(viewType === 'kriskogram' && egoNodeId)) {
         edgesList.forEach((_, idx) => allowedEdges.add(idx))
         return { allowedEdges, edgeSteps, nodeSteps, maxStep }
       }
 
       const normalizedSteps = Math.max(1, Math.round(egoNeighborSteps))
-      let frontier = new Set<string>(activeEgoNodes)
-      const visitedNodes = new Set<string>()
-
-      activeEgoNodes.forEach((id) => {
-        nodeSteps.set(id, 0)
-        visitedNodes.add(id)
-      })
+      let frontier = new Set<string>([egoNodeId])
+      nodeSteps.set(egoNodeId, 0)
+      const visitedNodes = new Set(frontier)
 
       for (let step = 1; step <= normalizedSteps && frontier.size > 0; step += 1) {
         const nextFrontier = new Set<string>()
@@ -1680,11 +1636,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         }
       })
 
-      activeEgoNodes.forEach((id) => {
-        if (!nodeSteps.has(id)) {
-          nodeSteps.set(id, 0)
-        }
-      })
+      if (!nodeSteps.has(egoNodeId)) {
+        nodeSteps.set(egoNodeId, 0)
+      }
 
       return { allowedEdges, edgeSteps, nodeSteps, maxStep }
     }
@@ -1853,7 +1807,9 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       activeNodeIds.add(e.target)
     })
 
-    activeEgoNodes.forEach((id) => activeNodeIds.add(id))
+    if (egoNodeId) {
+      activeNodeIds.add(egoNodeId)
+    }
 
     const nodeIncoming = new Map<string, number>()
     const nodeOutgoing = new Map<string, number>()
@@ -2266,7 +2222,6 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     showAllNodes,
     viewType,
     egoNodeId,
-    egoNodeSecondaryId,
     egoNeighborSteps,
     edgeWeightScale,
     temporalOverlayEnabled,
@@ -2753,10 +2708,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       return mixOverlayColorsLocal(expandHexLocal(overlayColorMidSetting), expandHexLocal(overlayColorFutureSetting), closeness);
     };
 
-    const hasEgoFocus = Boolean(egoNodeId || egoNodeSecondaryId);
-    const shouldColorEdgesByEgoStep = Boolean(
-      hasEgoFocus && egoStepColoring && (filteredData.egoStepMax ?? 0) > 0,
-    );
+    const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && (filteredData.egoStepMax ?? 0) > 0);
     const egoStepMax = filteredData.egoStepMax ?? 0;
     const computeEgoStepColor = (step: number) => {
       if (egoStepMax <= 1) {
@@ -3357,7 +3309,6 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeWidthMultiplier,
     edgeWeightScale,
     egoNodeId,
-    egoNodeSecondaryId,
     egoStepColoring,
     hasDivisionData,
     hasRegionData,
@@ -4001,7 +3952,6 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setLensRadius(80)
                       setLensPos({ x: 0, y: 0 })
                       setEgoNodeId(null)
-                      setEgoNodeSecondaryId(null)
                       setEgoNeighborSteps(1)
                       setEgoStepColoring(false)
                       setEdgeWeightScale('linear')
@@ -4046,7 +3996,6 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         interactionMode: 'pan',
                         lensRadius: 80,
                         egoNodeId: null,
-                        egoNodeSecondaryId: null,
                         egoNeighborSteps: 1,
                         egoStepColoring: false,
                         temporalOverlay: false,
@@ -4138,20 +4087,16 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               onChange={(e) => {
                                 const value = e.target.value
                                 const nextValue = value === '' ? null : value
-                                setEgoNodeId(nextValue)
-                                let nextSecondary = egoNodeSecondaryId
-                                const updates: Partial<ExplorerSearchParams> = { egoNodeId: nextValue }
-                                if (nextValue && egoNodeSecondaryId === nextValue) {
-                                  nextSecondary = null
-                                  setEgoNodeSecondaryId(null)
-                                  updates.egoNodeSecondaryId = null
+                                if (nextValue === null) {
+                                  setEgoNodeId(null)
+                                  if (egoStepColoring) {
+                                    setEgoStepColoring(false)
+                                  }
+                                  updateSearchParams({ egoNodeId: null, egoStepColoring: false })
+                                } else {
+                                  setEgoNodeId(nextValue)
+                                  updateSearchParams({ egoNodeId: nextValue })
                                 }
-                                const hasFocusAfter = Boolean(nextValue || nextSecondary)
-                                if (!hasFocusAfter && egoStepColoring) {
-                                  setEgoStepColoring(false)
-                                  updates.egoStepColoring = false
-                                }
-                                updateSearchParams(updates)
                               }}
                               className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
@@ -4168,41 +4113,6 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                           </div>
 
                           <div>
-                            <label htmlFor="kriskogram-ego-node-secondary" className="text-xs font-medium text-gray-700">
-                              Secondary ego focus (optional)
-                            </label>
-                            <select
-                              id="kriskogram-ego-node-secondary"
-                              value={egoNodeSecondaryId ?? ''}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                const nextValue = value === '' ? null : value
-                                setEgoNodeSecondaryId(nextValue)
-                                const hasFocusAfter = Boolean(egoNodeId || nextValue)
-                                const updates: Partial<ExplorerSearchParams> = { egoNodeSecondaryId: nextValue }
-                                if (!hasFocusAfter && egoStepColoring) {
-                                  setEgoStepColoring(false)
-                                  updates.egoStepColoring = false
-                                }
-                                updateSearchParams(updates)
-                              }}
-                              className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">No secondary focus</option>
-                              {((currentSnapshot?.nodes ?? []) as any[])
-                                .filter((node: any) => node.id !== egoNodeId)
-                                .map((node: any) => (
-                                  <option key={node.id} value={node.id}>
-                                    {node.label || node.id}
-                                  </option>
-                                ))}
-                            </select>
-                            <p className="mt-1 text-[11px] text-gray-500">
-                              Optional second anchor; coloring uses the closest ego node.
-                            </p>
-                          </div>
-
-                          <div>
                             <label htmlFor="kriskogram-ego-steps" className="text-xs font-medium text-gray-700">
                               Neighbor steps
                             </label>
@@ -4213,7 +4123,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 min={1}
                                 max={10}
                                 value={egoNeighborSteps}
-                                disabled={!hasActiveEgoFocus}
+                                disabled={!egoNodeId}
                                 onChange={(e) => {
                                   const raw = Number.parseInt(e.target.value, 10)
                                   if (Number.isNaN(raw)) return
@@ -4242,11 +4152,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               id="kriskogram-ego-step-coloring"
                               type="checkbox"
                               className="w-4 h-4"
-                              disabled={!hasActiveEgoFocus}
-                              checked={egoStepColoring && hasActiveEgoFocus}
+                              disabled={!egoNodeId}
+                              checked={egoStepColoring && Boolean(egoNodeId)}
                               onChange={(e) => {
-                                const hasFocus = Boolean(egoNodeId || egoNodeSecondaryId)
-                                const checked = e.target.checked && hasFocus
+                                const checked = e.target.checked && Boolean(egoNodeId)
                                 setEgoStepColoring(checked)
                                 updateSearchParams({ egoStepColoring: checked })
                               }}
@@ -4958,7 +4867,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <label className="text-xs font-medium text-gray-700">Edge Color</label>
-                                {hasActiveEgoFocus && egoStepColoring && (
+                                {egoNodeId && egoStepColoring && (
                                   <span className="text-[11px] text-gray-400">(disabled by neighbor step coloring)</span>
                                 )}
                               </div>
@@ -4966,11 +4875,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 <input
                                   type="checkbox"
                                   className="w-3.5 h-3.5"
-                                  disabled={Boolean(hasActiveEgoFocus && egoStepColoring)}
+                                  disabled={Boolean(egoNodeId && egoStepColoring)}
                                   checked={edgeColorAdvanced}
                                   onChange={(e) => {
                                     const checked = e.target.checked
-                                    if (hasActiveEgoFocus && egoStepColoring) {
+                                    if (egoNodeId && egoStepColoring) {
                                       return
                                     }
                                     setEdgeColorAdvanced(checked)
@@ -4996,7 +4905,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 Advanced
                               </label>
                             </div>
-                            {!edgeColorAdvanced && !(hasActiveEgoFocus && egoStepColoring) && (
+                            {!edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
                               <div className="flex flex-col gap-1.5 text-xs">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input
@@ -5029,7 +4938,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               </div>
                             )}
 
-                            {edgeColorAdvanced && !(hasActiveEgoFocus && egoStepColoring) && (
+                            {edgeColorAdvanced && !(egoNodeId && egoStepColoring) && (
                               <div className="mt-2 space-y-3 border border-gray-200 rounded-md p-3 bg-gray-50/60">
                                 <div>
                                   <label className="text-xs font-medium text-gray-700">
