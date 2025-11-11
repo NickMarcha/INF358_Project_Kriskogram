@@ -387,23 +387,94 @@ export function createKriskogram(config: KriskogramConfig) {
   applyEdgeGeometry(edgeSelection, false);
   applyEdgeGeometry(outlineSelection, true);
 
-  const applySegmentAnimation = (selection: d3.Selection<SVGPathElement, any, any, any>) => {
-    selection.each(function (d: any) {
-      const path = d3.select(this);
-      const animate = Boolean(d.__segmentAnimate);
-      const cycle = d.__segmentCycle ?? 0;
-      const baseOffset = d.__overlayDashOffset ?? 0;
-      const direction = d.__segmentDirection ?? -1;
-      const baseSpeed = Number(d.__segmentSpeed ?? 1);
-      const scaleByWeight = Boolean(d.__segmentScaleByWeight);
-      path.interrupt();
-      if (!animate || !cycle) {
-        path.attr('stroke-dashoffset', baseOffset);
+  type SegmentAnimationState = {
+    element: SVGPathElement;
+    startTime: number;
+    startOffset: number;
+    direction: number;
+    travel: number;
+    pixelsPerSecond: number;
+  };
+
+  const isBrowserEnvironment =
+    typeof window !== "undefined" && typeof window.requestAnimationFrame === "function";
+  const segmentAnimations = new Map<SVGPathElement, SegmentAnimationState>();
+  let animationFrameId: number | null = null;
+
+  const nowTimestamp = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+  const computeOffset = (state: SegmentAnimationState, timestampMs: number) => {
+    const travel = state.travel;
+    const pixelsPerSecond = state.pixelsPerSecond;
+    if (!Number.isFinite(travel) || travel <= 0) {
+      return state.startOffset;
+    }
+    if (!Number.isFinite(pixelsPerSecond) || pixelsPerSecond <= 0) {
+      return state.startOffset;
+    }
+    const elapsedSeconds = (timestampMs - state.startTime) / 1000;
+    const distanceRaw = elapsedSeconds * pixelsPerSecond;
+    const wrappedDistance =
+      ((distanceRaw % travel) + travel) % travel; // ensure positive modulo
+    return state.startOffset + state.direction * -wrappedDistance;
+  };
+
+  const animationTick = (timestamp: number) => {
+    const toRemove: SVGPathElement[] = [];
+    segmentAnimations.forEach((state, element) => {
+      if (!element.isConnected) {
+        toRemove.push(element);
         return;
       }
+      const offset = computeOffset(state, timestamp);
+      element.setAttribute("stroke-dashoffset", `${offset}`);
+    });
+    toRemove.forEach((element) => segmentAnimations.delete(element));
+    if (segmentAnimations.size > 0 && isBrowserEnvironment) {
+      animationFrameId = window.requestAnimationFrame(animationTick);
+    } else {
+      animationFrameId = null;
+    }
+  };
+
+  const updateAnimationLoop = () => {
+    if (!isBrowserEnvironment) {
+      return;
+    }
+    if (segmentAnimations.size === 0) {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      return;
+    }
+    if (animationFrameId === null) {
+      animationFrameId = window.requestAnimationFrame(animationTick);
+    }
+  };
+
+  const applySegmentAnimation = (selection: d3.Selection<SVGPathElement, any, any, any>) => {
+    selection.each(function (d: any) {
       const element = this as SVGPathElement;
+      const path = d3.select(element);
+      path.interrupt();
+
+      const animate = Boolean(d.__segmentAnimate);
+      const cycle = Number(d.__segmentCycle ?? 0);
+      const baseOffset = Number(d.__overlayDashOffset ?? 0);
+      const rawDirection = Number(d.__segmentDirection ?? -1);
+      const direction = rawDirection === 0 ? -1 : rawDirection > 0 ? 1 : -1;
+      const baseSpeed = Number(d.__segmentSpeed ?? 1);
+      const scaleByWeight = Boolean(d.__segmentScaleByWeight);
+
+      if (!animate || !Number.isFinite(cycle) || cycle <= 0 || !isBrowserEnvironment) {
+        segmentAnimations.delete(element);
+        element.setAttribute("stroke-dashoffset", `${baseOffset}`);
+        return;
+      }
+
       let pathLength = d.__pathLength;
-      if (typeof pathLength !== 'number' || !Number.isFinite(pathLength)) {
+      if (typeof pathLength !== "number" || !Number.isFinite(pathLength) || pathLength <= 0) {
         try {
           pathLength = Math.max(1, element.getTotalLength());
         } catch {
@@ -412,31 +483,52 @@ export function createKriskogram(config: KriskogramConfig) {
         d.__pathLength = pathLength;
       }
 
-      const step = Math.max(cycle, 1);
+      const step = Math.max(1, cycle);
       const cycles = Math.max(1, Math.ceil(pathLength / step));
       const travel = step * cycles;
+      if (!Number.isFinite(travel) || travel <= 0) {
+        segmentAnimations.delete(element);
+        element.setAttribute("stroke-dashoffset", `${baseOffset}`);
+        return;
+      }
+
       const speedMultiplier = Number.isFinite(baseSpeed) && baseSpeed > 0 ? baseSpeed : 1;
       let effectiveSpeed = speedMultiplier;
       if (scaleByWeight) {
         const weightWidth = Math.max(getEdgeWidth(d), 0.5);
         effectiveSpeed *= weightWidth;
       }
-      const basePixelsPerSecond = 6; // baseline dash travel rate (~1 minute loops for medium arcs)
-      const durationSeconds = Math.max(2, travel / (basePixelsPerSecond * Math.max(effectiveSpeed, 0.05)));
-      const duration = durationSeconds * 1000;
-      const start = baseOffset;
-      const end = baseOffset + direction * -travel;
-      const loop = () => {
-        path
-          .attr('stroke-dashoffset', start)
-          .transition()
-          .duration(duration)
-          .ease(d3.easeLinear)
-          .attr('stroke-dashoffset', end)
-          .on('end', loop);
-      };
-      loop();
+
+      const basePixelsPerSecond = 6;
+      const minSpeed = 0.05;
+      const minDurationSeconds = 2;
+      let pixelsPerSecond = basePixelsPerSecond * Math.max(effectiveSpeed, minSpeed);
+      if (travel / pixelsPerSecond < minDurationSeconds) {
+        pixelsPerSecond = travel / minDurationSeconds;
+      }
+      if (!Number.isFinite(pixelsPerSecond) || pixelsPerSecond <= 0) {
+        segmentAnimations.delete(element);
+        element.setAttribute("stroke-dashoffset", `${baseOffset}`);
+        return;
+      }
+
+      const now = nowTimestamp();
+      const previousState = segmentAnimations.get(element);
+      const startOffset = previousState ? computeOffset(previousState, now) : baseOffset;
+
+      element.setAttribute("stroke-dashoffset", `${startOffset}`);
+
+      segmentAnimations.set(element, {
+        element,
+        startTime: now,
+        startOffset,
+        direction,
+        travel,
+        pixelsPerSecond,
+      });
     });
+
+    updateAnimationLoop();
   };
 
   applySegmentAnimation(edgeSelection);
