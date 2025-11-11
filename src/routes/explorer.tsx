@@ -429,6 +429,15 @@ const explorerSearchSchema = z.object({
     },
     z.number().min(0.5).default(3),
   ),
+  labelScale: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseFloat(val) : Number(val)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.5, Math.min(3, num))
+    },
+    z.number().min(0.5).max(3).default(1),
+  ),
   nodeFilterAttribute: safeCoerceNullableString(),
   nodeFilterValues: safeCoerceStringArray(),
 })
@@ -540,6 +549,17 @@ export const Route = createFileRoute('/explorer')({
         if (lowered === 'false') return false
       }
       return false
+    })()
+
+    const safeLabelScale = (() => {
+      if (search.labelScale === undefined || search.labelScale === null || search.labelScale === '') {
+        return 1
+      }
+      const num = typeof search.labelScale === 'string'
+        ? parseFloat(search.labelScale)
+        : Number(search.labelScale)
+      if (Number.isNaN(num)) return 1
+      return Math.max(0.5, Math.min(3, num))
     })()
 
     const safeTemporalOverlay = (() => {
@@ -872,6 +892,7 @@ export const Route = createFileRoute('/explorer')({
       maxEdges: safeMaxEdges,
       edgeType: safeEdgeType,
       showAllNodes: safeShowAllNodes,
+      labelScale: safeLabelScale,
       egoNodeId: safeEgoNodeId,
       egoNeighborSteps: safeEgoNeighborSteps,
       egoStepColoring: safeEgoStepColoring && safeEgoNodeId ? safeEgoStepColoring : false,
@@ -946,6 +967,9 @@ function ExplorerPage() {
   const [edgeTypeFilter, setEdgeTypeFilter] = useState<string | null>(search.edgeType ?? null)
   const [viewType, setViewType] = useState<ViewType>(search.view)
   const [showAllNodes, setShowAllNodes] = useState<boolean>(search.showAllNodes ?? false)
+  const [labelScale, setLabelScale] = useState<number>(
+    Math.max(0.5, Math.min(3, search.labelScale ?? 1)),
+  )
   const [egoNodeId, setEgoNodeId] = useState<string | null>(search.egoNodeId ?? null)
   const [egoNeighborSteps, setEgoNeighborSteps] = useState<number>(search.egoNeighborSteps ?? 1)
   const [egoStepColoring, setEgoStepColoring] = useState<boolean>(search.egoStepColoring ?? false)
@@ -3357,6 +3381,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               title={dataset.name}
                               accessors={kriskogramConfig.accessors}
                               legend={kriskogramConfig.legendItems.length > 0 ? kriskogramConfig.legendItems : undefined}
+                              labelScale={labelScale}
                           />
                           </div>
                         </ErrorBoundary>
@@ -3904,6 +3929,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                     defaultOpen={true}
                     onReset={() => {
                       setShowAllNodes(false)
+                      setLabelScale(1)
                       setNodeOrderMode('alphabetical')
                       setArcOpacity(0.85)
                       setEdgeWidthMode('weight')
@@ -3948,6 +3974,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setEdgeOutlineGap(3)
                       updateSearchParams({
                         showAllNodes: false,
+                        labelScale: 1,
                         nodeOrderMode: 'alphabetical',
                         arcOpacity: 0.85,
                         edgeWidthMode: 'weight',
@@ -3992,6 +4019,40 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                   >
                     {dataset?.metadata ? (
                       <div className="space-y-4">
+                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                          <div>
+                            <label
+                              htmlFor="kriskogram-label-scale"
+                              className="text-sm font-medium text-gray-700"
+                            >
+                              Label size
+                            </label>
+                            <p className="text-xs text-gray-500">
+                              Scale node label text and badge.
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <input
+                              id="kriskogram-label-scale"
+                              type="range"
+                              min={0.5}
+                              max={3}
+                              step={0.1}
+                              value={labelScale}
+                              onChange={(e) => {
+                                const raw = Number.parseFloat(e.target.value)
+                                if (Number.isNaN(raw)) return
+                                const clamped = Math.max(0.5, Math.min(3, raw))
+                                setLabelScale(clamped)
+                                updateSearchParams({ labelScale: Number(clamped.toFixed(2)) })
+                              }}
+                              className="w-36 accent-blue-600"
+                            />
+                            <div className="flex items-center gap-1 text-xs text-gray-600">
+                              <span>{labelScale.toFixed(2)}×</span>
+                            </div>
+                          </div>
+                        </div>
                         <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
                           <div>
                             <label htmlFor="kriskogram-show-all-nodes" className="text-sm font-medium text-gray-700">

@@ -109,6 +109,7 @@ export interface KriskogramConfig {
   title?: string; // Title to display, defaults to "Migration Flow Visualization"
   lens?: { enabled: boolean; x: number; y: number; radius: number };
   legend?: LegendItem | LegendItem[];
+  labelScale?: number;
 }
 
 // -------------------- Implementation --------------------
@@ -124,7 +125,16 @@ export function createKriskogram(config: KriskogramConfig) {
     arcOpacity = 0.85,
     container = "body",
     title = "Migration Flow Visualization",
+    labelScale: configLabelScale = 1,
   } = config;
+
+  const labelScale = Math.max(0.5, Math.min(configLabelScale, 3));
+  const labelFontSize = 11 * labelScale;
+  const labelPaddingX = 6 * labelScale;
+  const labelBackgroundHeight = 18 * labelScale;
+  const labelBackgroundOffsetY = -11 * labelScale;
+  const labelBackgroundRadius = Math.max(1, 6 * labelScale);
+  const labelStrokeWidth = Math.max(0.25, 0.5 * labelScale);
 
   const containerSelection = d3.select(container);
 
@@ -603,6 +613,48 @@ export function createKriskogram(config: KriskogramConfig) {
   // - Current: y = r + 10, x = r + 5 (balanced position)
   const nodeGroup = zoomGroup.append("g").attr("class", "nodes");
 
+  const ensureLabelElements = (
+    group: d3.Selection<SVGGElement, any, any, any>,
+    datum: Node,
+  ) => {
+    let labelGroup = group.select<SVGGElement>("g.node-label");
+    if (labelGroup.empty()) {
+      labelGroup = group.append("g").attr("class", "node-label");
+      labelGroup.append("rect").attr("class", "node-label-bg");
+      labelGroup.append("text").attr("class", "node-label-text");
+    }
+    const background = labelGroup.select<SVGRectElement>("rect.node-label-bg");
+    const textNode = labelGroup.select<SVGTextElement>("text.node-label-text");
+    const radius = getNodeRadius(datum);
+    const translateX = radius + 5 * labelScale;
+    const translateY = radius + 10 * labelScale;
+    labelGroup.attr("transform", `rotate(45) translate(${translateX}, ${translateY})`);
+
+    const labelText = getNodeLabel(datum);
+    background
+      .attr("x", -labelPaddingX)
+      .attr("y", labelBackgroundOffsetY)
+      .attr("rx", labelBackgroundRadius)
+      .attr("ry", labelBackgroundRadius)
+      .attr("fill", "rgba(0,0,0,0.75)")
+      .attr("stroke", "rgba(255,255,255,0.2)")
+      .attr("stroke-width", labelStrokeWidth)
+      .attr("height", labelBackgroundHeight);
+
+    textNode
+      .attr("x", 0)
+      .attr("y", 3 * labelScale)
+      .attr("text-anchor", "start")
+      .attr("font-size", `${labelFontSize}px`)
+      .attr("font-weight", "600")
+      .attr("fill", "#fff")
+      .text(labelText);
+
+    const textLength =
+      textNode.node()?.getBBox().width ?? labelText.length * 6.2 * labelScale;
+    background.attr("width", textLength + labelPaddingX * 2);
+  };
+
 const enhanceNodeSelection = nodeGroup
   .selectAll("g.node")
   .data(sortedNodes)
@@ -785,31 +837,7 @@ enhanceNodeSelection.each(function (d) {
           .attr("stroke-dasharray", dashArray);
       }
 
-      const labelText = getNodeLabel(d);
-      const labelGroup = g.append("g")
-        .attr("transform", `rotate(45) translate(${r + 5}, ${r + 10})`);
-
-      const background = labelGroup.append("rect")
-        .attr("x", -6)
-        .attr("y", -11)
-        .attr("rx", 6)
-        .attr("ry", 6)
-        .attr("fill", "rgba(0,0,0,0.75)")
-        .attr("stroke", "rgba(255,255,255,0.2)")
-        .attr("stroke-width", 0.5)
-        .attr("height", 18);
-
-      const textNode = labelGroup.append("text")
-        .attr("x", 0)
-        .attr("y", 3)
-        .attr("text-anchor", "start")
-        .attr("font-size", "11px")
-        .attr("font-weight", "600")
-        .attr("fill", "#fff")
-        .text(labelText);
-
-      const textLength = (textNode.node() as SVGTextElement)?.getBBox().width ?? (labelText.length * 6.2);
-      background.attr("width", textLength + 12);
+      ensureLabelElements(g, d);
     });
 
   // Add title (not affected by zoom)
@@ -1395,28 +1423,27 @@ enhanceNodeSelection.each(function (d) {
         .append("g")
         .attr("class", "node")
         .style("cursor", "pointer");
-      
+
       nodeEnter.append("circle")
         .attr("r", 0)
         .attr("fill", (d) => getNodeColor(d))
         .attr("stroke", (d) => resolveNodeStroke(d).color)
         .attr("stroke-width", (d) => resolveNodeStroke(d).width)
         .attr("stroke-dasharray", (d) => resolveNodeStroke(d).dashArray);
-      
-      // Label positioning for dynamically added nodes (same as above)
-      nodeEnter.append("text")
-        .attr("y", 15)  // <- ADJUST THIS VALUE to match above (approximately r + 10, where r ~= 5)
-        .attr("x", 10)  // <- ADJUST THIS VALUE for horizontal offset
-        .attr("text-anchor", "start")
-        .attr("font-size", "11px")
-        .attr("font-weight", "500")
-        .attr("fill", "#333")
-        .attr("transform", `rotate(45)`)
-        .text(getNodeLabel);
+
+      nodeEnter.each(function (d) {
+        const g = d3.select(this);
+        ensureLabelElements(g, d);
+      });
       
       // Update existing nodes
       const nodeMerge = nodeEnter.merge(nodeUpdate as any);
       
+      nodeMerge.each(function (d) {
+        const g = d3.select(this as SVGGElement);
+        ensureLabelElements(g, d);
+      });
+
       nodeMerge.transition()
         .duration(750)
         .attr("transform", (d) => `translate(${xScale(d.id)},${baselineY})`);
