@@ -18,6 +18,7 @@ import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } f
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
 import { EXPECTED_STATE_COUNT, STATE_LABEL_SET } from '../data/stateLabels'
+import { formatFlowModeLabel } from '../lib/flow-labels'
 
 const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSING_YEARS.reduce(
   (acc, year) => {
@@ -31,6 +32,25 @@ const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSIN
 );
 
 type ViewType = 'kriskogram' | 'table' | 'sankey' | 'chord'
+
+const NODE_COLOR_FLOW_OPTIONS = [
+  'visible_outgoing',
+  'visible_incoming',
+  'year_outgoing',
+  'year_incoming',
+  'net_year',
+  'self_year',
+] as const
+
+const NODE_SIZE_FLOW_OPTIONS = [
+  'visible_outgoing',
+  'visible_incoming',
+  'year_outgoing',
+  'year_incoming',
+  'net_visible',
+  'net_year',
+  'self_year',
+] as const
 
 // Collapsible Section Component
 function CollapsibleSection({
@@ -1785,6 +1805,39 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     let overlayHasPast = false
     let overlayHasFuture = false
 
+    type TemporalStatsMutable = {
+      year: number
+      totalIncoming: number
+      totalOutgoing: number
+      visibleIncoming: number
+      visibleOutgoing: number
+    }
+
+    const nodeTemporalDetails = new Map<string, Map<number, TemporalStatsMutable>>()
+
+    const ensureTemporalStats = (nodeId: string, year: number | null | undefined) => {
+      if (typeof year !== 'number' || !Number.isFinite(year)) {
+        return null
+      }
+      let byYear = nodeTemporalDetails.get(nodeId)
+      if (!byYear) {
+        byYear = new Map<number, TemporalStatsMutable>()
+        nodeTemporalDetails.set(nodeId, byYear)
+      }
+      let stats = byYear.get(year)
+      if (!stats) {
+        stats = {
+          year,
+          totalIncoming: 0,
+          totalOutgoing: 0,
+          visibleIncoming: 0,
+          visibleOutgoing: 0,
+        }
+        byYear.set(year, stats)
+      }
+      return stats
+    }
+
     const yearToSnapshot = new Map<number, any>()
     if (dataset) {
       dataset.snapshots.forEach((snap: any) => {
@@ -1875,6 +1928,21 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           .sort((a: any, b: any) => b.value - a.value)
           .slice(0, maxEdges)
 
+        edgesForSnapshot.forEach((edge: any) => {
+          const sourceId = edge?.source
+          const targetId = edge?.target
+          const weight = Number(edge?.value ?? 0)
+          if (!sourceId || !targetId || !Number.isFinite(weight)) return
+          const sourceStats = ensureTemporalStats(sourceId, targetYear)
+          const targetStats = ensureTemporalStats(targetId, targetYear)
+          if (sourceStats) {
+            sourceStats.totalOutgoing += weight
+          }
+          if (targetStats) {
+            targetStats.totalIncoming += weight
+          }
+        })
+
         const {
           allowedEdges: overlayAllowedEdges,
           edgeSteps: overlayEdgeSteps,
@@ -1915,6 +1983,15 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
         overlaySubset.forEach((edge: any) => {
           overlayEdges.push(edge)
+          const sourceStats = ensureTemporalStats(edge.source, targetYear)
+          const targetStats = ensureTemporalStats(edge.target, targetYear)
+          const weight = Number(edge?.value ?? 0)
+          if (sourceStats && Number.isFinite(weight)) {
+            sourceStats.visibleOutgoing += weight
+          }
+          if (targetStats && Number.isFinite(weight)) {
+            targetStats.visibleIncoming += weight
+          }
           if (edge._overlayType === 'past') {
             overlayHasPast = true
             const out = overlayPastTotals.get(edge.source) || 0
@@ -1984,6 +2061,32 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         overlayNodeAbsMax = Math.abs(overlayDelta)
       }
 
+      const currentStats =
+        currentYearValue !== null ? ensureTemporalStats(n.id, currentYearValue) : null
+      if (currentStats) {
+        currentStats.totalIncoming = totalIncomingYear
+        currentStats.totalOutgoing = totalOutgoingYear
+        currentStats.visibleIncoming = visibleIncoming
+        currentStats.visibleOutgoing = visibleOutgoing
+      }
+
+      const temporalDetailMap = nodeTemporalDetails.get(n.id)
+      const temporalDetails = temporalDetailMap
+        ? Array.from(temporalDetailMap.values())
+            .map((stat) => ({
+              year: stat.year,
+              total_incoming: stat.totalIncoming,
+              total_outgoing: stat.totalOutgoing,
+              visible_incoming: stat.visibleIncoming,
+              visible_outgoing: stat.visibleOutgoing,
+              net_total: stat.totalIncoming - stat.totalOutgoing,
+              net_visible: stat.visibleIncoming - stat.visibleOutgoing,
+              is_current:
+                currentYearValue !== null ? stat.year === currentYearValue : false,
+            }))
+            .sort((a, b) => a.year - b.year)
+        : []
+
       return {
         ...n,
         _totalIncoming: visibleIncoming,
@@ -2001,6 +2104,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         _overlayPastTotal: overlayPast,
         _overlayFutureTotal: overlayFuture,
         _overlayDelta: overlayDelta,
+        temporal_details: temporalDetails,
       }
     })
 
@@ -3045,30 +3149,13 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     const describeNodeSizeMode = () => {
-      switch (nodeSizeMode) {
-        case 'fixed':
-          return 'Fixed radius';
-        case 'visible_outgoing':
-        case 'outgoing':
-          return 'Visible outgoing flow';
-        case 'visible_incoming':
-        case 'incoming':
-          return 'Visible incoming flow';
-        case 'year_outgoing':
-          return 'Year outgoing flow';
-        case 'year_incoming':
-          return 'Year incoming flow';
-        case 'net_visible':
-          return 'Visible net flow';
-        case 'net_year':
-          return 'Year net flow';
-        case 'self_year':
-          return 'Self flow (year)';
-        case 'attribute':
-          return nodeSizeAttribute ? `Attribute: ${nodeSizeAttribute}` : 'Attribute value';
-        default:
-          return String(nodeSizeMode).replace(/_/g, ' ');
+      if (nodeSizeMode === 'fixed') {
+        return 'Fixed Radius';
       }
+      if (nodeSizeMode === 'attribute') {
+        return nodeSizeAttribute ? `Attribute: ${nodeSizeAttribute}` : 'Attribute Value';
+      }
+      return formatFlowModeLabel(nodeSizeMode);
     };
 
     const nodeLegendEntries: Array<{ label: string; radius: number; value?: number }> = [];
@@ -4141,12 +4228,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="single">Single Color</option>
-                              <option value="visible_outgoing">Visible Outgoing Flow</option>
-                              <option value="visible_incoming">Visible Incoming Flow</option>
-                              <option value="year_outgoing">Year Outgoing Flow</option>
-                              <option value="year_incoming">Year Incoming Flow</option>
-                              <option value="net_year">Net Flow (year)</option>
-                              <option value="self_year">Self Flow (year)</option>
+                              {NODE_COLOR_FLOW_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {formatFlowModeLabel(option)}
+                                </option>
+                              ))}
                               <option value="attribute">By Attribute</option>
                             </select>
                             {nodeColorMode === 'attribute' && (
@@ -4192,13 +4278,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               <option value="fixed">Fixed</option>
-                              <option value="visible_outgoing">Visible Outgoing Flow</option>
-                              <option value="visible_incoming">Visible Incoming Flow</option>
-                              <option value="year_outgoing">Year Outgoing Flow</option>
-                              <option value="year_incoming">Year Incoming Flow</option>
-                              <option value="net_visible">Net Flow (visible)</option>
-                              <option value="net_year">Net Flow (year)</option>
-                              <option value="self_year">Self Flow (year)</option>
+                              {NODE_SIZE_FLOW_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {formatFlowModeLabel(option)}
+                                </option>
+                              ))}
                               <option value="attribute">By Attribute</option>
                             </select>
                             {nodeSizeMode === 'attribute' && (

@@ -6,6 +6,7 @@
  */
 
 import * as d3 from "d3";
+import { formatDynamicFieldLabel } from "./flow-labels";
 
 // -------------------- Types --------------------
 
@@ -611,14 +612,31 @@ const enhanceNodeSelection = nodeGroup
   .attr("transform", (d) => `translate(${xScale(d.id)},${baselineY})`)
   .style("cursor", "pointer");
 
+const nodeTooltipLabels = {
+  yearIncoming: formatDynamicFieldLabel("total_incoming_year"),
+  yearOutgoing: formatDynamicFieldLabel("total_outgoing_year"),
+  visibleIncoming: formatDynamicFieldLabel("total_incoming_visible"),
+  visibleOutgoing: formatDynamicFieldLabel("total_outgoing_visible"),
+  netYear: formatDynamicFieldLabel("net_flow_year"),
+  netVisible: formatDynamicFieldLabel("net_flow_visible"),
+  overlayPast: formatDynamicFieldLabel("temporal_overlay_past_total"),
+  overlayFuture: formatDynamicFieldLabel("temporal_overlay_future_total"),
+  overlayDelta: formatDynamicFieldLabel("temporal_overlay_delta"),
+};
+
 const formatNodeTooltipBlock = (node: any) => {
   const formatNumber = (value: number) =>
     Number.isFinite(value) ? value.toLocaleString() : '0';
 
-  const optionalLine = (label: string, value: any) =>
-    value != null && value !== ''
-      ? `<div style="margin-bottom:3px;"><strong>${label}</strong> ${typeof value === 'number' ? formatNumber(value) : value}</div>`
-      : '';
+  const optionalLine = (fieldKey: string, value: any, customLabel?: string) => {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    const label = customLabel ?? formatDynamicFieldLabel(fieldKey);
+    const formatted =
+      typeof value === 'number' && Number.isFinite(value) ? formatNumber(value) : String(value);
+    return `<div style="margin-bottom:3px;"><strong>${label}:</strong> ${formatted}</div>`;
+  };
 
   const visibleIncoming = node.total_incoming_visible ?? node._totalIncoming ?? 0;
   const visibleOutgoing = node.total_outgoing_visible ?? node._totalOutgoing ?? 0;
@@ -626,68 +644,64 @@ const formatNodeTooltipBlock = (node: any) => {
   const yearOutgoing = node.total_outgoing_year ?? visibleOutgoing;
   const netVisible = node.net_flow_visible ?? (visibleIncoming - visibleOutgoing);
   const netYear = node.net_flow_year ?? (yearIncoming - yearOutgoing);
-  const overlayPast = node._overlayPastTotal ?? node.temporal_overlay_past_total ?? 0;
-  const overlayFuture = node._overlayFutureTotal ?? node.temporal_overlay_future_total ?? 0;
-  const overlayDelta = node._overlayDelta ?? node.temporal_overlay_delta ?? 0;
-
-  const overlayLines =
-    overlayPast || overlayFuture
-      ? `
-        <div style="margin-top:6px;">
-          <div style="margin-bottom:3px;color:#93c5fd;"><strong>Overlay Past Total:</strong> ${formatNumber(overlayPast)}</div>
-          <div style="margin-bottom:3px;color:#fca5a5;"><strong>Overlay Future Total:</strong> ${formatNumber(overlayFuture)}</div>
-          <div style="color:#fca5a5;"><strong>Overlay Δ (future - past):</strong> ${formatNumber(overlayDelta)}</div>
+  const temporalDetailsRaw = Array.isArray(node.temporal_details) ? node.temporal_details : [];
+  const temporalCards = temporalDetailsRaw
+    .map((detail: any) => {
+      const yearValue = detail?.year ?? '—';
+      const isCurrent = Boolean(detail?.is_current);
+      const headerLabel = `${yearValue}${isCurrent ? ' (current)' : ''}`;
+      const cardBackground = isCurrent ? 'rgba(59,130,246,0.25)' : 'rgba(30,41,59,0.55)';
+      const cardBorder = isCurrent ? 'rgba(96,165,250,0.75)' : 'rgba(148,163,184,0.35)';
+      const totalIncomingYear = formatNumber(detail?.total_incoming ?? 0);
+      const totalOutgoingYear = formatNumber(detail?.total_outgoing ?? 0);
+      const visibleIncomingYear = formatNumber(detail?.visible_incoming ?? 0);
+      const visibleOutgoingYear = formatNumber(detail?.visible_outgoing ?? 0);
+      const netTotalYear = formatNumber(detail?.net_total ?? 0);
+      const netVisibleYear = formatNumber(detail?.net_visible ?? 0);
+      return `
+        <div style="border:1px solid ${cardBorder}; background:${cardBackground}; border-radius:6px; padding:8px;">
+          <div style="font-weight:600;font-size:12px;margin-bottom:4px;">${headerLabel}</div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;font-size:11px;line-height:1.3;">
+            <div><span style="color:#bfdbfe;">Total incoming:</span> ${totalIncomingYear}</div>
+            <div><span style="color:#fca5a5;">Total outgoing:</span> ${totalOutgoingYear}</div>
+            <div><span style="color:#bae6fd;">Visible incoming:</span> ${visibleIncomingYear}</div>
+            <div><span style="color:#fecaca;">Visible outgoing:</span> ${visibleOutgoingYear}</div>
+            <div><span style="color:#a7f3d0;">Net (total):</span> ${netTotalYear}</div>
+            <div><span style="color:#fde68a;">Net (visible):</span> ${netVisibleYear}</div>
+          </div>
         </div>
-      `
-      : '';
+      `;
+    })
+    .join('');
+
+  const temporalSection = temporalCards
+    ? `
+      <div style="margin-top:8px;">
+        <div style="font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;">
+          Yearly Flow Summary
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding-right:4px;">
+          ${temporalCards}
+        </div>
+      </div>
+    `
+    : '';
 
   return `
     <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.35);border-radius:6px;padding:10px;">
       <div style="font-weight:600;font-size:13px;margin-bottom:6px;">${node.label || node.id}</div>
-      ${optionalLine('Region:', node.region)}
-      ${optionalLine('Division:', node.division)}
-      ${optionalLine('Population:', node.population != null ? node.population : '')}
-      ${optionalLine('Economic Index:', node.economic_index != null ? node.economic_index : '')}
-      <div style="margin-bottom:3px;"><strong>Total Incoming (year):</strong> ${formatNumber(yearIncoming)}</div>
-      <div style="margin-bottom:3px;"><strong>Total Outgoing (year):</strong> ${formatNumber(yearOutgoing)}</div>
-      <div style="margin-bottom:3px;"><strong>* Visible Incoming:</strong> ${formatNumber(visibleIncoming)}</div>
-      <div style="margin-bottom:3px;"><strong>* Visible Outgoing:</strong> ${formatNumber(visibleOutgoing)}</div>
-      <div style="margin-bottom:3px;"><strong>Total Net (year):</strong> ${formatNumber(netYear)}</div>
-      <div style="margin-bottom:3px;"><strong>* Visible Net:</strong> ${formatNumber(netVisible)}</div>
-      ${overlayLines}
-      <div style="margin-top:8px;font-size:10px;color:#94a3b8;">* Calculated from currently visible flows</div>
-    </div>
-  `;
-};
-
-const gatherNodesAtPointer = (event: any, fallback: any) => {
-  if (typeof document === "undefined" || !document.elementsFromPoint) {
-    return [fallback];
-  }
-  const elements = document.elementsFromPoint(event.clientX, event.clientY);
-  const seen = new Set<string>();
-  const nodes: any[] = [];
-  for (const el of elements) {
-    if (!el) continue;
-    const group = el.closest && el.closest("g.node");
-    if (group) {
-      const datum = d3.select(group).datum() as any;
-      if (datum && typeof datum.id === "string" && !seen.has(datum.id)) {
-        seen.add(datum.id);
-        nodes.push(datum);
-      }
-    }
-  }
-  if (nodes.length === 0) {
-    nodes.push(fallback);
-  }
-  return nodes;
-};
-
-const renderTooltipHtmlForNodes = (nodes: any[]) => {
-  return `
-    <div style="display:flex;flex-direction:column;gap:8px;max-width:320px;">
-      ${nodes.map((node) => formatNodeTooltipBlock(node)).join('')}
+      ${optionalLine('region', node.region)}
+      ${optionalLine('division', node.division)}
+      ${optionalLine('population', node.population)}
+      ${optionalLine('economic_index', node.economic_index)}
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.yearIncoming}:</strong> ${formatNumber(yearIncoming)}</div>
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.yearOutgoing}:</strong> ${formatNumber(yearOutgoing)}</div>
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.visibleIncoming}:</strong> ${formatNumber(visibleIncoming)}</div>
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.visibleOutgoing}:</strong> ${formatNumber(visibleOutgoing)}</div>
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.netYear}:</strong> ${formatNumber(netYear)}</div>
+      <div style="margin-bottom:3px;"><strong>${nodeTooltipLabels.netVisible}:</strong> ${formatNumber(netVisible)}</div>
+      ${temporalSection}
+      <div style="margin-top:8px;font-size:10px;color:#94a3b8;">Visible metrics reflect flows rendered under current filters.</div>
     </div>
   `;
 };
@@ -709,8 +723,7 @@ enhanceNodeSelection
       .style("z-index", "1000")
       .style("box-shadow", "0 4px 6px rgba(0,0,0,0.3)");
 
-    const nodesForTooltip = gatherNodesAtPointer(event, d);
-    tooltip.html(renderTooltipHtmlForNodes(nodesForTooltip));
+    tooltip.html(formatNodeTooltipBlock(d));
 
     tooltip
       .style("left", (event.pageX + 10) + "px")
@@ -719,8 +732,6 @@ enhanceNodeSelection
   .on("mousemove", function(event) {
     const tooltip = d3.select(".kriskogram-tooltip");
     if (!tooltip.empty()) {
-      const nodesForTooltip = gatherNodesAtPointer(event, d3.select(this).datum());
-      tooltip.html(renderTooltipHtmlForNodes(nodesForTooltip));
       tooltip
         .style("left", (event.pageX + 10) + "px")
         .style("top", (event.pageY - 10) + "px");

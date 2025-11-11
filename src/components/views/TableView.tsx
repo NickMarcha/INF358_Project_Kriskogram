@@ -7,6 +7,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table'
+import { formatDynamicFieldLabel, isInternalFieldKey } from '../../lib/flow-labels'
 
 interface Edge {
   source: string
@@ -57,31 +58,28 @@ export default function TableView({
 
   // Dynamically extract all property keys from nodes
   const nodeColumns = useMemo<ColumnDef<Node, any>[]>(() => {
-    if (nodes.length === 0) return []
-    
+    const sourceNodes = editable ? editedNodes : nodes
+    if (sourceNodes.length === 0) return []
+
     const allKeys = new Set<string>()
-    nodes.forEach(node => {
-      Object.keys(node).forEach(key => {
-        if (
-          key === '_totalIncoming' ||
-          key === '_totalOutgoing'
-        ) {
+    sourceNodes.forEach((node) => {
+      Object.keys(node).forEach((key) => {
+        if (isInternalFieldKey(key)) {
           return
         }
         allKeys.add(key)
       })
     })
-    
+
     const keys = Array.from(allKeys)
-    // Put id and label first if they exist
     const orderedKeys = [
       ...(keys.includes('id') ? ['id'] : []),
       ...(keys.includes('label') ? ['label'] : []),
-      ...keys.filter(k => k !== 'id' && k !== 'label'),
+      ...keys.filter((k) => k !== 'id' && k !== 'label'),
     ]
-    
+
     return orderedKeys.map((key) => ({
-      header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      header: formatDynamicFieldLabel(key),
       accessorKey: key,
       cell: (info: any) => {
         const value = info.getValue()
@@ -121,28 +119,35 @@ export default function TableView({
         return String(value)
       },
     }))
-  }, [nodes, editable])
+  }, [nodes, editedNodes, editable])
 
   // Dynamically extract all property keys from edges
   const edgeColumns = useMemo<ColumnDef<Edge, any>[]>(() => {
-    if (edges.length === 0) return []
-    
+    const sourceEdges = (editable ? editedEdges : edges).filter(
+      (edge: any) => !edge?._overlayType && !edge?.__isOverlay,
+    )
+    if (sourceEdges.length === 0) return []
+
     const allKeys = new Set<string>()
-    edges.forEach(edge => {
-      Object.keys(edge).forEach(key => allKeys.add(key))
+    sourceEdges.forEach((edge) => {
+      Object.keys(edge).forEach((key) => {
+        if (isInternalFieldKey(key)) {
+          return
+        }
+        allKeys.add(key)
+      })
     })
-    
+
     const keys = Array.from(allKeys)
-    // Put source, target, and value first if they exist
     const orderedKeys = [
       ...(keys.includes('source') ? ['source'] : []),
       ...(keys.includes('target') ? ['target'] : []),
       ...(keys.includes('value') ? ['value'] : []),
-      ...keys.filter(k => k !== 'source' && k !== 'target' && k !== 'value'),
+      ...keys.filter((k) => k !== 'source' && k !== 'target' && k !== 'value'),
     ]
-    
+
     return orderedKeys.map((key) => ({
-      header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      header: formatDynamicFieldLabel(key),
       accessorKey: key,
       cell: (info: any) => {
         const value = info.getValue()
@@ -211,10 +216,16 @@ export default function TableView({
         return String(value)
       },
     }))
-  }, [edges, editable])
+  }, [edges, editedEdges, editable])
+
+  const nodeDisplayData = editable ? editedNodes : nodes
+  const edgeDisplayData = useMemo(() => {
+    const source = editable ? editedEdges : edges
+    return source.filter((edge: any) => !edge?._overlayType && !edge?.__isOverlay)
+  }, [editable, editedEdges, edges])
 
   const nodeTable = useReactTable({
-    data: editable ? editedNodes : nodes,
+    data: nodeDisplayData,
     columns: nodeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -227,7 +238,7 @@ export default function TableView({
   })
 
   const edgeTable = useReactTable({
-    data: editable ? editedEdges : edges,
+    data: edgeDisplayData,
     columns: edgeColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -240,7 +251,6 @@ export default function TableView({
   })
 
   const activeTable = activeTab === 'nodes' ? nodeTable : edgeTable
-  const activeData = activeTab === 'nodes' ? (editable ? editedNodes : nodes) : (editable ? editedEdges : edges)
 
   return (
     <div className="h-full w-full flex flex-col" style={{ height: '100%', maxHeight: '100%' }}>
@@ -254,7 +264,7 @@ export default function TableView({
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Nodes ({nodes.length})
+          Nodes ({nodeDisplayData.length})
         </button>
         <button
           onClick={() => setActiveTab('edges')}
@@ -264,7 +274,7 @@ export default function TableView({
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Edges ({edges.length})
+          Edges ({edgeDisplayData.length})
         </button>
       </div>
 
