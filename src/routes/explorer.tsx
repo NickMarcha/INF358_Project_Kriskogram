@@ -18,6 +18,7 @@ import { gexfToKriskogramSnapshots, loadGexfFromUrl, type KriskogramSnapshot } f
 import { filterEdgesByProperty, getUniqueEdgePropertyValues } from '../lib/data-adapters'
 import { STATE_MIGRATION_CSV_FILES, STATE_MIGRATION_MISSING_YEARS } from '../data/stateMigrationFiles'
 import { EXPECTED_STATE_COUNT, STATE_LABEL_SET } from '../data/stateLabels'
+
 const YEAR_PLACEHOLDER_MESSAGES: Record<number, string> = STATE_MIGRATION_MISSING_YEARS.reduce(
   (acc, year) => {
     acc[year] =
@@ -1819,19 +1820,19 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     const temporalOverlaySummary = temporalOverlayEnabled
-       ? {
-           hasPast: overlayHasPast,
-           hasFuture: overlayHasFuture,
-           nodeDeltaAbsMax: overlayNodeAbsMax,
-           style: temporalOverlayEdgeStyle,
-           edgeSegmentLength,
-           edgeSegmentGap,
-           edgeSegmentOffset,
+      ? {
+          hasPast: overlayHasPast,
+          hasFuture: overlayHasFuture,
+          nodeDeltaAbsMax: overlayNodeAbsMax,
+          style: temporalOverlayEdgeStyle,
+          edgeSegmentLength,
+          edgeSegmentGap,
+          edgeSegmentOffset,
            edgeSegmentSpeed,
            edgeSegmentScaleByWeight,
-           edgeSegmentCap,
-           edgeSegmentAnimate,
-           edgeOutlineGap,
+          edgeSegmentCap,
+          edgeSegmentAnimate,
+          edgeOutlineGap,
            yearsPast,
            yearsFuture,
            colorCurrent: overlayCurrentColor,
@@ -1868,8 +1869,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
              }
              return entries
            })(),
-         }
-       : null
+        }
+      : null
 
     const combinedEdges = temporalOverlayEnabled && overlayEdges.length > 0
       ? [...visibleEdgesCurrent, ...overlayEdges]
@@ -2074,28 +2075,28 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           edgeSegmentCap,
           edgeSegmentAnimate,
           edgeOutlineGap,
-        })
-      }
-    }
-  }, [
-    dataset,
-    currentYear,
-    temporalOverlayEnabled,
-    temporalOverlayEdgeStyle,
-    temporalOverlayNodeStyle,
+         })
+       }
+     }
+   }, [
+     dataset,
+     currentYear,
+     temporalOverlayEnabled,
+     temporalOverlayEdgeStyle,
+     temporalOverlayNodeStyle,
     temporalOverlayYearsPast,
     temporalOverlayYearsFuture,
     temporalOverlayColorPast,
     temporalOverlayColorMid,
     temporalOverlayColorFuture,
-    edgeSegmentLength,
-    edgeSegmentGap,
-    edgeSegmentOffset,
-    edgeSegmentCap,
-    edgeSegmentAnimate,
-    edgeOutlineGap,
-    updateSearchParams,
-  ])
+     edgeSegmentLength,
+     edgeSegmentGap,
+     edgeSegmentOffset,
+     edgeSegmentCap,
+     edgeSegmentAnimate,
+     edgeOutlineGap,
+     updateSearchParams,
+   ])
 
   useEffect(() => {
     if (!isInitialMount.current) {
@@ -2176,6 +2177,667 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
   const [overlayColorInputFormat, setOverlayColorInputFormat] = useState<'picker' | 'hex'>('picker')
 
+  type LegendItemConfig =
+    | {
+        type: 'direction'
+        labels?: { above?: string; below?: string }
+        colors?: { above?: string; below?: string }
+      }
+    | {
+        type: 'weight'
+        color: string
+        scale?: 'linear' | 'sqrt' | 'log'
+        min?: number
+        max?: number
+        samples?: Array<{ value: number; color: string; width: number; fraction?: number }>
+      }
+    | {
+        type: 'edgeWidth'
+        min?: number
+        max?: number
+        samples?: Array<{ value: number; width: number }>
+      }
+    | {
+        type: 'nodeSize'
+        entries: Array<{ label: string; radius: number }>
+      }
+    | {
+        type: 'temporalOverlay'
+        entries: Array<{ label: string; color: string }>
+      }
+    | {
+        type: 'egoSteps'
+        entries: Array<{ step: number; color: string }>
+      }
+    | {
+        type: 'categorical'
+        title?: string
+        entries: Array<{ label: string; color: string }>
+        interNote?: string
+      }
+
+  const kriskogramConfig = useMemo(() => {
+    const emptyAccessors = {
+      nodeOrder: (d: any) => d.label || d.id,
+      nodeColor: () => '#2563eb',
+      nodeRadius: () => 6,
+      edgeWidth: () => baseEdgeWidth,
+      edgeColor: () => '#1f77b4',
+      nodeStroke: () => ({ color: '#fff', width: 2 }),
+    };
+
+    if (filteredData.nodes.length === 0 || filteredData.baseEdges.length === 0) {
+      return { accessors: emptyAccessors, legendItems: [] as LegendItemConfig[] };
+    }
+
+    const edgeWeights = filteredData.baseEdges.map((e: any) => e.value);
+    const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0;
+    const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1;
+    const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight;
+    const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight;
+    const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0);
+
+                              const normalizeEdgeWeight = (value: number) => {
+      if (!Number.isFinite(value) || weightSpan <= 0) return 0;
+      const clamped = Math.min(Math.max(value, globalMinEdgeWeight), globalMaxEdgeWeight);
+      const shifted = clamped - globalMinEdgeWeight;
+                                switch (edgeWeightScale) {
+                                  case 'sqrt': {
+          const denom = Math.sqrt(weightSpan);
+          if (denom <= 0) return 0;
+          return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom));
+                                  }
+                                  case 'log': {
+          const denom = Math.log10(weightSpan + 1);
+          if (!Number.isFinite(denom) || denom <= 0) return 0;
+          return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom));
+                                  }
+                                  case 'linear':
+                                  default: {
+          if (weightSpan <= 0) return 0;
+          return Math.max(0, Math.min(1, shifted / weightSpan));
+                                  }
+                                }
+    };
+
+                              const valueForFraction = (fraction: number) => {
+      if (weightSpan <= 0) return globalMinEdgeWeight;
+      const clampedF = Math.max(0, Math.min(1, fraction));
+                                switch (edgeWeightScale) {
+        case 'sqrt':
+          return globalMinEdgeWeight + Math.pow(clampedF, 2) * weightSpan;
+                                  case 'log': {
+          const denom = Math.log10(weightSpan + 1);
+          if (!Number.isFinite(denom) || denom <= 0) return globalMinEdgeWeight;
+          const increment = Math.pow(10, clampedF * denom) - 1;
+          return globalMinEdgeWeight + increment;
+                                  }
+                                  case 'linear':
+        default:
+          return globalMinEdgeWeight + clampedF * weightSpan;
+      }
+    };
+
+    const nodeVisibleOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_visible || n._totalOutgoing || 0);
+    const nodeVisibleIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_visible || n._totalIncoming || 0);
+    const nodeYearOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_year || 0);
+    const nodeYearIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_year || 0);
+    const nodeNetVisibleValues = filteredData.nodes.map((n: any) => n.net_flow_visible || 0);
+    const nodeNetYearValues = filteredData.nodes.map((n: any) => n.net_flow_year || 0);
+
+    const maxVisibleOutgoing = nodeVisibleOutgoingValues.length > 0 ? Math.max(...nodeVisibleOutgoingValues) : 1;
+    const maxVisibleIncoming = nodeVisibleIncomingValues.length > 0 ? Math.max(...nodeVisibleIncomingValues) : 1;
+    const maxYearOutgoingLocal = nodeYearOutgoingValues.length > 0 ? Math.max(...nodeYearOutgoingValues) : 1;
+    const maxYearIncomingLocal = nodeYearIncomingValues.length > 0 ? Math.max(...nodeYearIncomingValues) : 1;
+    const maxAbsNetVisible = nodeNetVisibleValues.length > 0 ? Math.max(...nodeNetVisibleValues.map((v: number) => Math.abs(v))) : 1;
+    const maxAbsNetYearLocal = nodeNetYearValues.length > 0 ? Math.max(...nodeNetYearValues.map((v: number) => Math.abs(v))) : 1;
+
+    const globalMaxYearOutgoing = datasetNodeYearFlowStats?.maxOutgoing ?? maxYearOutgoingLocal;
+    const globalMaxYearIncoming = datasetNodeYearFlowStats?.maxIncoming ?? maxYearIncomingLocal;
+    const globalNetMin = datasetNodeNetStats?.min ?? -maxAbsNetYearLocal;
+    const globalNetMax = datasetNodeNetStats?.max ?? maxAbsNetYearLocal;
+    const globalNetAbs = Math.max(Math.abs(globalNetMin), Math.abs(globalNetMax)) || 1;
+
+    const maxSelf = datasetNodeSelfFlowStats?.max ?? 0;
+
+    const categoricalColors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+    const overlaySummary = filteredData.temporalOverlay;
+    const overlayActive = Boolean(overlaySummary);
+    const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0;
+    const overlayYearsPastSetting = Math.max(0, overlaySummary?.yearsPast ?? 0);
+    const overlayYearsFutureSetting = Math.max(0, overlaySummary?.yearsFuture ?? 0);
+    const overlayColorPastSetting = overlaySummary?.colorPast ?? temporalOverlayColorPast;
+    const overlayColorMidSetting = overlaySummary?.colorMid ?? temporalOverlayColorMid;
+    const overlayColorFutureSetting = overlaySummary?.colorFuture ?? temporalOverlayColorFuture;
+    const overlayCurrentColor = overlaySummary?.colorCurrent ?? (temporalOverlayCurrentBlack ? '#000000' : overlayColorMidSetting);
+
+    const expandHexLocal = (value: string) => {
+      const lower = typeof value === 'string' ? value.trim().toLowerCase() : '';
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(lower)) {
+        if (lower.length === 4) {
+          return `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`;
+        }
+        return lower;
+      }
+      return '#000000';
+    };
+
+    const overlayCurrentColorHex = expandHexLocal(overlayCurrentColor);
+
+    const hexToRgbLocal = (hex: string) => {
+      const normalized = expandHexLocal(hex).slice(1);
+      const intVal = parseInt(normalized, 16);
+      if (Number.isNaN(intVal) || normalized.length !== 6) {
+        return { r: 0, g: 0, b: 0 };
+      }
+      return {
+        r: (intVal >> 16) & 255,
+        g: (intVal >> 8) & 255,
+        b: intVal & 255,
+      };
+    };
+
+    const componentToHexLocal = (value: number) => {
+      const clamped = Math.max(0, Math.min(255, Math.round(value)));
+      return clamped.toString(16).padStart(2, '0');
+    };
+
+    const rgbToHexLocal = (r: number, g: number, b: number) => `#${componentToHexLocal(r)}${componentToHexLocal(g)}${componentToHexLocal(b)}`;
+
+    const mixOverlayColorsLocal = (from: string, to: string, t: number) => {
+      const clamped = Math.max(0, Math.min(1, t));
+      const a = hexToRgbLocal(from);
+      const b = hexToRgbLocal(to);
+      const r = a.r + (b.r - a.r) * clamped;
+      const g = a.g + (b.g - a.g) * clamped;
+      const bl = a.b + (b.b - a.b) * clamped;
+      return rgbToHexLocal(r, g, bl);
+    };
+
+    const getOverlayColorForDelta = (delta: number) => {
+      if (delta === 0) return overlayCurrentColorHex;
+      if (delta < 0) {
+        if (overlayYearsPastSetting === 0) return expandHexLocal(overlayColorMidSetting);
+        const closeness = Math.max(0, Math.min(1, Math.abs(delta) / Math.max(overlayYearsPastSetting, 1)));
+        const t = 1 - closeness;
+        return mixOverlayColorsLocal(expandHexLocal(overlayColorPastSetting), expandHexLocal(overlayColorMidSetting), t);
+      }
+      if (overlayYearsFutureSetting === 0) return expandHexLocal(overlayColorMidSetting);
+      const closeness = Math.max(0, Math.min(1, delta / Math.max(overlayYearsFutureSetting, 1)));
+      return mixOverlayColorsLocal(expandHexLocal(overlayColorMidSetting), expandHexLocal(overlayColorFutureSetting), closeness);
+    };
+
+    const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && (filteredData.egoStepMax ?? 0) > 0);
+    const egoStepMax = filteredData.egoStepMax ?? 0;
+    const computeEgoStepColor = (step: number) => {
+      if (egoStepMax <= 1) {
+        return 'hsl(210, 80%, 55%)';
+      }
+      const clamped = Math.max(1, Math.min(step, egoStepMax));
+      const ratio = egoStepMax <= 1 ? 0 : (clamped - 1) / (egoStepMax - 1);
+      const hue = 210 - ratio * 150;
+      const lightness = 60 - ratio * 20;
+      return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`;
+    };
+
+    const getCategoricalColor = (propName: string, propValue: any) => {
+      const uniqueValues = Array.from(new Set(filteredData.nodes.map((n: any) => n[propName]).filter((v: any) => v != null)));
+      const colorMap = new Map<any, string>();
+      uniqueValues.forEach((val, idx) => {
+        colorMap.set(val, categoricalColors[idx % categoricalColors.length]);
+      });
+      return colorMap.get(propValue) || categoricalColors[0];
+    };
+
+    const computeNodeRadius = (node: any): number => {
+      const sizeFromRatio = (ratio: number) => 3 + Math.max(0, Math.min(1, ratio)) * 9;
+
+      switch (nodeSizeMode) {
+        case 'fixed':
+          return 6;
+        case 'visible_outgoing':
+                                  case 'outgoing':
+          return sizeFromRatio(maxVisibleOutgoing > 0 ? (node.total_outgoing_visible || node._totalOutgoing || 0) / maxVisibleOutgoing : 0);
+        case 'visible_incoming':
+                                  case 'incoming':
+          return sizeFromRatio(maxVisibleIncoming > 0 ? (node.total_incoming_visible || node._totalIncoming || 0) / maxVisibleIncoming : 0);
+        case 'year_outgoing':
+          return sizeFromRatio(globalMaxYearOutgoing > 0 ? (node.total_outgoing_year || 0) / globalMaxYearOutgoing : 0);
+        case 'year_incoming':
+          return sizeFromRatio(globalMaxYearIncoming > 0 ? (node.total_incoming_year || 0) / globalMaxYearIncoming : 0);
+        case 'net_visible': {
+          const netVisible = Math.abs(node.net_flow_visible || 0);
+          const denom = maxAbsNetVisible > 0 ? maxAbsNetVisible : 1;
+          return sizeFromRatio(netVisible / denom);
+        }
+        case 'net_year': {
+          const netYear = Math.abs(node.net_flow_year || 0);
+          const denom = globalNetAbs > 0 ? globalNetAbs : 1;
+          return sizeFromRatio(netYear / denom);
+        }
+                                  case 'self_year': {
+          const ratio = maxSelf > 0 ? (node.self_flow_year || 0) / maxSelf : 0;
+          return sizeFromRatio(ratio);
+                                  }
+                                  case 'attribute': {
+          if (!nodeSizeAttribute || typeof node[nodeSizeAttribute] !== 'number') return 6;
+          const values = filteredData.nodes
+            .map((n: any) => n[nodeSizeAttribute])
+            .filter((v: any) => typeof v === 'number') as number[];
+          if (values.length === 0) return 6;
+          const minVal = Math.min(...values);
+          const maxVal = Math.max(...values);
+          const range = maxVal - minVal || 1;
+          const normalized = ((node[nodeSizeAttribute] as number) - minVal) / range;
+          return sizeFromRatio(normalized);
+        }
+        default:
+          return 6;
+      }
+    };
+
+    const currentEdgeStyle: 'segmented' | 'filled' | 'outline' = temporalOverlayEdgeStyle;
+
+    const computeEdgeWidth = (value: number, style: 'segmented' | 'filled' | 'outline') => {
+      if (style === 'outline') {
+        return Math.max(2.5, baseEdgeWidth);
+      }
+
+      if (edgeWidthMode === 'weight') {
+        const normalized = normalizeEdgeWeight(value);
+        if (style === 'segmented') {
+          return 0.5 + normalized * 12;
+        }
+        return 0.5 + normalized * 15;
+      }
+
+      if (style === 'segmented') {
+        return Math.max(baseEdgeWidth, 2);
+      }
+
+      return baseEdgeWidth;
+    };
+
+    const accessors = {
+                                nodeOrder: (d: any) => {
+                                  if (nodeOrderMode === 'alphabetical') {
+          return d.label || d.id;
+                                  }
+        const propValue = d[nodeOrderMode];
+                                  if (propValue === undefined || propValue === null) {
+          return `ZZZ_${d.label || d.id}`;
+                                  }
+                                  if (typeof propValue === 'number') {
+          return `${String(1e6 - propValue).padStart(10, '0')}_${d.label || d.id}`;
+                                  }
+        return `${String(propValue)}_${d.label || d.id}`;
+                                },
+                                nodeColor: (d: any) => {
+        const normalizedRatio = (value: number, max: number) => {
+          if (!Number.isFinite(value) || max <= 0) return 0;
+          return Math.max(0, Math.min(1, value / max));
+        };
+
+        const gradientColor = (hue: number, saturation: number, ratio: number) => {
+          const clamped = Math.max(0, Math.min(1, ratio));
+          const lightness = 85 - clamped * 45;
+          return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        };
+
+        const netColor = (netValue: number) => {
+          if (!Number.isFinite(netValue) || globalNetAbs <= 0) {
+            return '#6b7280';
+          }
+          if (Math.abs(netValue) < 1e-6) {
+            return '#9ca3af';
+          }
+          const intensity = Math.max(0, Math.min(1, Math.abs(netValue) / globalNetAbs));
+          const lightness = 85 - intensity * 45;
+          return netValue >= 0 ? `hsl(0, 75%, ${lightness}%)` : `hsl(210, 75%, ${lightness}%)`;
+        };
+
+        let baseColor = '#2563eb';
+
+        switch (nodeColorMode) {
+          case 'single':
+            baseColor = '#2563eb';
+            break;
+          case 'outgoing':
+          case 'visible_outgoing':
+            baseColor = gradientColor(24, 85, normalizedRatio(d.total_outgoing_visible || d._totalOutgoing || 0, maxVisibleOutgoing));
+            break;
+          case 'incoming':
+          case 'visible_incoming':
+            baseColor = gradientColor(160, 70, normalizedRatio(d.total_incoming_visible || d._totalIncoming || 0, maxVisibleIncoming));
+            break;
+          case 'year_outgoing':
+            baseColor = gradientColor(24, 85, normalizedRatio(d.total_outgoing_year || 0, globalMaxYearOutgoing));
+            break;
+          case 'year_incoming':
+            baseColor = gradientColor(160, 70, normalizedRatio(d.total_incoming_year || 0, globalMaxYearIncoming));
+            break;
+          case 'net_year':
+            baseColor = netColor(d.net_flow_year || 0);
+            break;
+          case 'self_year': {
+            const ratio = maxSelf > 0 ? (d.self_flow_year || 0) / maxSelf : 0;
+            baseColor = gradientColor(280, 70, ratio);
+            break;
+          }
+          case 'attribute': {
+            if (!nodeColorAttribute) {
+              baseColor = '#2563eb';
+              break;
+            }
+            const propValue = d[nodeColorAttribute];
+            if (propValue === undefined || propValue === null) {
+              baseColor = '#9ca3af';
+              break;
+            }
+            if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
+                                    const allValues = filteredData.nodes
+                .map((n: any) => n[nodeColorAttribute])
+                .filter((v: any) => typeof v === 'number') as number[];
+              if (allValues.length === 0) {
+                baseColor = '#2563eb';
+                break;
+              }
+              const minVal = Math.min(...allValues);
+              const maxVal = Math.max(...allValues);
+              const range = maxVal - minVal || 1;
+              const normalized = (Number(propValue) - minVal) / range;
+              const hue = 120 - Math.max(0, Math.min(1, normalized)) * 120;
+              baseColor = `hsl(${hue}, 70%, 50%)`;
+              break;
+            }
+            baseColor = getCategoricalColor(nodeColorAttribute, propValue);
+            break;
+          }
+          default:
+            baseColor = '#2563eb';
+            break;
+        }
+
+        d.__baseFillColor = baseColor;
+        return baseColor;
+      },
+      nodeRadius: computeNodeRadius,
+      edgeWidth: (edge: any) => {
+        const style = edge.__overlayStyle ?? currentEdgeStyle;
+        return computeEdgeWidth(edge.value, style);
+      },
+      edgeColor: (edge: any, isAbove: boolean) => {
+        const temporalDelta = edge?.__temporalDelta;
+        if (overlayActive) {
+          if (typeof temporalDelta === 'number') {
+            return getOverlayColorForDelta(temporalDelta);
+          }
+          return overlayCurrentColorHex;
+                                  }
+                                  if (shouldColorEdgesByEgoStep) {
+          const step = edge?._egoStep ?? 0;
+                                    if (step > 0) {
+            return computeEgoStepColor(step);
+                                    }
+                                  }
+
+                                  if (!edgeColorAdvanced) {
+                                    if (edgeColorHue === 'direction') {
+            return isAbove ? '#1f77b4' : '#d62728';
+          }
+          if (edgeColorHue === 'single') {
+            if (edgeColorIntensity === 'weight') {
+              const normalized = normalizeEdgeWeight(edge.value);
+              const lightness = 80 - normalized * 55;
+              return `hsl(210, 70%, ${Math.round(lightness)}%)`;
+            }
+            return '#2563eb';
+          }
+        }
+
+        let hueColor = '#2563eb';
+                                  if (edgeColorHue === 'direction') {
+          hueColor = isAbove ? '#1f77b4' : '#d62728';
+                                  } else if (edgeColorHue === 'region') {
+          const src = filteredData.nodes.find((n: any) => n.id === edge.source);
+          hueColor = src?.region ? getCategoricalColor('region', src.region) : '#2563eb';
+                                  } else if (edgeColorHue === 'division') {
+          const src = filteredData.nodes.find((n: any) => n.id === edge.source);
+          hueColor = src?.division ? getCategoricalColor('division', src.division) : '#2563eb';
+                                  } else if (edgeColorHue === 'attribute' && edgeColorHueAttribute) {
+          const val = (edge as any)[edgeColorHueAttribute];
+                                    if (val != null) {
+                                      if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorHueAttribute)) {
+              const allVals = filteredData.baseEdges
+                .map((ed: any) => ed[edgeColorHueAttribute])
+                .filter((v: any) => typeof v === 'number') as number[];
+              const minVal = Math.min(...allVals);
+              const maxVal = Math.max(...allVals);
+              const range = maxVal - minVal || 1;
+              const normalized = (Number(val) - minVal) / range;
+              const hue = 120 - normalized * 120;
+              hueColor = `hsl(${hue}, 70%, 50%)`;
+                                      } else {
+              hueColor = getCategoricalColor(edgeColorHueAttribute, val);
+                                      }
+                                    }
+                                  }
+
+        let intensity = 0.6;
+                                  if (edgeColorIntensity === 'weight') {
+          intensity = Math.max(0, Math.min(1, normalizeEdgeWeight(edge.value)));
+                                  } else if (edgeColorIntensity === 'attribute' && edgeColorIntensityAttribute) {
+          const val = (edge as any)[edgeColorIntensityAttribute];
+                                    if (val != null && dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorIntensityAttribute)) {
+            const allVals = filteredData.baseEdges
+              .map((ed: any) => ed[edgeColorIntensityAttribute])
+              .filter((v: any) => typeof v === 'number') as number[];
+            const minVal = Math.min(...allVals);
+            const maxVal = Math.max(...allVals);
+            const range = maxVal - minVal || 1;
+            intensity = Math.max(0, Math.min(1, (Number(val) - minVal) / range));
+                                    }
+                                  } else if (edgeColorIntensity === 'constant') {
+          intensity = Math.max(0, Math.min(1, edgeColorIntensityConst));
+                                  }
+
+                                  if (edgeColorInterGrayscale && (edgeColorHue === 'region' || edgeColorHue === 'division')) {
+          const src = filteredData.nodes.find((n: any) => n.id === edge.source);
+          const tgt = filteredData.nodes.find((n: any) => n.id === edge.target);
+          const same = edgeColorHue === 'region'
+            ? src?.region && src.region === tgt?.region
+            : src?.division && src.division === tgt?.division;
+                                    if (!same) {
+            const light = 80 - intensity * 50;
+            return `hsl(0, 0%, ${light}%)`;
+                                    }
+                                  }
+
+        const light = 80 - intensity * 55;
+                                  if (edgeColorHue === 'direction') {
+          const h = isAbove ? 0 : 200;
+          return `hsl(${h}, 70%, ${Math.round(light)}%)`;
+                                  }
+                                  if (edgeColorHue === 'single') {
+          return `hsl(210, 70%, ${Math.round(light)}%)`;
+        }
+        return hueColor;
+                                },
+                                nodeStroke: (d: any) => {
+        const delta = d.temporal_overlay_delta ?? 0;
+        const baseColor = d.__baseFillColor ?? '#2563eb';
+                                  if (!overlayActive || overlayDeltaMax <= 0) {
+          const width = temporalOverlayNodeStyle === 'outline' ? 2.5 : 2;
+          const color = temporalOverlayNodeStyle === 'outline' ? baseColor : '#fff';
+          return { color, width };
+        }
+
+        const ratio = Math.min(1, Math.abs(delta) / Math.max(overlayDeltaMax, 1));
+        if (temporalOverlayNodeStyle === 'outline') {
+          const width = 2.5 + (delta === 0 ? 0 : ratio * 1.5);
+          return { color: baseColor, width };
+        }
+        const width = 2 + (delta === 0 ? 0 : ratio * 2);
+        return { color: getOverlayColorForDelta(delta), width };
+      },
+    };
+
+    const legendItems: LegendItemConfig[] = [];
+    legendItems.push({
+      type: 'direction',
+      labels: { above: 'Above baseline (clockwise)', below: 'Below baseline (counter)' },
+      colors: { above: '#d62728', below: '#1f77b4' },
+    });
+
+    if (overlaySummary && (overlaySummary.hasPast || overlaySummary.hasFuture)) {
+      const entries = overlaySummary.legendEntries ?? [];
+      legendItems.push({ type: 'temporalOverlay', entries });
+    } else if (shouldColorEdgesByEgoStep) {
+      const entries = Array.from({ length: egoStepMax }, (_, idx) => {
+        const step = idx + 1;
+        return { step, color: computeEgoStepColor(step) };
+      });
+      legendItems.push({ type: 'egoSteps', entries });
+    } else if (!edgeColorAdvanced) {
+                                if (edgeColorHue === 'direction') {
+        // already represented by direction legend
+      } else if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
+        const sampleFractions = [0, 0.5, 1];
+                                  const samples = sampleFractions.map((fraction) => {
+          const value = valueForFraction(fraction);
+          const normalized = normalizeEdgeWeight(value);
+          const light = 80 - normalized * 55;
+                                    return {
+                                      value,
+            color: `hsl(210, 70%, ${Math.round(light)}%)`,
+            width: computeEdgeWidth(value, currentEdgeStyle),
+            fraction,
+          };
+        });
+        legendItems.push({
+          type: 'weight',
+                                    color: '#1f77b4',
+                                    scale: edgeWeightScale,
+          min: globalMinEdgeWeight,
+          max: globalMaxEdgeWeight,
+                                    samples,
+        });
+                                }
+                              } else {
+                                if (edgeColorHue === 'region' && hasRegionData) {
+        const regions = Array.from(new Set(filteredData.nodes.map((n: any) => n.region).filter(Boolean))) as string[];
+        const entries = regions.slice(0, 10).map((region, index) => ({
+          label: region,
+          color: categoricalColors[index % categoricalColors.length],
+        }));
+        legendItems.push({
+          type: 'categorical',
+          title: 'Regions',
+          entries,
+          interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined,
+        });
+      } else if (edgeColorHue === 'division' && hasDivisionData) {
+        const divisions = Array.from(new Set(filteredData.nodes.map((n: any) => n.division).filter(Boolean))) as string[];
+        const entries = divisions.slice(0, 10).map((division, index) => ({
+          label: division,
+          color: categoricalColors[index % categoricalColors.length],
+        }));
+        legendItems.push({
+          type: 'categorical',
+          title: 'Divisions',
+          entries,
+          interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined,
+        });
+      }
+    }
+
+    if (filteredData.baseEdges.length > 0) {
+      const sampleFractions = [0, 0.5, 1];
+      const widthSamples = sampleFractions.map((fraction) => {
+        const value = valueForFraction(fraction);
+                                    return {
+                                      value,
+          width: computeEdgeWidth(value, currentEdgeStyle),
+        };
+      });
+      legendItems.push({
+        type: 'edgeWidth',
+        min: globalMinEdgeWeight,
+        max: globalMaxEdgeWeight,
+        samples: widthSamples,
+      });
+    }
+
+    const nodeRadiusEntries = filteredData.nodes
+      .map((node: any) => ({
+        label: node.label || node.id,
+        radius: computeNodeRadius(node),
+      }))
+      .filter((entry) => Number.isFinite(entry.radius))
+      .sort((a, b) => a.radius - b.radius);
+
+    if (nodeRadiusEntries.length > 0) {
+      const formatRadius = (radius: number) => `${radius.toFixed(1)} px`;
+      const pickEntry = (index: number) => nodeRadiusEntries[Math.min(nodeRadiusEntries.length - 1, Math.max(0, index))];
+      const minEntry = pickEntry(0);
+      const medianEntry = pickEntry(Math.floor(nodeRadiusEntries.length / 2));
+      const maxEntry = pickEntry(nodeRadiusEntries.length - 1);
+      const uniqueByRadius = new Map<number, { label: string; radius: number }>();
+      [
+        { label: `Small (${formatRadius(minEntry.radius)})`, radius: minEntry.radius },
+        { label: `Typical (${formatRadius(medianEntry.radius)})`, radius: medianEntry.radius },
+        { label: `Large (${formatRadius(maxEntry.radius)})`, radius: maxEntry.radius },
+      ].forEach((entry) => {
+        const rounded = Math.round(entry.radius * 10) / 10;
+        if (!uniqueByRadius.has(rounded)) {
+          uniqueByRadius.set(rounded, { label: entry.label, radius: Math.max(3, entry.radius) });
+        }
+      });
+      legendItems.push({
+        type: 'nodeSize',
+        entries: Array.from(uniqueByRadius.values()),
+      });
+    }
+
+    return { accessors, legendItems };
+  }, [
+    filteredData,
+    baseEdgeWidth,
+    dataset,
+    datasetEdgeStats,
+    datasetNodeYearFlowStats,
+    datasetNodeNetStats,
+    datasetNodeSelfFlowStats,
+    edgeColorAdvanced,
+    edgeColorHue,
+    edgeColorHueAttribute,
+    edgeColorInterGrayscale,
+    edgeColorIntensity,
+    edgeColorIntensityAttribute,
+    edgeColorIntensityConst,
+    edgeWidthMode,
+    edgeWeightScale,
+    egoNodeId,
+    egoStepColoring,
+    hasDivisionData,
+    hasRegionData,
+    nodeColorAttribute,
+    nodeColorMode,
+    nodeOrderMode,
+    nodeSizeAttribute,
+    nodeSizeMode,
+    temporalOverlayColorFuture,
+    temporalOverlayColorMid,
+    temporalOverlayColorPast,
+    temporalOverlayCurrentBlack,
+    temporalOverlayEdgeStyle,
+    temporalOverlayEnabled,
+    temporalOverlayNodeStyle,
+    temporalOverlayYearsPast,
+    temporalOverlayYearsFuture,
+  ]);
+
   return (
     <ErrorBoundary
       fallback={
@@ -2224,674 +2886,8 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
                               arcOpacity={arcOpacity}
                               title={dataset.name}
-                              accessors={(() => {
-                              // Compute edge weight min/max for scaling
-                              const edgeWeights = filteredData.baseEdges.map((e: any) => e.value)
-                              const minEdgeWeight = edgeWeights.length > 0 ? Math.min(...edgeWeights) : 0
-                              const maxEdgeWeight = edgeWeights.length > 0 ? Math.max(...edgeWeights) : 1
-                              const globalMinEdgeWeight = datasetEdgeStats?.min ?? minEdgeWeight
-                              const globalMaxEdgeWeight = datasetEdgeStats?.max ?? maxEdgeWeight
-                              const weightSpan = Math.max(globalMaxEdgeWeight - globalMinEdgeWeight, 0)
-
-                              const egoStepMax = filteredData.egoStepMax ?? 0
-                              const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && egoStepMax > 0)
-                              const computeEgoStepColor = (step: number) => {
-                                if (egoStepMax <= 1) {
-                                  return 'hsl(210, 80%, 55%)'
-                                }
-                                const clamped = Math.max(1, Math.min(step, egoStepMax))
-                                const ratio = egoStepMax <= 1 ? 0 : (clamped - 1) / (egoStepMax - 1)
-                                const hue = 210 - ratio * 150
-                                const lightness = 60 - ratio * 20
-                                return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`
-                              }
-
-                              const normalizeEdgeWeight = (value: number) => {
-                                if (!Number.isFinite(value) || weightSpan <= 0) return 0
-                                const clamped = Math.min(
-                                  Math.max(value, globalMinEdgeWeight),
-                                  globalMaxEdgeWeight,
-                                )
-                                const shifted = clamped - globalMinEdgeWeight
-                                switch (edgeWeightScale) {
-                                  case 'sqrt': {
-                                    const denom = Math.sqrt(weightSpan)
-                                    if (denom <= 0) return 0
-                                    return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom))
-                                  }
-                                  case 'log': {
-                                    const denom = Math.log10(weightSpan + 1)
-                                    if (!Number.isFinite(denom) || denom <= 0) return 0
-                                    return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom))
-                                  }
-                                  case 'linear':
-                                  default: {
-                                    const denom = weightSpan
-                                    if (denom <= 0) return 0
-                                    return Math.max(0, Math.min(1, shifted / denom))
-                                  }
-                                }
-                              }
-
-                              const valueForFraction = (fraction: number) => {
-                                if (weightSpan <= 0) return globalMinEdgeWeight
-                                const clampedF = Math.max(0, Math.min(1, fraction))
-                                switch (edgeWeightScale) {
-                                  case 'sqrt': {
-                                    return globalMinEdgeWeight + Math.pow(clampedF, 2) * weightSpan
-                                  }
-                                  case 'log': {
-                                    const denom = Math.log10(weightSpan + 1)
-                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinEdgeWeight
-                                    const increment = Math.pow(10, clampedF * denom) - 1
-                                    return globalMinEdgeWeight + increment
-                                  }
-                                  case 'linear':
-                                  default: {
-                                    return globalMinEdgeWeight + clampedF * weightSpan
-                                  }
-                                }
-                              }
-                              
-                              // Compute node attribute ranges for color/size scaling
-                              const nodeVisibleOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_visible || n._totalOutgoing || 0)
-                              const nodeVisibleIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_visible || n._totalIncoming || 0)
-                              const nodeYearOutgoingValues = filteredData.nodes.map((n: any) => n.total_outgoing_year || 0)
-                              const nodeYearIncomingValues = filteredData.nodes.map((n: any) => n.total_incoming_year || 0)
-                              const nodeNetVisibleValues = filteredData.nodes.map((n: any) => n.net_flow_visible || 0)
-                              const nodeNetYearValues = filteredData.nodes.map((n: any) => n.net_flow_year || 0)
-
-                              const maxVisibleOutgoing = nodeVisibleOutgoingValues.length > 0 ? Math.max(...nodeVisibleOutgoingValues) : 1
-                              const maxVisibleIncoming = nodeVisibleIncomingValues.length > 0 ? Math.max(...nodeVisibleIncomingValues) : 1
-                              const maxYearOutgoingLocal = nodeYearOutgoingValues.length > 0 ? Math.max(...nodeYearOutgoingValues) : 1
-                              const maxYearIncomingLocal = nodeYearIncomingValues.length > 0 ? Math.max(...nodeYearIncomingValues) : 1
-                              const maxAbsNetVisible = nodeNetVisibleValues.length > 0 ? Math.max(...nodeNetVisibleValues.map((v: number) => Math.abs(v))) : 1
-                              const maxAbsNetYearLocal = nodeNetYearValues.length > 0 ? Math.max(...nodeNetYearValues.map((v: number) => Math.abs(v))) : 1
-
-                              const globalMaxYearOutgoing = datasetNodeYearFlowStats?.maxOutgoing ?? maxYearOutgoingLocal
-                              const globalMaxYearIncoming = datasetNodeYearFlowStats?.maxIncoming ?? maxYearIncomingLocal
-                              const globalNetMin = datasetNodeNetStats?.min ?? -maxAbsNetYearLocal
-                              const globalNetMax = datasetNodeNetStats?.max ?? maxAbsNetYearLocal
-                              const globalNetAbs = Math.max(Math.abs(globalNetMin), Math.abs(globalNetMax)) || 1
-                              
-                              // Get unique categorical values for color assignment
-                              const getCategoricalColor = (propName: string, propValue: any, colors: string[]) => {
-                                const uniqueValues = Array.from(new Set(
-                                  filteredData.nodes.map((n: any) => n[propName]).filter((v: any) => v != null)
-                                ))
-                                const colorMap = new Map()
-                                uniqueValues.forEach((val, idx) => {
-                                  colorMap.set(val, colors[idx % colors.length])
-                                })
-                                return colorMap.get(propValue) || colors[0]
-                              }
-                              
-                              const categoricalColors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-                              
-                              const overlaySummary = filteredData.temporalOverlay
-                              const overlayActive = Boolean(overlaySummary)
-                              const edgeStyleSetting = temporalOverlayEdgeStyle
-                              const nodeStyleSetting = temporalOverlayNodeStyle
-                              const nodeOutlineActive = nodeStyleSetting === 'outline'
-                              const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0
-                              const overlayYearsPastSetting = Math.max(0, overlaySummary?.yearsPast ?? 0)
-                              const overlayYearsFutureSetting = Math.max(0, overlaySummary?.yearsFuture ?? 0)
-                              const overlayColorPastSetting = overlaySummary?.colorPast ?? temporalOverlayColorPast
-                              const overlayColorMidSetting = overlaySummary?.colorMid ?? temporalOverlayColorMid
-                              const overlayColorFutureSetting = overlaySummary?.colorFuture ?? temporalOverlayColorFuture
-                              const overlayCurrentColorRaw = overlaySummary?.colorCurrent ?? (temporalOverlayCurrentBlack
-                                ? '#000000'
-                                : overlayColorMidSetting)
-
-                              const expandHexLocal = (value: string) => {
-                                const lower = typeof value === 'string' ? value.trim().toLowerCase() : ''
-                                if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(lower)) {
-                                  if (lower.length === 4) {
-                                    return `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`
-                                  }
-                                  return lower
-                                }
-                                return '#000000'
-                              }
-
-                              const overlayCurrentColor = expandHexLocal(overlayCurrentColorRaw)
-
-                              const hexToRgbLocal = (hex: string) => {
-                                const normalized = expandHexLocal(hex).slice(1)
-                                const intVal = parseInt(normalized, 16)
-                                if (Number.isNaN(intVal) || normalized.length !== 6) {
-                                  return { r: 0, g: 0, b: 0 }
-                                }
-                                return {
-                                  r: (intVal >> 16) & 255,
-                                  g: (intVal >> 8) & 255,
-                                  b: intVal & 255,
-                                }
-                              }
-
-                              const componentToHexLocal = (value: number) => {
-                                const clamped = Math.max(0, Math.min(255, Math.round(value)))
-                                return clamped.toString(16).padStart(2, '0')
-                              }
-
-                              const rgbToHexLocal = (r: number, g: number, b: number) =>
-                                `#${componentToHexLocal(r)}${componentToHexLocal(g)}${componentToHexLocal(b)}`
-
-                              const mixOverlayColorsLocal = (from: string, to: string, t: number) => {
-                                const clamped = Math.max(0, Math.min(1, t))
-                                const a = hexToRgbLocal(from)
-                                const b = hexToRgbLocal(to)
-                                const r = a.r + (b.r - a.r) * clamped
-                                const g = a.g + (b.g - a.g) * clamped
-                                const bl = a.b + (b.b - a.b) * clamped
-                                return rgbToHexLocal(r, g, bl)
-                              }
-
-                              const getOverlayColorForDelta = (delta: number) => {
-                                if (delta === 0) return overlayCurrentColor
-                                if (delta < 0) {
-                                  if (overlayYearsPastSetting === 0) return expandHexLocal(overlayColorMidSetting)
-                                  const closeness = Math.max(0, Math.min(1, Math.abs(delta) / Math.max(overlayYearsPastSetting, 1)))
-                                  const t = 1 - closeness
-                                  return mixOverlayColorsLocal(
-                                    expandHexLocal(overlayColorPastSetting),
-                                    expandHexLocal(overlayColorMidSetting),
-                                    t,
-                                  )
-                                }
-                                if (overlayYearsFutureSetting === 0) return expandHexLocal(overlayColorMidSetting)
-                                const closeness = Math.max(0, Math.min(1, delta / Math.max(overlayYearsFutureSetting, 1)))
-                                return mixOverlayColorsLocal(
-                                  expandHexLocal(overlayColorMidSetting),
-                                  expandHexLocal(overlayColorFutureSetting),
-                                  closeness,
-                                )
-                              }
-                              
-                              const resolveBaseNodeColor = (node: any): string => {
-                                const normalizedRatio = (value: number, max: number) => {
-                                  if (!Number.isFinite(value) || max <= 0) return 0
-                                  return Math.max(0, Math.min(1, value / max))
-                                }
-
-                                const gradientColor = (hue: number, saturation: number, ratio: number) => {
-                                  const clamped = Math.max(0, Math.min(1, ratio))
-                                  const lightness = 85 - clamped * 45
-                                  return `hsl(${hue}, ${saturation}%, ${lightness}%)`
-                                }
-
-                                const netColor = (netValue: number) => {
-                                  if (!Number.isFinite(netValue) || globalNetAbs <= 0) {
-                                    return '#6b7280'
-                                  }
-                                  if (Math.abs(netValue) < 1e-6) {
-                                    return '#9ca3af'
-                                  }
-                                  const intensity = Math.max(0, Math.min(1, Math.abs(netValue) / globalNetAbs))
-                                  const lightness = 85 - intensity * 45
-                                  return netValue >= 0 ? `hsl(0, 75%, ${lightness}%)` : `hsl(210, 75%, ${lightness}%)`
-                                }
-
-                                switch (nodeColorMode) {
-                                  case 'single':
-                                    return '#2563eb'
-                                  case 'outgoing':
-                                  case 'visible_outgoing': {
-                                    const ratio = normalizedRatio(node.total_outgoing_visible || node._totalOutgoing || 0, maxVisibleOutgoing)
-                                    return gradientColor(24, 85, ratio)
-                                  }
-                                  case 'incoming':
-                                  case 'visible_incoming': {
-                                    const ratio = normalizedRatio(node.total_incoming_visible || node._totalIncoming || 0, maxVisibleIncoming)
-                                    return gradientColor(160, 70, ratio)
-                                  }
-                                  case 'year_outgoing': {
-                                    const ratio = normalizedRatio(node.total_outgoing_year || 0, globalMaxYearOutgoing)
-                                    return gradientColor(24, 85, ratio)
-                                  }
-                                  case 'year_incoming': {
-                                    const ratio = normalizedRatio(node.total_incoming_year || 0, globalMaxYearIncoming)
-                                    return gradientColor(160, 70, ratio)
-                                  }
-                                  case 'net_year':
-                                    return netColor(node.net_flow_year || 0)
-                                  case 'self_year': {
-                                    const ratio = normalizedRatio(node.self_flow_year || 0, datasetNodeSelfFlowStats?.max ?? 0)
-                                    return gradientColor(280, 70, ratio)
-                                  }
-                                  case 'attribute': {
-                                    if (!nodeColorAttribute) return '#2563eb'
-                                    const propValue = node[nodeColorAttribute]
-                                    if (propValue === undefined || propValue === null) return '#9ca3af'
-
-                                    if (dataset?.metadata?.hasNumericProperties.nodes.includes(nodeColorAttribute)) {
-                                      const allValues = filteredData.nodes
-                                        .map((n: any) => n[nodeColorAttribute])
-                                        .filter((v: any) => typeof v === 'number') as number[]
-                                      if (allValues.length === 0) return '#2563eb'
-
-                                      const minVal = Math.min(...allValues)
-                                      const maxVal = Math.max(...allValues)
-                                      const range = maxVal - minVal || 1
-                                      const normalized = (Number(propValue) - minVal) / range
-                                      const hue = 120 - Math.max(0, Math.min(1, normalized)) * 120
-                                      return `hsl(${hue}, 70%, 50%)`
-                                    }
-
-                                    return getCategoricalColor(nodeColorAttribute, propValue, categoricalColors)
-                                  }
-                                  default:
-                                    return '#2563eb'
-                                }
-                              }
-                              
-                              return {
-                                // Node ordering
-                                nodeOrder: (d: any) => {
-                                  if (nodeOrderMode === 'alphabetical') {
-                                    return d.label || d.id
-                                  }
-                                  // Order by property value (categorical or numeric)
-                                  const propValue = d[nodeOrderMode]
-                                  if (propValue === undefined || propValue === null) {
-                                    return `ZZZ_${d.label || d.id}` // Put undefined values at the end
-                                  }
-                                  if (typeof propValue === 'number') {
-                                    return `${String(1e6 - propValue).padStart(10, '0')}_${d.label || d.id}` // Descending numeric
-                                  }
-                                  return `${String(propValue)}_${d.label || d.id}` // Ascending categorical
-                                },
-                                
-                                // Node color
-                                nodeColor: (d: any) => {
-                                  const baseColor = resolveBaseNodeColor(d)
-                                  d.__baseFillColor = baseColor
-                                  return nodeOutlineActive ? 'transparent' : baseColor
-                                },
-                                
-                                // Node size
-                                nodeRadius: (d: any) => {
-                                  const visibleOutgoing = d.total_outgoing_visible || d._totalOutgoing || 0
-                                  const visibleIncoming = d.total_incoming_visible || d._totalIncoming || 0
-                                  const yearOutgoing = d.total_outgoing_year || 0
-                                  const yearIncoming = d.total_incoming_year || 0
-                                  const netVisible = Math.abs(d.net_flow_visible || 0)
-                                  const netYear = Math.abs(d.net_flow_year || 0)
-                                  const selfYear = d.self_flow_year || 0
-
-                                  const sizeFromRatio = (ratio: number) => 3 + (Math.max(0, Math.min(1, ratio)) * 9)
-
-                                  if (nodeSizeMode === 'fixed') {
-                                    return 6
-                                  }
-
-                                  if (nodeSizeMode === 'visible_outgoing' || nodeSizeMode === 'outgoing') {
-                                    return sizeFromRatio(maxVisibleOutgoing > 0 ? visibleOutgoing / maxVisibleOutgoing : 0)
-                                  }
-
-                                  if (nodeSizeMode === 'visible_incoming' || nodeSizeMode === 'incoming') {
-                                    return sizeFromRatio(maxVisibleIncoming > 0 ? visibleIncoming / maxVisibleIncoming : 0)
-                                  }
-
-                                  if (nodeSizeMode === 'year_outgoing') {
-                                    return sizeFromRatio(globalMaxYearOutgoing > 0 ? yearOutgoing / globalMaxYearOutgoing : 0)
-                                  }
-
-                                  if (nodeSizeMode === 'year_incoming') {
-                                    return sizeFromRatio(globalMaxYearIncoming > 0 ? yearIncoming / globalMaxYearIncoming : 0)
-                                  }
-
-                                  if (nodeSizeMode === 'net_visible') {
-                                    const maxAbs = maxAbsNetVisible > 0 ? maxAbsNetVisible : 1
-                                    return sizeFromRatio(netVisible / maxAbs)
-                                  }
-
-                                  if (nodeSizeMode === 'net_year') {
-                                    const netAbsDenominator = globalNetAbs > 0 ? globalNetAbs : 1
-                                    return sizeFromRatio(netYear / netAbsDenominator)
-                                  }
-
-                                  if (nodeSizeMode === 'self_year') {
-                                    const maxSelf = datasetNodeSelfFlowStats?.max ?? 0
-                                    const ratio = maxSelf > 0 ? selfYear / maxSelf : 0
-                                    return sizeFromRatio(ratio)
-                                  }
-
-                                  if (nodeSizeMode === 'attribute' && nodeSizeAttribute) {
-                                    const propValue = d[nodeSizeAttribute]
-                                    if (typeof propValue !== 'number') return 6
-                                    
-                                    const allValues = filteredData.nodes
-                                      .map((n: any) => n[nodeSizeAttribute])
-                                      .filter((v: any) => typeof v === 'number') as number[]
-                                    if (allValues.length === 0) return 6
-                                    
-                                    const minVal = Math.min(...allValues)
-                                    const maxVal = Math.max(...allValues)
-                                    const range = maxVal - minVal || 1
-                                    const normalized = (propValue - minVal) / range
-                                    return sizeFromRatio(normalized)
-                                  }
-                                  
-                                  return 6
-                                },
-                                // Edge width
-                                edgeWidth: (e: any) => {
-                                  const style = (e as any)?.__overlayStyle ?? edgeStyleSetting
-                                  const normalized = normalizeEdgeWeight(e.value)
-                                  const weightedWidth =
-                                    edgeWidthMode === 'weight'
-                                      ? 0.5 + normalized * (style === 'segmented' ? 12 : 15)
-                                      : baseEdgeWidth
-
-                                  if (style === 'outline') {
-                                    return Math.max(2.5, baseEdgeWidth)
-                                  }
-
-                                  if (style === 'segmented') {
-                                    if (edgeWidthMode === 'weight') {
-                                      return weightedWidth
-                                    }
-                                    return Math.max(baseEdgeWidth, 2)
-                                  }
-
-                                  return weightedWidth
-                                },
-                                
-                                // Edge color (supports advanced hue/intensity sources)
-                                edgeColor: (e: any, isAbove: boolean) => {
-                                  const temporalDelta = e?.__temporalDelta
-                                  if (overlayActive) {
-                                    if (typeof temporalDelta === 'number') {
-                                      if (temporalDelta === 0) {
-                                        return overlayCurrentColor
-                                      }
-                                      return getOverlayColorForDelta(temporalDelta)
-                                    }
-                                    return overlayCurrentColor
-                                  }
-                                  if (shouldColorEdgesByEgoStep) {
-                                    const step = e?._egoStep ?? 0
-                                    if (step > 0) {
-                                      return computeEgoStepColor(step)
-                                    }
-                                  }
-                                  const weightNorm = normalizeEdgeWeight(e.value)
-
-                                  // Helper: categorical palette
-                                  const palette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-
-                                  // Advanced off: keep legacy simple modes via mapping to hue/intensity
-                                  if (!edgeColorAdvanced) {
-                                    if (edgeColorHue === 'direction') {
-                                      return isAbove ? '#1f77b4' : '#d62728'
-                                    }
-                                  }
-
-                                  // Compute hue color
-                                  let hueColor = '#2563eb'
-                                  if (edgeColorHue === 'direction') {
-                                    hueColor = isAbove ? '#1f77b4' : '#d62728'
-                                  } else if (edgeColorHue === 'region') {
-                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
-                                    const regions = Array.from(new Set(filteredData.nodes.map((n: any) => n.region).filter(Boolean)))
-                                    const map = new Map(regions.map((r, idx) => [r, palette[idx % palette.length]]))
-                                    hueColor = (src && src.region) ? (map.get(src.region) || '#2563eb') : '#2563eb'
-                                  } else if (edgeColorHue === 'division') {
-                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
-                                    const divs = Array.from(new Set(filteredData.nodes.map((n: any) => n.division).filter(Boolean)))
-                                    const map = new Map(divs.map((d, idx) => [d, palette[idx % palette.length]]))
-                                    hueColor = (src && src.division) ? (map.get(src.division) || '#2563eb') : '#2563eb'
-                                  } else if (edgeColorHue === 'attribute' && edgeColorHueAttribute) {
-                                    const val = (e as any)[edgeColorHueAttribute]
-                                    if (val != null) {
-                                      if (dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorHueAttribute)) {
-                                        const allVals = filteredData.baseEdges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => typeof v === 'number') as number[]
-                                        const minVal = Math.min(...allVals)
-                                        const maxVal = Math.max(...allVals)
-                                        const range = maxVal - minVal || 1
-                                        const n = (Number(val) - minVal) / range
-                                        const hue = 120 - (n * 120)
-                                        hueColor = `hsl(${hue}, 70%, 50%)`
-                                      } else {
-                                        const uniq = Array.from(new Set(filteredData.baseEdges.map((ed: any) => ed[edgeColorHueAttribute]).filter((v: any) => v != null)))
-                                        const map = new Map(uniq.map((v, idx) => [v, palette[idx % palette.length]]))
-                                        hueColor = map.get(val) || '#2563eb'
-                                      }
-                                    }
-                                  } else if (edgeColorHue === 'single') {
-                                    hueColor = '#2563eb'
-                                  }
-
-                                  // Compute intensity [0..1]
-                                  let intensity = 0.6
-                                  if (edgeColorIntensity === 'weight') {
-                                    intensity = Math.max(0, Math.min(1, weightNorm))
-                                  } else if (edgeColorIntensity === 'attribute' && edgeColorIntensityAttribute) {
-                                    const val = (e as any)[edgeColorIntensityAttribute]
-                                    if (val != null && dataset?.metadata?.hasNumericProperties.edges.includes(edgeColorIntensityAttribute)) {
-                                      const allVals = filteredData.baseEdges.map((ed: any) => ed[edgeColorIntensityAttribute]).filter((v: any) => typeof v === 'number') as number[]
-                                      const minVal = Math.min(...allVals)
-                                      const maxVal = Math.max(...allVals)
-                                      const range = maxVal - minVal || 1
-                                      intensity = Math.max(0, Math.min(1, (Number(val) - minVal) / range))
-                                    }
-                                  } else if (edgeColorIntensity === 'constant') {
-                                    intensity = Math.max(0, Math.min(1, edgeColorIntensityConst))
-                                  }
-
-                                  // If inter-edges grayscale requested for region/division hue
-                                  if (edgeColorInterGrayscale && (edgeColorHue === 'region' || edgeColorHue === 'division')) {
-                                    const src = filteredData.nodes.find((n: any) => n.id === e.source)
-                                    const tgt = filteredData.nodes.find((n: any) => n.id === e.target)
-                                    const same = edgeColorHue === 'region' ? (src?.region && src.region === tgt?.region) : (src?.division && src.division === tgt?.division)
-                                    if (!same) {
-                                      const light = 80 - (intensity * 50)
-                                      return `hsl(0, 0%, ${light}%)`
-                                    }
-                                  }
-
-                                  // Apply intensity to hue color by adjusting lightness via HSL without external deps
-                                  const light = 80 - (intensity * 55)
-                                  // Direction hue
-                                  if (edgeColorHue === 'direction') {
-                                    const h = isAbove ? 0 : 200
-                                    return `hsl(${h}, 70%, ${Math.round(light)}%)`
-                                  }
-                                  // Single hue
-                                  if (edgeColorHue === 'single') {
-                                    return `hsl(210, 70%, ${Math.round(light)}%)`
-                                  }
-                                  // Region/Division hue keep categorical color (unless grayscale handled earlier)
-                                  if (edgeColorHue === 'region' || edgeColorHue === 'division') {
-                                    return hueColor
-                                  }
-                                  // Attribute hue using computed HSL
-                                  return hueColor
-                                },
-                                nodeStroke: (d: any) => {
-                                  const delta = d.temporal_overlay_delta ?? 0
-                                  const baseColor = d.__baseFillColor ?? resolveBaseNodeColor(d)
-                                  if (!overlayActive || overlayDeltaMax <= 0) {
-                                    const width = nodeOutlineActive ? 2.5 : 2
-                                    const color = nodeOutlineActive ? baseColor : '#fff'
-                                    return { color, width }
-                                  }
-                                  const ratio = Math.min(1, Math.abs(delta) / Math.max(overlayDeltaMax, 1))
-                                  const color = getOverlayColorForDelta(delta)
-                                  if (nodeOutlineActive) {
-                                    const width = 2.5 + (delta === 0 ? 0 : ratio * 1.5)
-                                    return { color, width }
-                                  }
-                                  const width = 2 + (delta === 0 ? 0 : ratio * 2)
-                                  return { color, width }
-                                },
-                              }
-                            })()}
-                            legend={(() => {
-                              // Build legend from current color settings
-                              const temporalOverlayInfo = filteredData.temporalOverlay
-                              if (temporalOverlayInfo && Array.isArray(temporalOverlayInfo.legendEntries) && temporalOverlayInfo.legendEntries.length > 0) {
-                                return { type: 'temporalOverlay' as const, entries: temporalOverlayInfo.legendEntries }
-                              }
-
-                              const egoStepMax = filteredData.egoStepMax ?? 0
-                              const shouldColorEdgesByEgoStep = Boolean(egoNodeId && egoStepColoring && egoStepMax > 0)
-                              if (shouldColorEdgesByEgoStep) {
-                                const colorForStep = (step: number) => {
-                                  if (egoStepMax <= 1) {
-                                    return 'hsl(210, 80%, 55%)'
-                                  }
-                                  const clamped = Math.max(1, Math.min(step, egoStepMax))
-                                  const ratio = egoStepMax <= 1 ? 0 : (clamped - 1) / (egoStepMax - 1)
-                                  const hue = 210 - ratio * 150
-                                  const lightness = 60 - ratio * 20
-                                  return `hsl(${Math.round(hue)}, 80%, ${Math.round(lightness)}%)`
-                                }
-                                const entries = Array.from({ length: egoStepMax }, (_, index) => ({
-                                  step: index + 1,
-                                  color: colorForStep(index + 1),
-                                }))
-                                return { type: 'egoSteps' as const, entries }
-                              }
-
-                              const edgeWeightsForLegend = filteredData.baseEdges.map((e: any) => e.value)
-                              const minEdgeWeightLegend = edgeWeightsForLegend.length > 0 ? Math.min(...edgeWeightsForLegend) : 0
-                              const maxEdgeWeightLegend = edgeWeightsForLegend.length > 0 ? Math.max(...edgeWeightsForLegend) : 1
-                              const globalMinLegend = datasetEdgeStats?.min ?? minEdgeWeightLegend
-                              const globalMaxLegend = datasetEdgeStats?.max ?? maxEdgeWeightLegend
-                              const legendWeightSpan = Math.max(globalMaxLegend - globalMinLegend, 0)
-
-                              const normalizeEdgeWeightForLegend = (value: number) => {
-                                if (!Number.isFinite(value) || legendWeightSpan <= 0) return 0
-                                const clamped = Math.min(
-                                  Math.max(value, globalMinLegend),
-                                  globalMaxLegend,
-                                )
-                                const shifted = clamped - globalMinLegend
-                                switch (edgeWeightScale) {
-                                  case 'sqrt': {
-                                    const denom = Math.sqrt(legendWeightSpan)
-                                    if (denom <= 0) return 0
-                                    return Math.max(0, Math.min(1, Math.sqrt(shifted) / denom))
-                                  }
-                                  case 'log': {
-                                    const denom = Math.log10(legendWeightSpan + 1)
-                                    if (!Number.isFinite(denom) || denom <= 0) return 0
-                                    return Math.max(0, Math.min(1, Math.log10(shifted + 1) / denom))
-                                  }
-                                  case 'linear':
-                                  default: {
-                                    if (legendWeightSpan <= 0) return 0
-                                    return Math.max(0, Math.min(1, shifted / legendWeightSpan))
-                                  }
-                                }
-                              }
-
-                              const valueForFractionForLegend = (fraction: number) => {
-                                if (legendWeightSpan <= 0) return globalMinLegend
-                                const clampedF = Math.max(0, Math.min(1, fraction))
-                                switch (edgeWeightScale) {
-                                  case 'sqrt':
-                                    return globalMinLegend + Math.pow(clampedF, 2) * legendWeightSpan
-                                  case 'log': {
-                                    const denom = Math.log10(legendWeightSpan + 1)
-                                    if (!Number.isFinite(denom) || denom <= 0) return globalMinLegend
-                                    const increment = Math.pow(10, clampedF * denom) - 1
-                                    return globalMinLegend + increment
-                                  }
-                                  case 'linear':
-                                  default:
-                                    return globalMinLegend + clampedF * legendWeightSpan
-                                }
-                              }
-
-                              if (!edgeColorAdvanced) {
-                                if (edgeColorHue === 'direction') {
-                                  return { type: 'direction' as const }
-                                }
-                                if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
-                                  const sampleFractions = [0, 0.5, 1]
-                                  const samples = sampleFractions.map((fraction) => {
-                                    const value = valueForFractionForLegend(fraction)
-                                    const normalized = normalizeEdgeWeightForLegend(value)
-                                    const intensity = normalized
-                                    const light = 80 - (intensity * 55)
-                                    const color = `hsl(210, 70%, ${Math.round(light)}%)`
-                                    const width = edgeWidthMode === 'weight' ? 0.5 + normalized * 15 : baseEdgeWidth
-                                    return {
-                                      fraction: normalized,
-                                      value,
-                                      color,
-                                      width,
-                                    }
-                                  })
-                                  return {
-                                    type: 'weight' as const,
-                                    color: '#1f77b4',
-                                    scale: edgeWeightScale,
-                                    min: globalMinLegend,
-                                    max: globalMaxLegend,
-                                    samples,
-                                  }
-                                }
-                              } else {
-                                if (edgeColorHue === 'region' && hasRegionData) {
-                                  const regions = Array.from(new Set(filteredData.nodes.map((n: any) => n.region).filter(Boolean))) as string[]
-                                  const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-                                  const entries = regions.slice(0, 10).map((r, i) => ({ label: r, color: colors[i % colors.length] }))
-                                  return { type: 'categorical' as const, title: 'Regions', entries, interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined }
-                                }
-                                if (edgeColorHue === 'division' && hasDivisionData) {
-                                  const divs = Array.from(new Set(filteredData.nodes.map((n: any) => n.division).filter(Boolean))) as string[]
-                                  const colors = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
-                                  const entries = divs.slice(0, 10).map((d, i) => ({ label: d, color: colors[i % colors.length] }))
-                                  return { type: 'categorical' as const, title: 'Divisions', entries, interNote: edgeColorInterGrayscale ? 'Inter edges: grayscale by intensity' : undefined }
-                                }
-                                if (edgeColorHue === 'single' && edgeColorIntensity === 'weight') {
-                                  const sampleFractions = [0, 0.5, 1]
-                                  const samples = sampleFractions.map((fraction) => {
-                                    const value = valueForFractionForLegend(fraction)
-                                    const normalized = normalizeEdgeWeightForLegend(value)
-                                    const intensity = normalized
-                                    const light = 80 - (intensity * 55)
-                                    const color = `hsl(210, 70%, ${Math.round(light)}%)`
-                                    const width =
-                                      edgeWidthMode === 'weight'
-                                        ? 0.5 + normalized * 15
-                                        : baseEdgeWidth
-                                    return {
-                                      fraction: normalized,
-                                      value,
-                                      color,
-                                      width,
-                                    }
-                                  })
-                                  return {
-                                    type: 'weight' as const,
-                                    color: '#1f77b4',
-                                    scale: edgeWeightScale,
-                                    min: globalMinLegend,
-                                    max: globalMaxLegend,
-                                    samples,
-                                  }
-                                }
-                              }
-                              return undefined
-                            })()}
-                            lens={{ enabled: interactionMode === 'lens', x: lensPos.x, y: lensPos.y, radius: lensRadius }}
-                            onMouseMoveInCanvas={(pt) => {
-                              if (interactionMode === 'lens') setLensPos(pt)
-                            }}
-                            onWheelInCanvas={(deltaY) => {
-                              if (interactionMode === 'lens') {
-                                setLensRadius((r) => {
-                                  const next = Math.max(20, Math.min(300, r + (deltaY > 0 ? -10 : 10)))
-                                  updateSearchParams({ lensRadius: next })
-                                  return next
-                                })
-                              }
-                            }}
+                              accessors={kriskogramConfig.accessors}
+                              legend={kriskogramConfig.legendItems.length > 0 ? kriskogramConfig.legendItems : undefined}
                           />
                           </div>
                         </ErrorBoundary>
@@ -3665,22 +3661,22 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-gray-600 whitespace-nowrap">Years before</span>
-                                <input
-                                  type="number"
+                              <input
+                                type="number"
                                   min={0}
-                                  max={10}
+                                max={10}
                                   value={temporalOverlayYearsPast}
-                                  disabled={!temporalOverlayEnabled}
-                                  onChange={(e) => {
-                                    const raw = Number.parseInt(e.target.value, 10)
-                                    if (Number.isNaN(raw)) return
+                                disabled={!temporalOverlayEnabled}
+                                onChange={(e) => {
+                                  const raw = Number.parseInt(e.target.value, 10)
+                                  if (Number.isNaN(raw)) return
                                     const clamped = Math.max(0, Math.min(raw, 10))
                                     setTemporalOverlayYearsPast(clamped)
                                     updateSearchParams({ temporalOverlayYearsPast: clamped })
-                                  }}
-                                  className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
-                                />
-                              </div>
+                                }}
+                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                              />
+                            </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-gray-600 whitespace-nowrap">Years after</span>
                                 <input

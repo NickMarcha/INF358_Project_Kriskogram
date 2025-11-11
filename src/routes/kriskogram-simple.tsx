@@ -40,14 +40,14 @@ function SimpleKriskogramDemo() {
           height={400}
           margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
           accessors={{
-            nodeOrder: (d) => d.id,
-            nodeColor: (d) => {
+            nodeOrder: (d: any) => d.id,
+            nodeColor: (d: any) => {
               const hue = (d.economic_index || 0.5) * 120;
               return `hsl(${hue}, 70%, 50%)`;
             },
-            nodeRadius: (d) => Math.sqrt(d.population || 100000) / 200,
-            edgeWidth: (e) => Math.sqrt(e.value) / 20,
-            edgeColor: (e, isAbove) => {
+            nodeRadius: (d: any) => Math.sqrt(d.population || 100000) / 200,
+            edgeWidth: (e: any) => Math.sqrt(e.value) / 20,
+            edgeColor: (e: any, isAbove: boolean) => {
               const colors = {
                 economic: isAbove ? '#1f77b4' : '#d62728',
                 career: isAbove ? '#2ca02c' : '#ff7f0e',

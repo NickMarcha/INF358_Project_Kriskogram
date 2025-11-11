@@ -157,22 +157,22 @@ export function KriskogramDemo({ gexfUrl }: KriskogramDemoProps) {
                 height={600}
                 margin={{ top: 60, right: 40, bottom: 60, left: 40 }}
                 accessors={{
-                  nodeOrder: (d) => d.id,
-                  nodeColor: (d) => {
+                  nodeOrder: (d: any) => d.id,
+                  nodeColor: (d: any) => {
                     if (d.economic_index) {
                       const hue = d.economic_index * 120; // Green to red scale
                       return `hsl(${hue}, 70%, 50%)`;
                     }
                     return '#555';
                   },
-                  nodeRadius: (d) => {
+                  nodeRadius: (d: any) => {
                     if (d.population) {
                       return Math.sqrt(d.population) / 1000;
                     }
                     return 6;
                   },
-                  edgeWidth: (e) => Math.sqrt(e.value) / 10,
-                  edgeColor: (e, _isAbove) => {
+                  edgeWidth: (e: any) => Math.sqrt(e.value) / 10,
+                  edgeColor: (e: any, _isAbove: boolean) => {
                     // Find min and max weights for color scaling
                     const weights = currentSnapshot.edges.map((edge: any) => edge.value);
                     const minWeight = Math.min(...weights);

@@ -408,7 +408,7 @@ export function StateMigrationDemo({
                 margin={{ top: 80, right: 40, bottom: 120, left: 40 }}
                 arcOpacity={arcOpacity}
                 accessors={{
-                  nodeOrder: (d) => {
+                  nodeOrder: (d: any) => {
                     // Order nodes based on selected mode
                     if (orderMode === 'region') {
                       // Primary: region, Secondary: label
@@ -423,14 +423,14 @@ export function StateMigrationDemo({
                   },
                   nodeColor: () => '#2563eb',
                   nodeRadius: () => 5,
-                  edgeWidth: (e) => {
+                  edgeWidth: (e: any) => {
                     // Scale edge width based on migration volume
                     const minWidth = 0.5;
                     const maxWidth = 15;
                     const normalized = Math.log(e.value + 1) / Math.log(maxMigration + 1);
                     return minWidth + (normalized * (maxWidth - minWidth));
                   },
-                  edgeColor: (e) => {
+                  edgeColor: (e: any) => {
                     // Calculate luminosity based on migration volume using DISCRETE steps
                     const normalized = e.value / maxMigration;
                     
