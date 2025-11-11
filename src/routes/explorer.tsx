@@ -172,6 +172,22 @@ const safeCoerceStringArray = () =>
     z.array(z.string()).default([]),
   )
 
+const safeCoerceColor = (fallback: string) =>
+  z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const hex = val.trim().toLowerCase()
+        if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(hex)) {
+          return hex.length === 4
+            ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+            : hex
+        }
+      }
+      return fallback
+    },
+    z.string().default(fallback),
+  )
+
 const explorerSearchSchema = z.object({
   dataset: z.string().optional(),
   view: z.preprocess(
@@ -246,15 +262,28 @@ const explorerSearchSchema = z.object({
     },
     z.enum(['filled', 'outline']).default('filled'),
   ),
-  temporalOverlayYears: z.preprocess(
+  temporalOverlayYearsPast: z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '') return 1
       const num = typeof val === 'string' ? parseInt(val, 10) : Number(val)
-      if (Number.isNaN(num) || num < 1) return 1
-      return Math.max(1, Math.round(num))
+      if (Number.isNaN(num) || num < 0) return 0
+      return Math.max(0, Math.round(num))
     },
-    z.number().min(1).default(1),
+    z.number().min(0).default(1),
   ),
+  temporalOverlayYearsFuture: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === '') return 1
+      const num = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+      if (Number.isNaN(num) || num < 0) return 0
+      return Math.max(0, Math.round(num))
+    },
+    z.number().min(0).default(1),
+  ),
+  temporalOverlayColorPast: safeCoerceColor('#fc8d59'),
+  temporalOverlayColorMid: safeCoerceColor('#ffffbf'),
+  temporalOverlayColorFuture: safeCoerceColor('#91bfdb'),
+  temporalOverlayCurrentBlack: safeCoerceBoolean(true),
   nodeOrderMode: safeCoerceString('alphabetical'),
   arcOpacity: z.preprocess(
     (val) => {
@@ -469,14 +498,35 @@ export const Route = createFileRoute('/explorer')({
       return 'filled' as const
     })()
 
-    const safeTemporalOverlayYears = (() => {
-      if (search.temporalOverlayYears === undefined || search.temporalOverlayYears === null || search.temporalOverlayYears === '') {
-        return 1
-      }
-      const num = typeof search.temporalOverlayYears === 'string'
-        ? parseInt(search.temporalOverlayYears, 10) : Number(search.temporalOverlayYears)
-      if (Number.isNaN(num) || num < 1) return 1
-      return Math.max(1, Math.round(num))
+    const safeTemporalOverlayYearsPast = (() => {
+      if (search.temporalOverlayYearsPast === undefined || search.temporalOverlayYearsPast === null || search.temporalOverlayYearsPast === '') return 1
+      const num = typeof search.temporalOverlayYearsPast === 'string'
+        ? parseInt(search.temporalOverlayYearsPast, 10) : Number(search.temporalOverlayYearsPast)
+      if (Number.isNaN(num) || num < 0) return 0
+      return Math.max(0, Math.round(num))
+    })()
+
+    const safeTemporalOverlayYearsFuture = (() => {
+      if (search.temporalOverlayYearsFuture === undefined || search.temporalOverlayYearsFuture === null || search.temporalOverlayYearsFuture === '') return 1
+      const num = typeof search.temporalOverlayYearsFuture === 'string'
+        ? parseInt(search.temporalOverlayYearsFuture, 10) : Number(search.temporalOverlayYearsFuture)
+      if (Number.isNaN(num) || num < 0) return 0
+      return Math.max(0, Math.round(num))
+    })()
+
+    const safeTemporalOverlayColorPast = (() => {
+      if (search.temporalOverlayColorPast === undefined || search.temporalOverlayColorPast === null || search.temporalOverlayColorPast === '') return '#fc8d59'
+      return search.temporalOverlayColorPast
+    })()
+
+    const safeTemporalOverlayColorMid = (() => {
+      if (search.temporalOverlayColorMid === undefined || search.temporalOverlayColorMid === null || search.temporalOverlayColorMid === '') return '#ffffbf'
+      return search.temporalOverlayColorMid
+    })()
+
+    const safeTemporalOverlayColorFuture = (() => {
+      if (search.temporalOverlayColorFuture === undefined || search.temporalOverlayColorFuture === null || search.temporalOverlayColorFuture === '') return '#91bfdb'
+      return search.temporalOverlayColorFuture
     })()
 
     const safeEdgeSegmentLength = (() => {
@@ -733,7 +783,17 @@ export const Route = createFileRoute('/explorer')({
       temporalOverlay: safeTemporalOverlay,
       temporalOverlayEdgeStyle: safeTemporalOverlayEdgeStyle,
       temporalOverlayNodeStyle: safeTemporalOverlayNodeStyle,
-      temporalOverlayYears: safeTemporalOverlayYears,
+      temporalOverlayYearsPast: safeTemporalOverlayYearsPast,
+      temporalOverlayYearsFuture: safeTemporalOverlayYearsFuture,
+      temporalOverlayColorPast: safeTemporalOverlayColorPast,
+      temporalOverlayColorMid: safeTemporalOverlayColorMid,
+      temporalOverlayColorFuture: safeTemporalOverlayColorFuture,
+      temporalOverlayCurrentBlack:
+        typeof search.temporalOverlayCurrentBlack === 'boolean'
+          ? search.temporalOverlayCurrentBlack
+          : typeof search.temporalOverlayCurrentBlack === 'string'
+            ? search.temporalOverlayCurrentBlack.toLowerCase() !== 'false'
+            : true,
       edgeWeightScale: safeEdgeWeightScale,
       edgeSegmentLength: safeEdgeSegmentLength,
       edgeSegmentGap: safeEdgeSegmentGap,
@@ -809,7 +869,23 @@ const [edgeSegmentSpeed, setEdgeSegmentSpeed] = useState<number>(Math.max(0.1, s
 const [edgeSegmentScaleByWeight, setEdgeSegmentScaleByWeight] = useState<boolean>(search.edgeSegmentScaleByWeight ?? false)
 const [edgeSegmentCap, setEdgeSegmentCap] = useState<'round' | 'butt'>(search.edgeSegmentCap ?? 'round')
 const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, search.edgeOutlineGap ?? 3))
-  const [temporalOverlayYears, setTemporalOverlayYears] = useState<number>(search.temporalOverlayYears ?? 1)
+  const [temporalOverlayYearsPast, setTemporalOverlayYearsPast] = useState<number>(search.temporalOverlayYearsPast ?? 1)
+  const [temporalOverlayYearsFuture, setTemporalOverlayYearsFuture] = useState<number>(search.temporalOverlayYearsFuture ?? 1)
+  const [temporalOverlayColorPast, setTemporalOverlayColorPast] = useState<string>(
+    normalizeOverlayColor(search.temporalOverlayColorPast, '#fc8d59'),
+  )
+  const [temporalOverlayColorMid, setTemporalOverlayColorMid] = useState<string>(
+    normalizeOverlayColor(search.temporalOverlayColorMid, '#ffffbf'),
+  )
+  const [temporalOverlayColorFuture, setTemporalOverlayColorFuture] = useState<string>(
+    normalizeOverlayColor(search.temporalOverlayColorFuture, '#91bfdb'),
+  )
+  const [temporalOverlayCurrentBlack, setTemporalOverlayCurrentBlack] = useState<boolean>(
+    search.temporalOverlayCurrentBlack ?? true,
+  )
+  const [temporalOverlayColorPastText, setTemporalOverlayColorPastText] = useState<string>(temporalOverlayColorPast)
+  const [temporalOverlayColorMidText, setTemporalOverlayColorMidText] = useState<string>(temporalOverlayColorMid)
+  const [temporalOverlayColorFutureText, setTemporalOverlayColorFutureText] = useState<string>(temporalOverlayColorFuture)
   const [nodeFilterAttribute, setNodeFilterAttribute] = useState<string | null>(search.nodeFilterAttribute ?? null)
   const [nodeFilterValues, setNodeFilterValues] = useState<string[]>(search.nodeFilterValues ?? [])
   const krRef = useRef<KriskogramRef>(null)
@@ -1305,6 +1381,70 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       }
     }
 
+    const yearsPast = Math.max(0, Math.round(temporalOverlayYearsPast))
+    const yearsFuture = Math.max(0, Math.round(temporalOverlayYearsFuture))
+
+    const expandHexColor = (value: string) => {
+      const lower = typeof value === 'string' ? value.trim().toLowerCase() : ''
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(lower)) {
+        if (lower.length === 4) {
+          return `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`
+        }
+        return lower
+      }
+      return '#000000'
+    }
+
+    const overlayColorPast = expandHexColor(temporalOverlayColorPast)
+    const overlayColorMid = expandHexColor(temporalOverlayColorMid)
+    const overlayColorFuture = expandHexColor(temporalOverlayColorFuture)
+    const overlayCurrentColor = temporalOverlayCurrentBlack ? '#000000' : overlayColorMid
+
+    const hexToRgb = (hex: string) => {
+      const normalized = expandHexColor(hex).slice(1)
+      const intVal = parseInt(normalized, 16)
+      if (Number.isNaN(intVal) || normalized.length !== 6) {
+        return { r: 0, g: 0, b: 0 }
+      }
+      return {
+        r: (intVal >> 16) & 255,
+        g: (intVal >> 8) & 255,
+        b: intVal & 255,
+      }
+    }
+
+    const componentToHex = (value: number) => {
+      const clamped = Math.max(0, Math.min(255, Math.round(value)))
+      return clamped.toString(16).padStart(2, '0')
+    }
+
+    const rgbToHex = (r: number, g: number, b: number) => `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`
+
+    const mixColors = (colorA: string, colorB: string, t: number) => {
+      const clamped = Math.max(0, Math.min(1, t))
+      const a = hexToRgb(colorA)
+      const b = hexToRgb(colorB)
+      const r = a.r + (b.r - a.r) * clamped
+      const g = a.g + (b.g - a.g) * clamped
+      const bl = a.b + (b.b - a.b) * clamped
+      return rgbToHex(r, g, bl)
+    }
+
+    const getOverlayColorForDelta = (delta: number) => {
+      if (delta === 0) {
+        return overlayCurrentColor
+      }
+      if (delta < 0) {
+        if (yearsPast === 0) return overlayColorMid
+        const closeness = Math.max(0, Math.min(1, Math.abs(delta) / Math.max(yearsPast, 1)))
+        const t = 1 - closeness
+        return mixColors(overlayColorPast, overlayColorMid, t)
+      }
+      if (yearsFuture === 0) return overlayColorMid
+      const closeness = Math.max(0, Math.min(1, delta / Math.max(yearsFuture, 1)))
+      return mixColors(overlayColorMid, overlayColorFuture, closeness)
+    }
+
     const totalIncomingAll = new Map<string, number>()
     const totalOutgoingAll = new Map<string, number>()
     const totalSelfFlowAll = new Map<string, number>()
@@ -1474,12 +1614,14 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     if (temporalOverlayEnabled && dataset && typeof currentYear === 'number' && dataset.timeRange.start !== dataset.timeRange.end) {
-      const windowSize = Math.max(1, Math.round(temporalOverlayYears))
-      for (let offset = -windowSize; offset <= windowSize; offset += 1) {
-        if (offset === 0) continue
+      const addOverlayForOffset = (offset: number) => {
+        if (offset === 0) return
+        if (offset < 0 && yearsPast === 0) return
+        if (offset > 0 && yearsFuture === 0) return
+
         const targetYear = currentYear + offset
         const snapshot = yearToSnapshot.get(targetYear)
-        if (!snapshot) continue
+        if (!snapshot) return
 
         const rawEdges = Array.isArray(snapshot.edges) ? (snapshot.edges as any[]) : []
         let overlayAllowedNodeIds: Set<string> | null = null
@@ -1494,9 +1636,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
               .map((node: any) => node.id),
           )
           if (overlayAllowedNodeIds.size === 0) {
-            continue
+            return
           }
         }
+
         let edgesForSnapshot = filterEdgesByProperty(
           rawEdges,
           edgeTypeInfo?.property || '',
@@ -1560,12 +1703,13 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             __overlayDash: overlayDashArray,
             __overlayDashOffset: overlayDashOffset,
             __overlayLineCap: overlayLineCap,
-            __segmentInitialGap: temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
-            __segmentSpeed: Math.max(0.1, edgeSegmentSpeed),
-            __segmentScaleByWeight: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentScaleByWeight,
+            __segmentInitialGap:
+              temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0,
             __segmentCycle:
               temporalOverlayEdgeStyle === 'segmented' ? Math.max(1, edgeSegmentLength + edgeSegmentGap) : 0,
             __segmentAnimate: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentAnimate,
+            __segmentSpeed: Math.max(0.1, edgeSegmentSpeed),
+            __segmentScaleByWeight: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentScaleByWeight,
             __outlineGap: edgeOutlineGap,
           }))
 
@@ -1585,6 +1729,13 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             overlayFutureTotals.set(edge.target, inn + edge.value)
           }
         })
+      }
+
+      for (let offset = -yearsPast; offset < 0; offset += 1) {
+        addOverlayForOffset(offset)
+      }
+      for (let offset = 1; offset <= yearsFuture; offset += 1) {
+        addOverlayForOffset(offset)
       }
     }
 
@@ -1655,18 +1806,10 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
 
     if (temporalOverlayEnabled) {
       nodesWithDynamicAttrs.forEach((node: any) => {
-        const delta = node._overlayDelta ?? 0
-        if (overlayNodeAbsMax > 0 && delta !== 0) {
-          const ratio = Math.max(0, Math.min(1, Math.abs(delta) / overlayNodeAbsMax))
-          node._overlayStrokeWidth = 1.5 + ratio * 3
-          node._overlayStrokeColor = delta > 0 ? 'hsl(0, 75%, 55%)' : 'hsl(210, 75%, 55%)'
-        } else if (overlayNodeAbsMax > 0) {
-          node._overlayStrokeWidth = 1.5
-          node._overlayStrokeColor = '#cbd5f5'
-        } else {
-          node._overlayStrokeWidth = 2
-          node._overlayStrokeColor = '#fff'
-        }
+        const delta = node._overlayDelta ?? node.temporal_overlay_delta ?? 0
+        const ratio = overlayNodeAbsMax > 0 ? Math.max(0, Math.min(1, Math.abs(delta) / overlayNodeAbsMax)) : 0
+        node._overlayStrokeWidth = delta === 0 ? 2 : 1.5 + ratio * 3
+        node._overlayStrokeColor = getOverlayColorForDelta(delta)
       })
     } else {
       nodesWithDynamicAttrs.forEach((node: any) => {
@@ -1676,21 +1819,57 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
 
     const temporalOverlaySummary = temporalOverlayEnabled
-      ? {
-          hasPast: overlayHasPast,
-          hasFuture: overlayHasFuture,
-          nodeDeltaAbsMax: overlayNodeAbsMax,
-          style: temporalOverlayEdgeStyle,
-          edgeSegmentLength,
-          edgeSegmentGap,
-          edgeSegmentOffset,
-          edgeSegmentSpeed,
-          edgeSegmentScaleByWeight,
-          edgeSegmentCap,
-          edgeSegmentAnimate,
-          edgeOutlineGap,
-        }
-      : null
+       ? {
+           hasPast: overlayHasPast,
+           hasFuture: overlayHasFuture,
+           nodeDeltaAbsMax: overlayNodeAbsMax,
+           style: temporalOverlayEdgeStyle,
+           edgeSegmentLength,
+           edgeSegmentGap,
+           edgeSegmentOffset,
+           edgeSegmentSpeed,
+           edgeSegmentScaleByWeight,
+           edgeSegmentCap,
+           edgeSegmentAnimate,
+           edgeOutlineGap,
+           yearsPast,
+           yearsFuture,
+           colorCurrent: overlayCurrentColor,
+           colorPast: overlayColorPast,
+           colorMid: overlayColorMid,
+           colorFuture: overlayColorFuture,
+           useBlackForCurrent: temporalOverlayCurrentBlack,
+           legendEntries: (() => {
+             const entries: Array<{ label: string; color: string }> = []
+             const makeLabel = (offset: number) => {
+               if (typeof currentYear === 'number') {
+                 const yearLabel = currentYear + offset
+                 if (offset === 0) return `${yearLabel} (current)`
+                 const suffix = Math.abs(offset) === 1 ? 'year' : 'years'
+                 if (offset < 0) {
+                   return `${yearLabel} (${Math.abs(offset)} ${suffix} past)`
+                 }
+                 return `${yearLabel} (${offset} ${suffix} future)`
+               }
+               if (offset === 0) return 'Current year'
+               const suffix = Math.abs(offset) === 1 ? 'year' : 'years'
+               if (offset < 0) {
+                 return `${Math.abs(offset)} ${suffix} past`
+               }
+               return `${offset} ${suffix} future`
+             }
+
+             entries.push({ label: makeLabel(0), color: overlayCurrentColor })
+             for (let offset = -yearsPast; offset < 0; offset += 1) {
+               entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset) })
+             }
+             for (let offset = 1; offset <= yearsFuture; offset += 1) {
+               entries.push({ label: makeLabel(offset), color: getOverlayColorForDelta(offset) })
+             }
+             return entries
+           })(),
+         }
+       : null
 
     const combinedEdges = temporalOverlayEnabled && overlayEdges.length > 0
       ? [...visibleEdgesCurrent, ...overlayEdges]
@@ -1720,7 +1899,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     temporalOverlayEnabled,
     temporalOverlayEdgeStyle,
     temporalOverlayNodeStyle,
-    temporalOverlayYears,
+    temporalOverlayYearsPast,
+    temporalOverlayYearsFuture,
+    temporalOverlayColorPast,
+    temporalOverlayColorMid,
+    temporalOverlayColorFuture,
+    temporalOverlayCurrentBlack,
     edgeSegmentLength,
     edgeSegmentGap,
     edgeSegmentOffset,
@@ -1878,6 +2062,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
           temporalOverlay: false,
           temporalOverlayEdgeStyle,
           temporalOverlayNodeStyle,
+          temporalOverlayCurrentBlack,
+          temporalOverlayYearsPast,
+          temporalOverlayYearsFuture,
+          temporalOverlayColorPast,
+          temporalOverlayColorMid,
+          temporalOverlayColorFuture,
           edgeSegmentLength,
           edgeSegmentGap,
           edgeSegmentOffset,
@@ -1893,6 +2083,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     temporalOverlayEnabled,
     temporalOverlayEdgeStyle,
     temporalOverlayNodeStyle,
+    temporalOverlayYearsPast,
+    temporalOverlayYearsFuture,
+    temporalOverlayColorPast,
+    temporalOverlayColorMid,
+    temporalOverlayColorFuture,
     edgeSegmentLength,
     edgeSegmentGap,
     edgeSegmentOffset,
@@ -1906,7 +2101,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     if (!isInitialMount.current) {
       updateSearchParams({
         temporalOverlay: temporalOverlayEnabled,
-        temporalOverlayYears,
+        temporalOverlayYearsPast,
+        temporalOverlayYearsFuture,
+        temporalOverlayColorPast,
+        temporalOverlayColorMid,
+        temporalOverlayColorFuture,
         temporalOverlayEdgeStyle,
         temporalOverlayNodeStyle,
         edgeSegmentLength,
@@ -1919,7 +2118,11 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     }
   }, [
     temporalOverlayEnabled,
-    temporalOverlayYears,
+    temporalOverlayYearsPast,
+    temporalOverlayYearsFuture,
+    temporalOverlayColorPast,
+    temporalOverlayColorMid,
+    temporalOverlayColorFuture,
     temporalOverlayEdgeStyle,
     temporalOverlayNodeStyle,
     edgeSegmentLength,
@@ -1930,6 +2133,48 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     edgeOutlineGap,
     updateSearchParams,
   ])
+
+  useEffect(() => {
+    setTemporalOverlayColorPastText(temporalOverlayColorPast)
+  }, [temporalOverlayColorPast])
+
+  useEffect(() => {
+    setTemporalOverlayColorMidText(temporalOverlayColorMid)
+  }, [temporalOverlayColorMid])
+
+  useEffect(() => {
+    setTemporalOverlayColorFutureText(temporalOverlayColorFuture)
+  }, [temporalOverlayColorFuture])
+
+  const applyOverlayColor = (
+    raw: string,
+    fallback: string,
+    setter: (value: string) => void,
+    textSetter: (value: string) => void,
+    key: 'temporalOverlayColorPast' | 'temporalOverlayColorMid' | 'temporalOverlayColorFuture',
+  ) => {
+    const normalized = normalizeOverlayColor(raw, fallback)
+    setter(normalized)
+    textSetter(normalized)
+    updateSearchParams({ [key]: normalized })
+  }
+
+  const commitOverlayColorFromText = (
+    raw: string,
+    fallback: string,
+    setter: (value: string) => void,
+    textSetter: (value: string) => void,
+    key: 'temporalOverlayColorPast' | 'temporalOverlayColorMid' | 'temporalOverlayColorFuture',
+  ) => {
+    const trimmed = raw.trim()
+    if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)) {
+      textSetter(fallback)
+      return
+    }
+    applyOverlayColor(trimmed, fallback, setter, textSetter, key)
+  }
+
+  const [overlayColorInputFormat, setOverlayColorInputFormat] = useState<'picker' | 'hex'>('picker')
 
   return (
     <ErrorBoundary
@@ -2089,15 +2334,78 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                               const nodeStyleSetting = temporalOverlayNodeStyle
                               const nodeOutlineActive = nodeStyleSetting === 'outline'
                               const overlayDeltaMax = overlaySummary?.nodeDeltaAbsMax ?? 0
-                              const overlayEdgeColor = (delta: number) => {
-                                if (delta === 0) return '#6b7280'
-                                const clamped = Math.max(-overlayDeltaMax, Math.min(overlayDeltaMax, delta))
-                                const intensity = overlayDeltaMax > 0 ? Math.abs(clamped) / overlayDeltaMax : 0.5
-                                const baseLightness = 65 - intensity * 20
-                                if (delta < 0) {
-                                  return `hsl(210, 75%, ${Math.round(baseLightness)}%)`
+                              const overlayYearsPastSetting = Math.max(0, overlaySummary?.yearsPast ?? 0)
+                              const overlayYearsFutureSetting = Math.max(0, overlaySummary?.yearsFuture ?? 0)
+                              const overlayColorPastSetting = overlaySummary?.colorPast ?? temporalOverlayColorPast
+                              const overlayColorMidSetting = overlaySummary?.colorMid ?? temporalOverlayColorMid
+                              const overlayColorFutureSetting = overlaySummary?.colorFuture ?? temporalOverlayColorFuture
+                              const overlayCurrentColorRaw = overlaySummary?.colorCurrent ?? (temporalOverlayCurrentBlack
+                                ? '#000000'
+                                : overlayColorMidSetting)
+
+                              const expandHexLocal = (value: string) => {
+                                const lower = typeof value === 'string' ? value.trim().toLowerCase() : ''
+                                if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(lower)) {
+                                  if (lower.length === 4) {
+                                    return `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`
+                                  }
+                                  return lower
                                 }
-                                return `hsl(0, 75%, ${Math.round(baseLightness)}%)`
+                                return '#000000'
+                              }
+
+                              const overlayCurrentColor = expandHexLocal(overlayCurrentColorRaw)
+
+                              const hexToRgbLocal = (hex: string) => {
+                                const normalized = expandHexLocal(hex).slice(1)
+                                const intVal = parseInt(normalized, 16)
+                                if (Number.isNaN(intVal) || normalized.length !== 6) {
+                                  return { r: 0, g: 0, b: 0 }
+                                }
+                                return {
+                                  r: (intVal >> 16) & 255,
+                                  g: (intVal >> 8) & 255,
+                                  b: intVal & 255,
+                                }
+                              }
+
+                              const componentToHexLocal = (value: number) => {
+                                const clamped = Math.max(0, Math.min(255, Math.round(value)))
+                                return clamped.toString(16).padStart(2, '0')
+                              }
+
+                              const rgbToHexLocal = (r: number, g: number, b: number) =>
+                                `#${componentToHexLocal(r)}${componentToHexLocal(g)}${componentToHexLocal(b)}`
+
+                              const mixOverlayColorsLocal = (from: string, to: string, t: number) => {
+                                const clamped = Math.max(0, Math.min(1, t))
+                                const a = hexToRgbLocal(from)
+                                const b = hexToRgbLocal(to)
+                                const r = a.r + (b.r - a.r) * clamped
+                                const g = a.g + (b.g - a.g) * clamped
+                                const bl = a.b + (b.b - a.b) * clamped
+                                return rgbToHexLocal(r, g, bl)
+                              }
+
+                              const getOverlayColorForDelta = (delta: number) => {
+                                if (delta === 0) return overlayCurrentColor
+                                if (delta < 0) {
+                                  if (overlayYearsPastSetting === 0) return expandHexLocal(overlayColorMidSetting)
+                                  const closeness = Math.max(0, Math.min(1, Math.abs(delta) / Math.max(overlayYearsPastSetting, 1)))
+                                  const t = 1 - closeness
+                                  return mixOverlayColorsLocal(
+                                    expandHexLocal(overlayColorPastSetting),
+                                    expandHexLocal(overlayColorMidSetting),
+                                    t,
+                                  )
+                                }
+                                if (overlayYearsFutureSetting === 0) return expandHexLocal(overlayColorMidSetting)
+                                const closeness = Math.max(0, Math.min(1, delta / Math.max(overlayYearsFutureSetting, 1)))
+                                return mixOverlayColorsLocal(
+                                  expandHexLocal(overlayColorMidSetting),
+                                  expandHexLocal(overlayColorFutureSetting),
+                                  closeness,
+                                )
                               }
                               
                               const resolveBaseNodeColor = (node: any): string => {
@@ -2293,8 +2601,14 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 // Edge color (supports advanced hue/intensity sources)
                                 edgeColor: (e: any, isAbove: boolean) => {
                                   const temporalDelta = e?.__temporalDelta
-                                  if (overlayActive && temporalDelta) {
-                                    return overlayEdgeColor(temporalDelta)
+                                  if (overlayActive) {
+                                    if (typeof temporalDelta === 'number') {
+                                      if (temporalDelta === 0) {
+                                        return overlayCurrentColor
+                                      }
+                                      return getOverlayColorForDelta(temporalDelta)
+                                    }
+                                    return overlayCurrentColor
                                   }
                                   if (shouldColorEdgesByEgoStep) {
                                     const step = e?._egoStep ?? 0
@@ -2403,35 +2717,22 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                     const color = nodeOutlineActive ? baseColor : '#fff'
                                     return { color, width }
                                   }
-                                  if (!delta) {
-                                    const width = nodeOutlineActive ? 2.5 : 1.5
-                                    const color = nodeOutlineActive ? baseColor : '#d1d5db'
+                                  const ratio = Math.min(1, Math.abs(delta) / Math.max(overlayDeltaMax, 1))
+                                  const color = getOverlayColorForDelta(delta)
+                                  if (nodeOutlineActive) {
+                                    const width = 2.5 + (delta === 0 ? 0 : ratio * 1.5)
                                     return { color, width }
                                   }
-                                  const ratio = Math.min(1, Math.abs(delta) / overlayDeltaMax)
-                                  if (nodeOutlineActive) {
-                                    const width = 2.5 + ratio * 1.5
-                                    return { color: baseColor, width }
-                                  }
-                                  const hue = delta >= 0 ? 0 : 210
-                                  const lightness = 70 - ratio * 25
-                                  const width = 2 + ratio * 2
-                                  return { color: `hsl(${Math.round(hue)}, 75%, ${Math.round(lightness)}%)`, width }
+                                  const width = 2 + (delta === 0 ? 0 : ratio * 2)
+                                  return { color, width }
                                 },
                               }
                             })()}
                             legend={(() => {
                               // Build legend from current color settings
                               const temporalOverlayInfo = filteredData.temporalOverlay
-                              if (temporalOverlayInfo && (temporalOverlayInfo.hasPast || temporalOverlayInfo.hasFuture)) {
-                                const entries: Array<{ label: string; color: string }> = []
-                                if (temporalOverlayInfo.hasPast) {
-                                  entries.push({ label: 'Past years', color: 'hsl(210, 75%, 55%)' })
-                                }
-                                if (temporalOverlayInfo.hasFuture) {
-                                  entries.push({ label: 'Future years', color: 'hsl(0, 75%, 55%)' })
-                                }
-                                return { type: 'temporalOverlay' as const, entries }
+                              if (temporalOverlayInfo && Array.isArray(temporalOverlayInfo.legendEntries) && temporalOverlayInfo.legendEntries.length > 0) {
+                                return { type: 'temporalOverlay' as const, entries: temporalOverlayInfo.legendEntries }
                               }
 
                               const egoStepMax = filteredData.egoStepMax ?? 0
@@ -3163,7 +3464,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                       setTemporalOverlayEnabled(false)
                       setTemporalOverlayEdgeStyle('filled')
                       setTemporalOverlayNodeStyle('filled')
-                      setTemporalOverlayYears(1)
+                      setTemporalOverlayYearsPast(1)
+                      setTemporalOverlayYearsFuture(1)
+                      setTemporalOverlayColorPast('#fc8d59')
+                      setTemporalOverlayColorMid('#ffffbf')
+                      setTemporalOverlayColorFuture('#91bfdb')
+                      setTemporalOverlayCurrentBlack(true)
                       setEdgeSegmentLength(8)
                       setEdgeSegmentGap(4)
                       setEdgeSegmentOffset(15)
@@ -3195,9 +3501,12 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                         egoNeighborSteps: 1,
                         egoStepColoring: false,
                         temporalOverlay: false,
-                        temporalOverlayYears: 1,
-                        temporalOverlayEdgeStyle: 'filled',
-                        temporalOverlayNodeStyle: 'filled',
+                        temporalOverlayYearsPast: 1,
+                        temporalOverlayYearsFuture: 1,
+                        temporalOverlayColorPast: '#fc8d59',
+                        temporalOverlayColorMid: '#ffffbf',
+                        temporalOverlayColorFuture: '#91bfdb',
+                        temporalOverlayCurrentBlack: true,
                         edgeSegmentLength: 8,
                         edgeSegmentGap: 4,
                         edgeSegmentOffset: 15,
@@ -3353,27 +3662,47 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                             <label className="text-xs font-medium text-gray-700" htmlFor="kriskogram-temporal-overlay-years">
                               Neighbor years
                             </label>
-                            <div className="mt-1 flex items-center gap-2">
-                              <input
-                                id="kriskogram-temporal-overlay-years"
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={temporalOverlayYears}
-                                disabled={!temporalOverlayEnabled}
-                                onChange={(e) => {
-                                  const raw = Number.parseInt(e.target.value, 10)
-                                  if (Number.isNaN(raw)) return
-                                  const clamped = Math.max(1, Math.min(raw, 10))
-                                  setTemporalOverlayYears(clamped)
-                                  updateSearchParams({ temporalOverlayYears: clamped })
-                                }}
-                                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
-                              />
-                              <span className="text-[11px] text-gray-500">
-                                Include the selected number of years before and after the current year.
-                              </span>
+                            <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-gray-600 whitespace-nowrap">Years before</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  value={temporalOverlayYearsPast}
+                                  disabled={!temporalOverlayEnabled}
+                                  onChange={(e) => {
+                                    const raw = Number.parseInt(e.target.value, 10)
+                                    if (Number.isNaN(raw)) return
+                                    const clamped = Math.max(0, Math.min(raw, 10))
+                                    setTemporalOverlayYearsPast(clamped)
+                                    updateSearchParams({ temporalOverlayYearsPast: clamped })
+                                  }}
+                                  className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-gray-600 whitespace-nowrap">Years after</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  value={temporalOverlayYearsFuture}
+                                  disabled={!temporalOverlayEnabled}
+                                  onChange={(e) => {
+                                    const raw = Number.parseInt(e.target.value, 10)
+                                    if (Number.isNaN(raw)) return
+                                    const clamped = Math.max(0, Math.min(raw, 10))
+                                    setTemporalOverlayYearsFuture(clamped)
+                                    updateSearchParams({ temporalOverlayYearsFuture: clamped })
+                                  }}
+                                  className="w-20 px-2 py-1 text-xs border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                                />
+                              </div>
                             </div>
+                            <p className="mt-1 text-[11px] text-gray-500">
+                              Control how many past and future snapshots appear alongside the current year.
+                            </p>
                             {(!dataset || dataset.timeRange.start === dataset.timeRange.end) && (
                               <p className="mt-2 text-[11px] text-gray-400 italic">
                                 Temporal overlay is unavailable because this dataset has a single year.
@@ -3779,6 +4108,117 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                                 </label>
                               </div>
                             )}
+                            <div className="mt-3 space-y-3">
+                              <div>
+                                <label className="block text-[11px] font-medium text-gray-600">Temporal overlay colors</label>
+                                <p className="mt-1 text-[10px] text-gray-500">
+                                  Choose the palette for past, midpoint, and future overlay arcs. Switch the input format in Interface Settings.
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="space-y-1">
+                                  <span className="block text-[11px] font-medium text-gray-600">Past</span>
+                                  {overlayColorInputFormat === 'picker' ? (
+                                    <input
+                                      type="color"
+                                      value={temporalOverlayColorPast}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => applyOverlayColor(e.target.value, '#fc8d59', setTemporalOverlayColorPast, setTemporalOverlayColorPastText, 'temporalOverlayColorPast')}
+                                      className={`h-8 w-full cursor-pointer ${!temporalOverlayEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={temporalOverlayColorPastText}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => setTemporalOverlayColorPastText(e.target.value)}
+                                      onBlur={(e) => commitOverlayColorFromText(e.target.value, temporalOverlayColorPast, setTemporalOverlayColorPast, setTemporalOverlayColorPastText, 'temporalOverlayColorPast')}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          commitOverlayColorFromText(temporalOverlayColorPastText, temporalOverlayColorPast, setTemporalOverlayColorPast, setTemporalOverlayColorPastText, 'temporalOverlayColorPast')
+                                        }
+                                      }}
+                                      placeholder="#fc8d59"
+                                      className="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono disabled:bg-gray-100 disabled:text-gray-500"
+                                    />
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="block text-[11px] font-medium text-gray-600">Midpoint</span>
+                                  {overlayColorInputFormat === 'picker' ? (
+                                    <input
+                                      type="color"
+                                      value={temporalOverlayColorMid}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => applyOverlayColor(e.target.value, '#ffffbf', setTemporalOverlayColorMid, setTemporalOverlayColorMidText, 'temporalOverlayColorMid')}
+                                      className={`h-8 w-full cursor-pointer ${!temporalOverlayEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={temporalOverlayColorMidText}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => setTemporalOverlayColorMidText(e.target.value)}
+                                      onBlur={(e) => commitOverlayColorFromText(e.target.value, temporalOverlayColorMid, setTemporalOverlayColorMid, setTemporalOverlayColorMidText, 'temporalOverlayColorMid')}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          commitOverlayColorFromText(temporalOverlayColorMidText, temporalOverlayColorMid, setTemporalOverlayColorMid, setTemporalOverlayColorMidText, 'temporalOverlayColorMid')
+                                        }
+                                      }}
+                                      placeholder="#ffffbf"
+                                      className="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono disabled:bg-gray-100 disabled:text-gray-500"
+                                    />
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="block text-[11px] font-medium text-gray-600">Future</span>
+                                  {overlayColorInputFormat === 'picker' ? (
+                                    <input
+                                      type="color"
+                                      value={temporalOverlayColorFuture}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => applyOverlayColor(e.target.value, '#91bfdb', setTemporalOverlayColorFuture, setTemporalOverlayColorFutureText, 'temporalOverlayColorFuture')}
+                                      className={`h-8 w-full cursor-pointer ${!temporalOverlayEnabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={temporalOverlayColorFutureText}
+                                      disabled={!temporalOverlayEnabled}
+                                      onChange={(e) => setTemporalOverlayColorFutureText(e.target.value)}
+                                      onBlur={(e) => commitOverlayColorFromText(e.target.value, temporalOverlayColorFuture, setTemporalOverlayColorFuture, setTemporalOverlayColorFutureText, 'temporalOverlayColorFuture')}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          commitOverlayColorFromText(temporalOverlayColorFutureText, temporalOverlayColorFuture, setTemporalOverlayColorFuture, setTemporalOverlayColorFutureText, 'temporalOverlayColorFuture')
+                                        }
+                                      }}
+                                      placeholder="#91bfdb"
+                                      className="w-full rounded border border-gray-300 px-2 py-1 text-xs font-mono disabled:bg-gray-100 disabled:text-gray-500"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-700">Current year color</label>
+                                  <p className="text-[11px] text-gray-500">Use the default black or reuse the midpoint color for the current year arcs.</p>
+                                </div>
+                                <select
+                                  value={temporalOverlayCurrentBlack ? 'default' : 'midpoint'}
+                                  onChange={(e) => {
+                                    const next = e.target.value === 'midpoint' ? false : true
+                                    setTemporalOverlayCurrentBlack(next)
+                                    updateSearchParams({ temporalOverlayCurrentBlack: next })
+                                  }}
+                                  disabled={!temporalOverlayEnabled}
+                                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                >
+                                  <option value="default">Default (black)</option>
+                                  <option value="midpoint">Use midpoint color</option>
+                                </select>
+                              </div>
+                            </div>
+
                             {temporalOverlayEdgeStyle === 'outline' && (
                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                  <div>
@@ -4035,6 +4475,35 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
                     <div className="text-xs text-gray-500 italic">Settings to be added</div>
                   </CollapsibleSection>
                 )}
+
+
+                <CollapsibleSection
+                  title="Interface Settings"
+                  defaultOpen={false}
+                  onReset={() => {
+                    setOverlayColorInputFormat('picker')
+                  }}
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700">Color input format</label>
+                      <select
+                        value={overlayColorInputFormat}
+                        onChange={(e) => {
+                          const next = e.target.value === 'hex' ? 'hex' : 'picker'
+                          setOverlayColorInputFormat(next)
+                        }}
+                        className="mt-1 w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="picker">Color picker</option>
+                        <option value="hex">Hex input</option>
+                      </select>
+                      <p className="mt-1 text-[10px] text-gray-500">
+                        Choose whether temporal overlay colors are edited with the native color picker or by typing hex codes.
+                      </p>
+                    </div>
+                  </div>
+                </CollapsibleSection>
               </div>
             </SettingsPanel>
           )}
@@ -4251,6 +4720,19 @@ async function preloadDefaults(): Promise<string | undefined> {
   }
 
   return undefined
+}
+
+function normalizeOverlayColor(value: unknown, fallback: string): string {
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase()
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(trimmed)) {
+      if (trimmed.length === 4) {
+        return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`
+      }
+      return trimmed
+    }
+  }
+  return fallback
 }
 
 

@@ -314,6 +314,10 @@ export function createKriskogram(config: KriskogramConfig) {
           if (style === 'outline') {
             return outlineThickness;
           }
+          if (d.__isOverlay) {
+            const shrinkFactor = style === 'segmented' ? 0.65 : 0.7;
+            return Math.max(0.5, baseWidth * shrinkFactor);
+          }
           return baseWidth;
         }
         return 0;
@@ -325,7 +329,11 @@ export function createKriskogram(config: KriskogramConfig) {
         if (forOutline) {
           return 0;
         }
-        return d && d.__isOverlay ? Math.max(0.25, arcOpacity * 0.65) : arcOpacity;
+        if (d && d.__isOverlay) {
+          const target = Math.max(0.2, arcOpacity * 0.45);
+          return target;
+        }
+        return arcOpacity;
       });
   };
 
