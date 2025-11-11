@@ -1537,6 +1537,68 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     const yearsPast = Math.max(0, Math.round(temporalOverlayYearsPast))
     const yearsFuture = Math.max(0, Math.round(temporalOverlayYearsFuture))
 
+    const computeEgoReachability = (edgesList: Array<any>) => {
+      const allowedEdges = new Set<number>()
+      const edgeSteps = new Map<number, number>()
+      const nodeSteps = new Map<string, number>()
+      let maxStep = 0
+
+      if (!(viewType === 'kriskogram' && egoNodeId)) {
+        edgesList.forEach((_, idx) => allowedEdges.add(idx))
+        return { allowedEdges, edgeSteps, nodeSteps, maxStep }
+      }
+
+      const normalizedSteps = Math.max(1, Math.round(egoNeighborSteps))
+      let frontier = new Set<string>([egoNodeId])
+      nodeSteps.set(egoNodeId, 0)
+      const visitedNodes = new Set(frontier)
+
+      for (let step = 1; step <= normalizedSteps && frontier.size > 0; step += 1) {
+        const nextFrontier = new Set<string>()
+
+        edgesList.forEach((edge, idx) => {
+          const source = edge?.source
+          const target = edge?.target
+          if (!source || !target) {
+            return
+          }
+          if (frontier.has(source) || frontier.has(target)) {
+            allowedEdges.add(idx)
+            const existingEdgeStep = edgeSteps.get(idx)
+            if (existingEdgeStep === undefined || step < existingEdgeStep) {
+              edgeSteps.set(idx, step)
+            }
+            const updateNode = (nodeId: string) => {
+              const prev = nodeSteps.get(nodeId)
+              if (prev === undefined || step < prev) {
+                nodeSteps.set(nodeId, step)
+              }
+              if (!visitedNodes.has(nodeId)) {
+                visitedNodes.add(nodeId)
+                nextFrontier.add(nodeId)
+              }
+            }
+            updateNode(source)
+            updateNode(target)
+          }
+        })
+
+        frontier = nextFrontier
+      }
+
+      nodeSteps.forEach((step) => {
+        if (step > maxStep) {
+          maxStep = step
+        }
+      })
+
+      if (!nodeSteps.has(egoNodeId)) {
+        nodeSteps.set(egoNodeId, 0)
+      }
+
+      return { allowedEdges, edgeSteps, nodeSteps, maxStep }
+    }
+
     const expandHexColor = (value: string) => {
       const lower = typeof value === 'string' ? value.trim().toLowerCase() : ''
       if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/.test(lower)) {
@@ -1648,51 +1710,18 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
       .slice(0, maxEdges)
 
     const filteredEdgeInfos = filteredEdgesBase.map((edge: any, idx: number) => ({ edge, idx }))
+    const {
+      allowedEdges: allowedCurrentEdges,
+      edgeSteps: currentEdgeSteps,
+      maxStep: currentMaxStep,
+    } = computeEgoReachability(filteredEdgesBase)
+
     let visibleEdgeInfos = filteredEdgeInfos
-    const edgeStepMap = new Map<number, number>()
-    let maxEgoStepUsed = 0
-
-    if (viewType === 'kriskogram' && egoNodeId) {
-      const normalizedSteps = Math.max(1, Math.round(egoNeighborSteps))
-      const allowedEdgeIndexes = new Set<number>()
-      let frontier = new Set<string>()
-      const visitedNodes = new Set<string>()
-
-      frontier.add(egoNodeId)
-      visitedNodes.add(egoNodeId)
-
-      for (let step = 1; step <= normalizedSteps && frontier.size > 0; step += 1) {
-        const nextFrontier = new Set<string>()
-
-        filteredEdgeInfos.forEach(({ edge, idx }) => {
-          if (frontier.has(edge.source) || frontier.has(edge.target)) {
-            allowedEdgeIndexes.add(idx)
-            const existing = edgeStepMap.get(idx)
-            if (existing === undefined || step < existing) {
-              edgeStepMap.set(idx, step)
-            }
-
-            if (!visitedNodes.has(edge.source)) {
-              visitedNodes.add(edge.source)
-              nextFrontier.add(edge.source)
-            }
-            if (!visitedNodes.has(edge.target)) {
-              visitedNodes.add(edge.target)
-              nextFrontier.add(edge.target)
-            }
-          }
-        })
-
-        frontier = nextFrontier
-      }
-
-      visibleEdgeInfos = filteredEdgeInfos.filter(({ idx }) => allowedEdgeIndexes.has(idx))
-      edgeStepMap.forEach((step) => {
-        if (step > maxEgoStepUsed) {
-          maxEgoStepUsed = step
-        }
-      })
+    if (allowedCurrentEdges.size !== filteredEdgeInfos.length) {
+      visibleEdgeInfos = filteredEdgeInfos.filter(({ idx }) => allowedCurrentEdges.has(idx))
     }
+
+    let maxEgoStepUsed = currentMaxStep
 
     const currentEdgeStyle = temporalOverlayEdgeStyle
     const currentDashArray =
@@ -1702,7 +1731,7 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
     const currentDashOffset = temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0
     const currentLineCap = temporalOverlayEdgeStyle === 'segmented' ? edgeSegmentCap : 'round'
     const visibleEdgesCurrent = visibleEdgeInfos.map(({ edge, idx }) => {
-      const step = edgeStepMap.get(idx)
+      const step = currentEdgeSteps.get(idx)
       const decorated: any = {
         ...edge,
         __isOverlay: false,
@@ -1841,11 +1870,23 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
         const overlayDashOffset = temporalOverlayEdgeStyle === 'segmented' ? Math.max(0, edgeSegmentOffset) : 0
         const overlayLineCap = temporalOverlayEdgeStyle === 'segmented' ? edgeSegmentCap : 'round'
 
-        const overlaySubset = edgesForSnapshot
+        const overlayBase = edgesForSnapshot
           .filter((e: any) => e.value >= minThreshold && e.value <= maxThreshold)
           .sort((a: any, b: any) => b.value - a.value)
           .slice(0, maxEdges)
-          .map((edge: any) => ({
+
+        const {
+          allowedEdges: overlayAllowedEdges,
+          edgeSteps: overlayEdgeSteps,
+          maxStep: overlayMaxStep,
+        } = computeEgoReachability(overlayBase)
+
+        if (overlayMaxStep > maxEgoStepUsed) {
+          maxEgoStepUsed = overlayMaxStep
+        }
+
+        const overlaySubset = overlayBase
+          .map((edge: any, idx: number) => ({
             ...edge,
             _overlayType: offset < 0 ? 'past' : 'future',
             _overlayYear: targetYear,
@@ -1864,7 +1905,13 @@ const [edgeOutlineGap, setEdgeOutlineGap] = useState<number>(Math.max(0.5, searc
             __segmentSpeed: Math.max(0.1, edgeSegmentSpeed),
             __segmentScaleByWeight: temporalOverlayEdgeStyle === 'segmented' && edgeSegmentScaleByWeight,
             __outlineGap: edgeOutlineGap,
+            _egoStep: (() => {
+              const step = overlayEdgeSteps.get(idx)
+              if (step === undefined) return undefined
+              return Math.max(1, step)
+            })(),
           }))
+          .filter((_, idx) => overlayAllowedEdges.has(idx))
 
         overlaySubset.forEach((edge: any) => {
           overlayEdges.push(edge)
