@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Home, FileText, Database, Info, GripVertical } from 'lucide-react'
+import logo from '@/assets/logo.png'
 
 interface SidebarProps {
   isCollapsed: boolean
@@ -68,8 +69,9 @@ export default function Sidebar({ isCollapsed, onToggle, onResize, children }: S
       >
         {/* Fixed Header - Page Selector (always visible) */}
         <div className="flex items-center justify-between p-2 border-b border-gray-200 flex-shrink-0">
-          {!isCollapsed && (
+          {!isCollapsed ? (
             <div className="flex-1">
+              <img src={logo} alt="Kriskogram" className="h-10 w-auto mb-3" />
               {/* Page Selector Dropdown */}
               <select
                 value={currentPath}
@@ -98,6 +100,10 @@ export default function Sidebar({ isCollapsed, onToggle, onResize, children }: S
                   </p>
                 )}
               </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex justify-center py-2">
+              <img src={logo} alt="Kriskogram" className="h-8 w-8" />
             </div>
           )}
           <button

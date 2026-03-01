@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { explorerDefaultSearch } from '../lib/explorerDefaults'
 import { Globe, Info, Network } from 'lucide-react'
+import logo from '@/assets/logo.png'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -11,6 +12,7 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-12">
+          <img src={logo} alt="Kriskogram" className="mx-auto h-16 w-auto mb-4" />
           <h1 className="text-5xl font-bold text-gray-800 mb-4">
             Kriskogram
           </h1>

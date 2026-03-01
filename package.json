@@ -15,7 +15,8 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "deploy": "npm run build:gh-pages && gh-pages -d dist"
+    "deploy": "npm run build:gh-pages && gh-pages -d dist",
+    "icons": "node ./scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@faker-js/faker": "^9.6.0",
@@ -55,6 +56,8 @@
     "cross-env": "^10.0.0",
     "gh-pages": "^6.3.0",
     "jsdom": "^26.0.0",
+    "sharp": "^0.34.5",
+    "to-ico": "^1.1.5",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
     "vitest": "^3.0.5",
