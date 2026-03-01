@@ -25,6 +25,7 @@ const resolvePackageVersion = () => {
 }
 
 const APP_VERSION = resolvePackageVersion()
+const BASE = process.env.NODE_ENV === 'production' ? '/INF358_Project_Kriskogram/' : '/'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -32,6 +33,21 @@ export default defineConfig({
     TanStackRouterVite({ autoCodeSplitting: true }),
     viteReact(),
     tailwindcss(),
+    // Fix favicon paths for production: relative paths break on client-side routes
+    {
+      name: 'fix-favicon-paths',
+      transformIndexHtml(html) {
+        if (BASE !== '/') {
+          const base = BASE.replace(/\/$/, '') // remove trailing slash for path join
+          const v = APP_VERSION // cache-bust so browsers fetch new favicon instead of cached React logo
+          return html
+            .replace(/href="\.\/favicon\.ico[^"]*"/, `href="${base}/favicon.ico?v=${v}"`)
+            .replace(/href="\.\/logo192\.png[^"]*"/, `href="${base}/logo192.png?v=${v}"`)
+            .replace('href="./manifest.json"', `href="${base}/manifest.json"`)
+        }
+        return html
+      },
+    },
   ],
   resolve: {
     alias: {
@@ -42,7 +58,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   // GitHub Pages configuration - must match repository name
-  base: process.env.NODE_ENV === 'production' ? '/INF358_Project_Kriskogram/' : '/',
+  base: BASE,
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
