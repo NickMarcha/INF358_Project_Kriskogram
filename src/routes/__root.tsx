@@ -1,9 +1,13 @@
+import { lazy, Suspense } from 'react'
 import { Outlet, createRootRoute, redirect, useLocation } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanstackDevtools } from '@tanstack/react-devtools'
 import { SidebarProvider, useSidebar } from '../contexts/SidebarContext'
 import PatternsPanel from '../components/PatternsPanel'
 import Sidebar from '../components/Sidebar'
+
+// Lazy-load devtools only in development - excluded from production bundle
+const DevtoolsWrapper = import.meta.env.DEV
+  ? lazy(() => import('../components/DevtoolsWrapper').then((m) => ({ default: m.DevtoolsWrapper })))
+  : () => null
 
 export const Route = createRootRoute({
   notFoundComponent: () => {
@@ -54,17 +58,9 @@ function RootLayout() {
       </div>
 
       {import.meta.env.DEV && (
-        <TanstackDevtools
-          config={{
-            position: 'bottom-left',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        <Suspense fallback={null}>
+          <DevtoolsWrapper />
+        </Suspense>
       )}
     </div>
   )
